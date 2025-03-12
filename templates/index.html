@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="fsa-simulator">
+    <header>
+        <h1>FSA SIM</h1>
+        <div class="input-container">
+            <label for="fsa-input">Input:</label>
+            <input type="text" id="fsa-input" name="fsa-input">
+        </div>
+        <div class="controls">
+            <button id="play-btn" class="control-btn">
+                <img src="{% static 'img/play.svg' %}" alt="Play">
+            </button>
+            <button id="stop-btn" class="control-btn">
+                <img src="{% static 'img/stop.svg' %}" alt="Stop">
+            </button>
+            <button id="fast-forward-btn" class="control-btn">
+                <img src="{% static 'img/fast_forward.svg' %}" alt="Fast Forward">
+            </button>
+        </div>
+    </header>
+    
+    <main>
+        <div class="tools-panel">
+            <div class="tool" id="regular-state-tool">
+                <div class="state-node">S</div>
+            </div>
+            <div class="tool" id="accepting-state-tool">
+                <div class="accepting-state-node">S</div>
+            </div>
+            <div class="tool" id="edge-tool">
+                <div class="edge-icon">➚</div>
+            </div>
+        </div>
+        
+        <div id="fsa-canvas">
+            <!-- FSA graph will be drawn here -->
+        </div>
+        
+        <div class="info-panel">
+            <div class="alphabet-info">
+                <h3>Alphabet:</h3>
+                <p>Σ = {A,B,C,D}</p>
+            </div>
+            <div class="fsa-properties">
+                <div class="property">
+                    <span>Connected:</span>
+                    <span class="checkmark">✓</span>
+                </div>
+                <div class="property">
+                    <span>Deterministic:</span>
+                    <span class="checkmark">✓</span>
+                </div>
+            </div>
+            <button id="show-table-btn">Show T table</button>
+        </div>
+    </main>
+    
+    <!-- Modal for setting edge symbol -->
+    <div id="edge-symbol-modal" class="modal">
+        <div class="modal-content">
+            <h3>Enter Symbol:</h3>
+            <input type="text" id="edge-symbol-input" maxlength="1">
+            <div class="modal-buttons">
+                <button id="confirm-symbol-btn">Confirm</button>
+                <button id="cancel-symbol-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
