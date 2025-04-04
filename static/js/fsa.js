@@ -27,30 +27,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const inlineEditor = document.getElementById('state-inline-editor');
 
     // Tool selection
-    document.getElementById('regular-state-tool').addEventListener('click', function() {
+    document.getElementById('state-tool').addEventListener('click', function() {
         closeInlineStateEditor();
-        currentTool = 'state';
-        resetToolSelection();
-        this.style.backgroundColor = '#ddd';
+        selectTool('state');
     });
 
     document.getElementById('accepting-state-tool').addEventListener('click', function() {
         closeInlineStateEditor();
-        currentTool = 'accepting-state';
-        resetToolSelection();
-        this.style.backgroundColor = '#ddd';
+        selectTool('accepting-state');
     });
 
     document.getElementById('edge-tool').addEventListener('click', function() {
         closeInlineStateEditor();
-        currentTool = 'edge';
-        resetToolSelection();
-        this.style.backgroundColor = '#ddd';
+        selectTool('edge');
+    });
+
+    document.getElementById('delete-tool').addEventListener('click', function() {
+        closeInlineStateEditor();
+        selectTool('delete');
     });
 
     function resetToolSelection() {
+        currentTool = "";
         document.querySelectorAll('.tool').forEach(tool => {
-            tool.style.backgroundColor = 'transparent';
+            tool.style.border = 'none';
         });
     }
 
@@ -72,11 +72,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Edge symbol modal
     function openEdgeSymbolModal(source, target) {
+        const symbolInput = document.getElementById('edge-symbol-input');
 
         document.getElementById('edge-symbol-modal').style.display = 'block';
 
+        // Auto-focus the input when the modal opens
+        symbolInput.focus();
+
+        // Add event listener for Enter key
+        const handleEnterKey = function(e) {
+            if (e.key === 'Enter') {
+                const symbol = symbolInput.value;
+                if (symbol) {
+                    createConnection(source, target, symbol);
+                    closeEdgeSymbolModal();
+                }
+                e.preventDefault();
+            }
+        };
+
+        symbolInput.addEventListener('keydown', handleEnterKey);
+
         document.getElementById('confirm-symbol-btn').onclick = function() {
-            const symbol = document.getElementById('edge-symbol-input').value;
+            const symbol = symbolInput.value;
             if (symbol) {
                 createConnection(source, target, symbol);
                 closeEdgeSymbolModal();
@@ -84,11 +102,24 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         document.getElementById('cancel-symbol-btn').onclick = closeEdgeSymbolModal;
+
+        // Store the cleanup function
+        symbolInput._cleanup = function() {
+            symbolInput.removeEventListener('keydown', handleEnterKey);
+        };
     }
 
     function closeEdgeSymbolModal() {
+        const symbolInput = document.getElementById('edge-symbol-input');
         document.getElementById('edge-symbol-modal').style.display = 'none';
-        document.getElementById('edge-symbol-input').value = '';
+
+        // Clean up the event listener
+        if (symbolInput._cleanup) {
+            symbolInput._cleanup();
+            symbolInput._cleanup = null;
+        }
+
+        symbolInput.value = '';
     }
 
     // Create a connection with a label
@@ -100,6 +131,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         connection.getOverlay("label").setLabel(symbol);
+
+        // Add click handler for edge deletion
+        if (connection.canvas) {
+            connection.canvas.addEventListener('click', function(e) {
+                if (currentTool === 'delete') {
+                    deleteEdge(connection);
+                    e.stopPropagation();
+                }
+            });
+        }
     }
 
     // Inline state editor functions
@@ -203,10 +244,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const x = ui.offset.left - canvasRect.left;
                 const y = ui.offset.top - canvasRect.top;
 
-                if (tool === 'regular-state-tool') {
+                if (tool === 'state-tool') {
                     createState(x, y, false);
+                    selectTool('state');
                 } else if (tool === 'accepting-state-tool') {
                     createState(x, y, true);
+                    selectTool('accepting-state');
                 }
             }
         }
@@ -276,7 +319,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Add click event for both edge creation and state editing
         state.addEventListener('click', function(e) {
-            if (currentTool === 'edge') {
+            if (currentTool === 'delete'){
+                if (e.target.classList.contains('state') || e.target.classList.contains('accepting-state')) {
+                    deleteState(e.target);
+                }
+            }
+            else if (currentTool === 'edge') {
                 if (sourceState === null) {
                     sourceState = this;
                     sourceId = this.id;
@@ -287,6 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     sourceState = null;
                 }
             } else {
+                resetToolSelection()
                 // If not using edge tool, open edit modal when clicking a state
                 openInlineStateEditor(this);
             }
@@ -297,4 +346,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
         return state;
     }
+
+    function deleteState(stateElement) {
+        jsPlumbInstance.removeAllEndpoints(stateElement.id);
+        stateElement.remove();
+    }
+
+    function deleteEdge(connection) {
+        jsPlumbInstance.deleteConnection(connection);
+    }
+
+    function selectTool(toolName) {
+        resetToolSelection();
+        currentTool = toolName;
+        document.getElementById(toolName + '-tool').style.border = '2px solid red';
+    }
+
+    // Add click handlers to existing connections on init
+    jsPlumbInstance.bind('connection', function(info) {
+        if (info.connection && info.connection.canvas) {
+            info.connection.canvas.addEventListener('click', function(e) {
+                if (currentTool === 'delete') {
+                    deleteEdge(info.connection);
+                    e.stopPropagation();
+                }
+            });
+        }
+
+        // Also add click handler to the connection label
+        const labelOverlay = info.connection.getOverlay('label');
+        if (labelOverlay && labelOverlay.canvas) {
+            labelOverlay.canvas.addEventListener('click', function(e) {
+                if (currentTool === 'delete') {
+                    deleteEdge(info.connection);
+                    e.stopPropagation();
+                }
+            });
+        }
+    });
+
+    // Add click handlers for edge label deletion
+    document.addEventListener('click', function(e) {
+        if (currentTool === 'delete') {
+            // Check if we clicked on an edge label
+            const connections = jsPlumbInstance.getAllConnections();
+            for (let i = 0; i < connections.length; i++) {
+                const conn = connections[i];
+                const labelOverlay = conn.getOverlay("label");
+
+                if (labelOverlay && labelOverlay.canvas &&
+                   (labelOverlay.canvas === e.target || labelOverlay.canvas.contains(e.target))) {
+                    deleteEdge(conn);
+                    e.stopPropagation();
+                    return;
+                }
+            }
+        }
+    });
+
+    document.getElementById('close-inline-editor').addEventListener('click', function() {
+        closeInlineStateEditor();
+    });
 });

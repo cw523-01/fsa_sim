@@ -284,6 +284,8 @@ main {
 
 .edge-label {
     z-index: 20;
+    cursor: pointer;
+    pointer-events: auto;
 }
 
 .edge-label-style {
@@ -439,4 +441,32 @@ main {
 
 .selected-source {
     box-shadow: 0 0 0 2px #4CAF50 !important;
+}
+
+.inline-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.inline-editor-header h3 {
+    margin: 0;
+}
+
+.close-btn {
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #888;
+    transition: color 0.2s;
+    padding: 0 5px;
+    line-height: 1;
+    margin-top: -5px;
+    margin-right: -5px;
+}
+
+.close-btn:hover {
+    color: #000;
+    cursor: pointer;
 }

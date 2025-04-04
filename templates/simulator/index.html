@@ -24,7 +24,7 @@
     
     <main>
         <div class="tools-panel">
-            <div class="tool" id="regular-state-tool">
+            <div class="tool" id="state-tool">
                 <div class="state-node">S</div>
             </div>
             <div class="tool" id="accepting-state-tool">
@@ -32,6 +32,9 @@
             </div>
             <div class="tool" id="edge-tool">
                 <div class="edge-icon">➚</div>
+            </div>
+            <div class="tool" id="delete-tool">
+                <div class="delete-icon">🗑️</div>
             </div>
         </div>
         
@@ -72,7 +75,10 @@
 
     <div id="state-inline-editor" class="inline-editor" style="display: none;">
         <div class="inline-editor-content">
-            <h3>Edit State</h3>
+            <div class="inline-editor-header">
+                <h3>Edit State</h3>
+                <span id="close-inline-editor" class="close-btn">x</span>
+            </div>
             <input type="text" id="inline-state-label-input" class="form-control">
             <div class="checkbox-group">
                 <label for="inline-accepting-state-checkbox">Accepting</label>
