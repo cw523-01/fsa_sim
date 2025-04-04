@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize JSPlumb
     const jsPlumbInstance = jsPlumb.getInstance({
         Endpoint: ["Dot", { radius: 2 }],
-        Connector: ["Bezier", { curviness: 150 }],
+        Connector: "Straight",
         HoverPaintStyle: { stroke: "#1e8151", strokeWidth: 2 },
         ConnectionOverlays: [
             ["Arrow", { location: 1, id: "arrow", width: 10, length: 10 }],
@@ -23,21 +23,26 @@ document.addEventListener('DOMContentLoaded', function() {
     let sourceState = null;
     let sourceId = null;
     let tempConnection = null;
+    let currentEditingState = null;
+    const inlineEditor = document.getElementById('state-inline-editor');
 
     // Tool selection
     document.getElementById('regular-state-tool').addEventListener('click', function() {
+        closeInlineStateEditor();
         currentTool = 'state';
         resetToolSelection();
         this.style.backgroundColor = '#ddd';
     });
 
     document.getElementById('accepting-state-tool').addEventListener('click', function() {
+        closeInlineStateEditor();
         currentTool = 'accepting-state';
         resetToolSelection();
         this.style.backgroundColor = '#ddd';
     });
 
     document.getElementById('edge-tool').addEventListener('click', function() {
+        closeInlineStateEditor();
         currentTool = 'edge';
         resetToolSelection();
         this.style.backgroundColor = '#ddd';
@@ -57,64 +62,17 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (currentTool === 'accepting-state') {
                 createState(e.offsetX, e.offsetY, true);
             }
+
+            // Close the inline editor if it's open and we click on the canvas
+            if (inlineEditor.style.display === 'block') {
+                closeInlineStateEditor();
+            }
         }
     });
 
-    // Create a state
-    function createState(x, y, isAccepting) {
-        const stateId = 'S' + stateCounter++;
-        const state = document.createElement('div');
-        state.id = stateId;
-        state.className = isAccepting ? 'accepting-state' : 'state';
-        state.innerHTML = stateId;
-        state.style.left = (x - 30) + 'px';
-        state.style.top = (y - 30) + 'px';
-
-        document.getElementById('fsa-canvas').appendChild(state);
-
-        // Make state draggable
-        $(state).draggable({
-            containment: "parent",
-            stack: ".state, .accepting-state", // Stack dragged element above others
-            zIndex: 100, // High z-index during drag
-            drag: function(event, ui) {
-                jsPlumbInstance.repaintEverything();
-            }
-        });
-
-        // Make state a connection source and target
-        jsPlumbInstance.makeSource(state, {
-            filter: ".edge-source",
-            anchor: "Continuous",
-            connectorStyle: { stroke: "#5c96bc", strokeWidth: 2 },
-            connectionType: "basic"
-        });
-
-        jsPlumbInstance.makeTarget(state, {
-            anchor: "Continuous",
-            connectionType: "basic"
-        });
-
-        // Add click event for edge creation
-        state.addEventListener('click', function(e) {
-            if (currentTool === 'edge') {
-                if (sourceState === null) {
-                    sourceState = this;
-                    sourceId = this.id;
-                    $(this).addClass('selected-source');
-                } else if (sourceState !== this) {
-                    openEdgeSymbolModal(sourceId, this.id);
-                    $(sourceState).removeClass('selected-source');
-                    sourceState = null;
-                }
-            }
-        });
-
-        return state;
-    }
-
     // Edge symbol modal
     function openEdgeSymbolModal(source, target) {
+
         document.getElementById('edge-symbol-modal').style.display = 'block';
 
         document.getElementById('confirm-symbol-btn').onclick = function() {
@@ -142,6 +100,81 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         connection.getOverlay("label").setLabel(symbol);
+    }
+
+    // Inline state editor functions
+    function openInlineStateEditor(stateElement) {
+        currentEditingState = stateElement;
+        const labelInput = document.getElementById('inline-state-label-input');
+        const acceptingCheckbox = document.getElementById('inline-accepting-state-checkbox');
+
+        // Position the editor near the state
+        inlineEditor.style.left = (stateElement.offsetLeft + 150) + 'px';
+        inlineEditor.style.top = (stateElement.offsetTop) + 'px';
+
+        // Set current values
+        labelInput.value = stateElement.innerHTML;
+        acceptingCheckbox.checked = stateElement.classList.contains('accepting-state');
+
+        // Show editor
+        inlineEditor.style.display = 'block';
+
+        // Focus on the input
+        labelInput.focus();
+
+        // Add live update event listeners
+        setupLiveUpdates();
+    }
+
+    function closeInlineStateEditor() {
+        inlineEditor.style.display = 'none';
+        currentEditingState = null;
+
+        // Remove live update event listeners
+        removeLiveUpdateListeners();
+    }
+
+    // Setup live update event listeners
+    function setupLiveUpdates() {
+        const labelInput = document.getElementById('inline-state-label-input');
+        const acceptingCheckbox = document.getElementById('inline-accepting-state-checkbox');
+
+        labelInput.addEventListener('input', updateStateLabel);
+        acceptingCheckbox.addEventListener('change', updateStateType);
+    }
+
+    // Remove live update event listeners
+    function removeLiveUpdateListeners() {
+        const labelInput = document.getElementById('inline-state-label-input');
+        const acceptingCheckbox = document.getElementById('inline-accepting-state-checkbox');
+
+        labelInput.removeEventListener('input', updateStateLabel);
+        acceptingCheckbox.removeEventListener('change', updateStateType);
+    }
+
+    // Live update functions
+    function updateStateLabel() {
+        if (!currentEditingState) return;
+        const newLabel = document.getElementById('inline-state-label-input').value;
+        if (newLabel) {
+            currentEditingState.innerHTML = newLabel;
+            jsPlumbInstance.repaintEverything();
+        }
+    }
+
+    function updateStateType() {
+        if (!currentEditingState) return;
+        const isAccepting = document.getElementById('inline-accepting-state-checkbox').checked;
+
+        if (isAccepting && !currentEditingState.classList.contains('accepting-state')) {
+            currentEditingState.classList.remove('state');
+            currentEditingState.classList.add('accepting-state');
+        } else if (!isAccepting && currentEditingState.classList.contains('accepting-state')) {
+            currentEditingState.classList.remove('accepting-state');
+            currentEditingState.classList.add('state');
+        }
+
+        jsPlumbInstance.repaintEverything();
     }
 
     // Handle drag and drop from tools panel
@@ -200,4 +233,68 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('resize', function() {
         jsPlumbInstance.repaintEverything();
     });
+
+    // Create a state element
+    function createState(x, y, isAccepting) {
+        const stateId = 'S' + stateCounter++;
+        const state = document.createElement('div');
+        state.id = stateId;
+        state.className = isAccepting ? 'accepting-state' : 'state';
+        state.innerHTML = stateId;
+        state.style.left = (x - 30) + 'px';
+        state.style.top = (y - 30) + 'px';
+
+        document.getElementById('fsa-canvas').appendChild(state);
+
+        // Make state draggable
+        $(state).draggable({
+            containment: "parent",
+            stack: ".state, .accepting-state",
+            zIndex: 100,
+            drag: function(event, ui) {
+                jsPlumbInstance.repaintEverything();
+
+                // Close inline editor if open while dragging
+                if (currentEditingState === this) {
+                    closeInlineStateEditor();
+                }
+            }
+        });
+
+        // Make state a connection source and target
+        jsPlumbInstance.makeSource(state, {
+            filter: ".edge-source",
+            anchor: "Continuous",
+            connectorStyle: { stroke: "black", strokeWidth: 2 },
+            connectionType: "basic"
+        });
+
+        jsPlumbInstance.makeTarget(state, {
+            anchor: "Continuous",
+            connectionType: "basic"
+        });
+
+        // Add click event for both edge creation and state editing
+        state.addEventListener('click', function(e) {
+            if (currentTool === 'edge') {
+                if (sourceState === null) {
+                    sourceState = this;
+                    sourceId = this.id;
+                    $(this).addClass('selected-source');
+                } else if (sourceState !== this) {
+                    openEdgeSymbolModal(sourceId, this.id);
+                    $(sourceState).removeClass('selected-source');
+                    sourceState = null;
+                }
+            } else {
+                // If not using edge tool, open edit modal when clicking a state
+                openInlineStateEditor(this);
+            }
+
+            // Stop event propagation to prevent canvas click handler from firing
+            e.stopPropagation();
+        });
+
+        return state;
+    }
 });

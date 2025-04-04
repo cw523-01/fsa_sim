@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'simulator/base.html' %}
 {% load static %}
 
 {% block content %}
@@ -69,5 +69,17 @@
             </div>
         </div>
     </div>
+
+    <div id="state-inline-editor" class="inline-editor" style="display: none;">
+        <div class="inline-editor-content">
+            <h3>Edit State</h3>
+            <input type="text" id="inline-state-label-input" class="form-control">
+            <div class="checkbox-group">
+                <label for="inline-accepting-state-checkbox">Accepting</label>
+                <input type="checkbox" id="inline-accepting-state-checkbox">
+            </div>
+        </div>
+    </div>
+
 </div>
 {% endblock %}
