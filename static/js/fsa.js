@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentEditingEdge = null;
     const inlineEditor = document.getElementById('state-inline-editor');
     const edgeInlineEditor = document.getElementById('edge-inline-editor');
+    let currentEditingSymbols = [];
 
     // Tool selection
     document.getElementById('state-tool').addEventListener('click', function() {
@@ -81,54 +82,49 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Edge symbol modal
     function openEdgeSymbolModal(source, target) {
-        const symbolInput = document.getElementById('edge-symbol-input');
+        const modal = document.getElementById('edge-symbol-modal');
+        const inputsContainer = document.getElementById('symbol-inputs-container');
+        modal.style.display = 'block';
 
-        document.getElementById('edge-symbol-modal').style.display = 'block';
+        // Clear previous inputs and add one input field
+        inputsContainer.innerHTML = '';
+        addSymbolInput();
 
-        // Auto-focus the input when the modal opens
-        symbolInput.focus();
-
-        // Add event listener for Enter key
-        const handleEnterKey = function(e) {
-            if (e.key === 'Enter') {
-                const symbol = symbolInput.value;
-                if (symbol) {
-                    createConnection(source, target, symbol);
-                    closeEdgeSymbolModal();
-                }
-                e.preventDefault();
-            }
+        // Handler to add new input field
+        document.getElementById('add-symbol-input').onclick = function () {
+            addSymbolInput();
         };
 
-        symbolInput.addEventListener('keydown', handleEnterKey);
+        // Confirm button handler
+        document.getElementById('confirm-symbol-btn').onclick = function () {
+            const inputs = inputsContainer.querySelectorAll('.symbol-input');
+            const symbols = Array.from(inputs)
+                .map(input => input.value.trim())
+                .filter(value => value.length === 1);
 
-        document.getElementById('confirm-symbol-btn').onclick = function() {
-            const symbol = symbolInput.value;
-            if (symbol) {
-                createConnection(source, target, symbol);
+            if (symbols.length > 0) {
+                createConnection(source, target, symbols.join(','));
                 closeEdgeSymbolModal();
             }
         };
 
+        // Cancel button handler
         document.getElementById('cancel-symbol-btn').onclick = closeEdgeSymbolModal;
-
-        // Store the cleanup function
-        symbolInput._cleanup = function() {
-            symbolInput.removeEventListener('keydown', handleEnterKey);
-        };
     }
 
+    function addSymbolInput() {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'symbol-input';
+        input.maxLength = 1;
+        document.getElementById('symbol-inputs-container').appendChild(input);
+        input.focus();
+    }
+
+
     function closeEdgeSymbolModal() {
-        const symbolInput = document.getElementById('edge-symbol-input');
         document.getElementById('edge-symbol-modal').style.display = 'none';
-
-        // Clean up the event listener
-        if (symbolInput._cleanup) {
-            symbolInput._cleanup();
-            symbolInput._cleanup = null;
-        }
-
-        symbolInput.value = '';
+        document.getElementById('symbol-inputs-container').innerHTML = '';
     }
 
     // Create a connection with a label
@@ -193,40 +189,42 @@ document.addEventListener('DOMContentLoaded', function() {
     // Inline edge editor functions
     function openInlineEdgeEditor(connection) {
         currentEditingEdge = connection;
-        const symbolInput = document.getElementById('edge-symbol-input-edit');
+
+        // Get label text and split into symbols array
+        const label = connection.getOverlay("label").getLabel();
+        currentEditingSymbols = label.split(',').map(s => s.trim());
 
         // Close state editor if open
         closeInlineStateEditor();
 
-        // Calculate position for the editor (middle point of the connection)
+        // Position the editor near the midpoint of the edge
         const sourceElement = document.getElementById(connection.sourceId);
         const targetElement = document.getElementById(connection.targetId);
         const sourcePos = {
-            x: sourceElement.offsetLeft + sourceElement.offsetWidth/2,
-            y: sourceElement.offsetTop + sourceElement.offsetHeight/2
+            x: sourceElement.offsetLeft + sourceElement.offsetWidth / 2,
+            y: sourceElement.offsetTop + sourceElement.offsetHeight / 2
         };
         const targetPos = {
-            x: targetElement.offsetLeft + targetElement.offsetWidth/2,
-            y: targetElement.offsetTop + targetElement.offsetHeight/2
+            x: targetElement.offsetLeft + targetElement.offsetWidth / 2,
+            y: targetElement.offsetTop + targetElement.offsetHeight / 2
         };
 
         const midpointX = (sourcePos.x + targetPos.x) / 2;
         const midpointY = (sourcePos.y + targetPos.y) / 2;
 
-        // Position the editor near the midpoint of the edge
         edgeInlineEditor.style.left = (midpointX + 20) + 'px';
         edgeInlineEditor.style.top = (midpointY - 20) + 'px';
-
-        // Set current value
-        symbolInput.value = connection.getOverlay("label").getLabel();
-
-        // Show editor
         edgeInlineEditor.style.display = 'block';
 
-        // Focus on the input
-        symbolInput.focus();
+        // Populate inputs
+        const container = document.getElementById('edge-symbols-edit-container');
+        container.innerHTML = '';
+        currentEditingSymbols.forEach(symbol => addSymbolEditInput(symbol));
 
-        // Add live update event listener
+        document.getElementById('add-symbol-edit-btn').onclick = function () {
+            addSymbolEditInput('');
+        };
+
         setupEdgeLiveUpdates();
     }
 
@@ -258,14 +256,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Setup live update event listeners for edge editor
     function setupEdgeLiveUpdates() {
-        const symbolInput = document.getElementById('edge-symbol-input-edit');
-        symbolInput.addEventListener('input', updateEdgeLabel);
+        const container = document.getElementById('edge-symbols-edit-container');
+        container.addEventListener('input', updateEdgeLabel);
     }
 
     // Remove live update event listeners for edge editor
     function removeEdgeLiveUpdateListeners() {
-        const symbolInput = document.getElementById('edge-symbol-input-edit');
-        symbolInput.removeEventListener('input', updateEdgeLabel);
+        const container = document.getElementById('edge-symbols-edit-container');
+        if (!container) return;
+
+        const inputs = container.querySelectorAll('.symbol-edit-input');
+        inputs.forEach(input => {
+            input.removeEventListener('input', updateEdgeLabel);
+        });
     }
 
     // Live update functions
@@ -295,11 +298,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateEdgeLabel() {
         if (!currentEditingEdge) return;
-        const newSymbol = document.getElementById('edge-symbol-input-edit').value;
-        if (newSymbol) {
-            currentEditingEdge.getOverlay("label").setLabel(newSymbol);
-            jsPlumbInstance.repaintEverything();
-        }
+
+        const container = document.getElementById('edge-symbols-edit-container');
+        const inputs = container.querySelectorAll('.symbol-edit-input');
+        const symbols = Array.from(inputs)
+            .map(input => input.value.trim())
+            .filter(s => s.length === 1);  // Only valid 1-char symbols
+
+        currentEditingSymbols = symbols;
+        currentEditingEdge.getOverlay("label").setLabel(symbols.join(','));
+        jsPlumbInstance.repaintEverything();
     }
 
     // Handle drag and drop from tools panel
@@ -514,4 +522,15 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('close-edge-editor').addEventListener('click', function() {
         closeInlineEdgeEditor();
     });
+
+    function addSymbolEditInput(value = '') {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'symbol-edit-input form-control';
+        input.maxLength = 1;
+        input.value = value;
+
+        document.getElementById('edge-symbols-edit-container').appendChild(input);
+        input.focus();
+    }
 });
