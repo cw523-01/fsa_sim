@@ -29,6 +29,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const edgeInlineEditor = document.getElementById('edge-inline-editor');
     let currentEditingSymbols = [];
 
+    const edgeSymbolMap = new Map(); // Map<connection.id, Array of symbols>
+
+    let pendingSourceId = null;
+    let pendingTargetId = null;
+
     // Tool selection
     document.getElementById('state-tool').addEventListener('click', function() {
         closeInlineStateEditor();
@@ -83,6 +88,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Edge symbol modal
     function openEdgeSymbolModal(source, target) {
         const modal = document.getElementById('edge-symbol-modal');
+        pendingSourceId = source;
+        pendingTargetId = target;
+        document.getElementById('edge-symbol-modal').style.display = 'block';
+
         const inputsContainer = document.getElementById('symbol-inputs-container');
         modal.style.display = 'block';
 
@@ -98,12 +107,26 @@ document.addEventListener('DOMContentLoaded', function() {
         // Confirm button handler
         document.getElementById('confirm-symbol-btn').onclick = function () {
             const inputs = inputsContainer.querySelectorAll('.symbol-input');
-            const symbols = Array.from(inputs)
-                .map(input => input.value.trim())
-                .filter(value => value.length === 1);
+
+            const symbols = [];
+            const seen = new Set();
+            inputs.forEach(input => {
+                const val = input.value.trim();
+                const upper = val.toUpperCase();
+
+                if (val.length === 1 && !seen.has(upper)) {
+                    seen.add(upper);
+                    symbols.push(val);
+                    input.style.borderColor = '';
+                } else if (seen.has(upper)) {
+                    input.style.borderColor = 'red';
+                }
+            });
 
             if (symbols.length > 0) {
-                createConnection(source, target, symbols.join(','));
+                if (pendingSourceId && pendingTargetId) {
+                    createConnection(pendingSourceId, pendingTargetId, symbols.join(','));
+                }
                 closeEdgeSymbolModal();
             }
         };
@@ -125,21 +148,30 @@ document.addEventListener('DOMContentLoaded', function() {
     function closeEdgeSymbolModal() {
         document.getElementById('edge-symbol-modal').style.display = 'none';
         document.getElementById('symbol-inputs-container').innerHTML = '';
+        pendingSourceId = null;
+        pendingTargetId = null;
     }
 
     // Create a connection with a label
-    function createConnection(source, target, symbol) {
+    function createConnection(source, target, symbolsString) {
         const connection = jsPlumbInstance.connect({
             source: source,
             target: target,
             type: "basic"
         });
 
-        connection.getOverlay("label").setLabel(symbol);
+        // Parse and save symbols
+        const symbols = symbolsString.split(',').map(s => s.trim()).filter(s => s.length === 1);
+        edgeSymbolMap.set(connection.id, symbols);
 
-        // Add click handler for edge deletion and editing
+        // Set label
+        edgeSymbolMap.set(connection.id, symbols);
+        connection.getOverlay("label").setLabel(symbols.join(','));
+
+
+        // Add click handler
         if (connection.canvas) {
-            connection.canvas.addEventListener('click', function(e) {
+            connection.canvas.addEventListener('click', function (e) {
                 if (currentTool === 'delete') {
                     deleteEdge(connection);
                     e.stopPropagation();
@@ -191,8 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentEditingEdge = connection;
 
         // Get label text and split into symbols array
-        const label = connection.getOverlay("label").getLabel();
-        currentEditingSymbols = label.split(',').map(s => s.trim());
+        currentEditingSymbols = edgeSymbolMap.get(connection.id) || [];
 
         // Close state editor if open
         closeInlineStateEditor();
@@ -301,13 +332,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const container = document.getElementById('edge-symbols-edit-container');
         const inputs = container.querySelectorAll('.symbol-edit-input');
-        const symbols = Array.from(inputs)
-            .map(input => input.value.trim())
-            .filter(s => s.length === 1);  // Only valid 1-char symbols
 
-        currentEditingSymbols = symbols;
-        currentEditingEdge.getOverlay("label").setLabel(symbols.join(','));
-        jsPlumbInstance.repaintEverything();
+        const symbols = [];
+        const seen = new Set();
+        let hasDuplicates = false;
+
+        inputs.forEach(input => {
+            const val = input.value.trim();
+            const upper = val.toUpperCase(); // For duplicate checking only
+
+            if (val.length === 1) {
+                if (!seen.has(upper)) {
+                    seen.add(upper);
+                    symbols.push(val); // Keep original casing
+                    input.style.borderColor = '';
+                } else {
+                    hasDuplicates = true;
+                    input.style.borderColor = 'red';
+                }
+            } else {
+                input.style.borderColor = '';
+            }
+        });
+
+        if (!hasDuplicates) {
+            edgeSymbolMap.set(currentEditingEdge.id, symbols);
+            currentEditingEdge.getOverlay("label").setLabel(symbols.join(','));
+            jsPlumbInstance.repaintEverything();
+        }
     }
 
     // Handle drag and drop from tools panel
@@ -448,6 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function deleteEdge(connection) {
+        edgeSymbolMap.delete(connection.id);
         jsPlumbInstance.deleteConnection(connection);
     }
 
@@ -524,13 +577,33 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function addSymbolEditInput(value = '') {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'symbol-edit-wrapper';
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.marginBottom = '4px';
+
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'symbol-edit-input form-control';
         input.maxLength = 1;
         input.value = value;
+        input.style.marginRight = '8px';
 
-        document.getElementById('edge-symbols-edit-container').appendChild(input);
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = '❌';
+        removeBtn.className = 'remove-symbol-btn';
+        removeBtn.type = 'button';
+        removeBtn.style.cursor = 'pointer';
+
+        removeBtn.onclick = () => {
+            wrapper.remove();
+            updateEdgeLabel();
+        };
+
+        wrapper.appendChild(input);
+        wrapper.appendChild(removeBtn);
+        document.getElementById('edge-symbols-edit-container').appendChild(wrapper);
         input.focus();
     }
 });

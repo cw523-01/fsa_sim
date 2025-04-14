@@ -529,3 +529,11 @@ main {
 ._jsPlumb_connector:hover {
     stroke-width: 3px;
 }
+
+.symbol-edit-input {
+    transition: border-color 0.2s ease;
+}
+.symbol-edit-input:invalid,
+.symbol-edit-input[style*="red"] {
+    border: 2px solid red;
+}
