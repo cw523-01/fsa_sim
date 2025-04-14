@@ -87,43 +87,46 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Edge symbol modal
     function openEdgeSymbolModal(source, target) {
+        const existingConnection = getConnectionBetween(source, target);
+        if (existingConnection) {
+            openInlineEdgeEditor(existingConnection);
+            return; // Skip modal
+        }
+
         const modal = document.getElementById('edge-symbol-modal');
         pendingSourceId = source;
         pendingTargetId = target;
-        document.getElementById('edge-symbol-modal').style.display = 'block';
-
-        const inputsContainer = document.getElementById('symbol-inputs-container');
         modal.style.display = 'block';
 
-        // Clear previous inputs and add one input field
+        const inputsContainer = document.getElementById('symbol-inputs-container');
         inputsContainer.innerHTML = '';
         addSymbolInput();
 
-        // Handler to add new input field
         document.getElementById('add-symbol-input').onclick = function () {
             addSymbolInput();
         };
 
-        // Confirm button handler
         document.getElementById('confirm-symbol-btn').onclick = function () {
             const inputs = inputsContainer.querySelectorAll('.symbol-input');
 
             const symbols = [];
             const seen = new Set();
+            let hasDuplicates = false;
+
             inputs.forEach(input => {
                 const val = input.value.trim();
                 const upper = val.toUpperCase();
-
                 if (val.length === 1 && !seen.has(upper)) {
                     seen.add(upper);
                     symbols.push(val);
                     input.style.borderColor = '';
                 } else if (seen.has(upper)) {
+                    hasDuplicates = true;
                     input.style.borderColor = 'red';
                 }
             });
 
-            if (symbols.length > 0) {
+            if (symbols.length > 0 && !hasDuplicates) {
                 if (pendingSourceId && pendingTargetId) {
                     createConnection(pendingSourceId, pendingTargetId, symbols.join(','));
                 }
@@ -131,7 +134,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
 
-        // Cancel button handler
         document.getElementById('cancel-symbol-btn').onclick = closeEdgeSymbolModal;
     }
 
@@ -157,7 +159,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const connection = jsPlumbInstance.connect({
             source: source,
             target: target,
-            type: "basic"
+            type: "basic",
+            connector: source === target ? ["Bezier", { curviness: 60 }] : "Straight",
+            anchors: source === target ? ["Top", "Left"] : ["Continuous", "Continuous"]
         });
 
         // Parse and save symbols
@@ -476,8 +480,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     sourceState = this;
                     sourceId = this.id;
                     $(this).addClass('selected-source');
-                } else if (sourceState !== this) {
-                    openEdgeSymbolModal(sourceId, this.id);
+                } else {
+                    openEdgeSymbolModal(sourceId, this.id); // <-- allow even if it's the same
                     $(sourceState).removeClass('selected-source');
                     sourceState = null;
                 }
@@ -605,5 +609,12 @@ document.addEventListener('DOMContentLoaded', function() {
         wrapper.appendChild(removeBtn);
         document.getElementById('edge-symbols-edit-container').appendChild(wrapper);
         input.focus();
+    }
+
+    function getConnectionBetween(sourceId, targetId) {
+        const allConnections = jsPlumbInstance.getAllConnections();
+        return allConnections.find(conn =>
+            conn.sourceId === sourceId && conn.targetId === targetId
+        );
     }
 });
