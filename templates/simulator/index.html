@@ -73,6 +73,7 @@
         </div>
     </div>
 
+    <!-- State inline editor -->
     <div id="state-inline-editor" class="inline-editor" style="display: none;">
         <div class="inline-editor-content">
             <div class="inline-editor-header">
@@ -83,6 +84,20 @@
             <div class="checkbox-group">
                 <label for="inline-accepting-state-checkbox">Accepting</label>
                 <input type="checkbox" id="inline-accepting-state-checkbox">
+            </div>
+        </div>
+    </div>
+
+    <!-- Edge inline editor -->
+    <div id="edge-inline-editor" class="inline-editor" style="display: none;">
+        <div class="inline-editor-content">
+            <div class="inline-editor-header">
+                <h3>Edit Edge</h3>
+                <span id="close-edge-editor" class="close-btn">x</span>
+            </div>
+            <div class="form-group">
+                <label for="edge-symbol-input-edit">Symbol:</label>
+                <input type="text" id="edge-symbol-input-edit" class="form-control" maxlength="1">
             </div>
         </div>
     </div>

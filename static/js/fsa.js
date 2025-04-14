@@ -24,26 +24,32 @@ document.addEventListener('DOMContentLoaded', function() {
     let sourceId = null;
     let tempConnection = null;
     let currentEditingState = null;
+    let currentEditingEdge = null;
     const inlineEditor = document.getElementById('state-inline-editor');
+    const edgeInlineEditor = document.getElementById('edge-inline-editor');
 
     // Tool selection
     document.getElementById('state-tool').addEventListener('click', function() {
         closeInlineStateEditor();
+        closeInlineEdgeEditor();
         selectTool('state');
     });
 
     document.getElementById('accepting-state-tool').addEventListener('click', function() {
         closeInlineStateEditor();
+        closeInlineEdgeEditor();
         selectTool('accepting-state');
     });
 
     document.getElementById('edge-tool').addEventListener('click', function() {
         closeInlineStateEditor();
+        closeInlineEdgeEditor();
         selectTool('edge');
     });
 
     document.getElementById('delete-tool').addEventListener('click', function() {
         closeInlineStateEditor();
+        closeInlineEdgeEditor();
         selectTool('delete');
     });
 
@@ -63,9 +69,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 createState(e.offsetX, e.offsetY, true);
             }
 
-            // Close the inline editor if it's open and we click on the canvas
+            // Close the inline editors if they're open and we click on the canvas
             if (inlineEditor.style.display === 'block') {
                 closeInlineStateEditor();
+            }
+            if (edgeInlineEditor.style.display === 'block') {
+                closeInlineEdgeEditor();
             }
         }
     });
@@ -132,11 +141,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         connection.getOverlay("label").setLabel(symbol);
 
-        // Add click handler for edge deletion
+        // Add click handler for edge deletion and editing
         if (connection.canvas) {
             connection.canvas.addEventListener('click', function(e) {
                 if (currentTool === 'delete') {
                     deleteEdge(connection);
+                    e.stopPropagation();
+                } else {
+                    openInlineEdgeEditor(connection);
                     e.stopPropagation();
                 }
             });
@@ -148,6 +160,9 @@ document.addEventListener('DOMContentLoaded', function() {
         currentEditingState = stateElement;
         const labelInput = document.getElementById('inline-state-label-input');
         const acceptingCheckbox = document.getElementById('inline-accepting-state-checkbox');
+
+        // Close edge editor if open
+        closeInlineEdgeEditor();
 
         // Position the editor near the state
         inlineEditor.style.left = (stateElement.offsetLeft + 150) + 'px';
@@ -175,7 +190,55 @@ document.addEventListener('DOMContentLoaded', function() {
         removeLiveUpdateListeners();
     }
 
-    // Setup live update event listeners
+    // Inline edge editor functions
+    function openInlineEdgeEditor(connection) {
+        currentEditingEdge = connection;
+        const symbolInput = document.getElementById('edge-symbol-input-edit');
+
+        // Close state editor if open
+        closeInlineStateEditor();
+
+        // Calculate position for the editor (middle point of the connection)
+        const sourceElement = document.getElementById(connection.sourceId);
+        const targetElement = document.getElementById(connection.targetId);
+        const sourcePos = {
+            x: sourceElement.offsetLeft + sourceElement.offsetWidth/2,
+            y: sourceElement.offsetTop + sourceElement.offsetHeight/2
+        };
+        const targetPos = {
+            x: targetElement.offsetLeft + targetElement.offsetWidth/2,
+            y: targetElement.offsetTop + targetElement.offsetHeight/2
+        };
+
+        const midpointX = (sourcePos.x + targetPos.x) / 2;
+        const midpointY = (sourcePos.y + targetPos.y) / 2;
+
+        // Position the editor near the midpoint of the edge
+        edgeInlineEditor.style.left = (midpointX + 20) + 'px';
+        edgeInlineEditor.style.top = (midpointY - 20) + 'px';
+
+        // Set current value
+        symbolInput.value = connection.getOverlay("label").getLabel();
+
+        // Show editor
+        edgeInlineEditor.style.display = 'block';
+
+        // Focus on the input
+        symbolInput.focus();
+
+        // Add live update event listener
+        setupEdgeLiveUpdates();
+    }
+
+    function closeInlineEdgeEditor() {
+        edgeInlineEditor.style.display = 'none';
+        currentEditingEdge = null;
+
+        // Remove live update event listener
+        removeEdgeLiveUpdateListeners();
+    }
+
+    // Setup live update event listeners for state editor
     function setupLiveUpdates() {
         const labelInput = document.getElementById('inline-state-label-input');
         const acceptingCheckbox = document.getElementById('inline-accepting-state-checkbox');
@@ -184,13 +247,25 @@ document.addEventListener('DOMContentLoaded', function() {
         acceptingCheckbox.addEventListener('change', updateStateType);
     }
 
-    // Remove live update event listeners
+    // Remove live update event listeners for state editor
     function removeLiveUpdateListeners() {
         const labelInput = document.getElementById('inline-state-label-input');
         const acceptingCheckbox = document.getElementById('inline-accepting-state-checkbox');
 
         labelInput.removeEventListener('input', updateStateLabel);
         acceptingCheckbox.removeEventListener('change', updateStateType);
+    }
+
+    // Setup live update event listeners for edge editor
+    function setupEdgeLiveUpdates() {
+        const symbolInput = document.getElementById('edge-symbol-input-edit');
+        symbolInput.addEventListener('input', updateEdgeLabel);
+    }
+
+    // Remove live update event listeners for edge editor
+    function removeEdgeLiveUpdateListeners() {
+        const symbolInput = document.getElementById('edge-symbol-input-edit');
+        symbolInput.removeEventListener('input', updateEdgeLabel);
     }
 
     // Live update functions
@@ -216,6 +291,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         jsPlumbInstance.repaintEverything();
+    }
+
+    function updateEdgeLabel() {
+        if (!currentEditingEdge) return;
+        const newSymbol = document.getElementById('edge-symbol-input-edit').value;
+        if (newSymbol) {
+            currentEditingEdge.getOverlay("label").setLabel(newSymbol);
+            jsPlumbInstance.repaintEverything();
+        }
     }
 
     // Handle drag and drop from tools panel
@@ -297,9 +381,12 @@ document.addEventListener('DOMContentLoaded', function() {
             drag: function(event, ui) {
                 jsPlumbInstance.repaintEverything();
 
-                // Close inline editor if open while dragging
+                // Close inline editors if open while dragging
                 if (currentEditingState === this) {
                     closeInlineStateEditor();
+                }
+                if (currentEditingEdge) {
+                    closeInlineEdgeEditor();
                 }
             }
         });
@@ -364,22 +451,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add click handlers to existing connections on init
     jsPlumbInstance.bind('connection', function(info) {
+        // Make sure we're getting the actual connection element
         if (info.connection && info.connection.canvas) {
-            info.connection.canvas.addEventListener('click', function(e) {
+            // Add z-index to make sure connection is clickable
+            info.connection.canvas.style.zIndex = '20';
+
+            // Add a more robust click handler
+            $(info.connection.canvas).on('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+
                 if (currentTool === 'delete') {
                     deleteEdge(info.connection);
-                    e.stopPropagation();
+                } else {
+                    openInlineEdgeEditor(info.connection);
                 }
             });
         }
 
-        // Also add click handler to the connection label
+        // Add a separate event handler for the label overlay
         const labelOverlay = info.connection.getOverlay('label');
         if (labelOverlay && labelOverlay.canvas) {
-            labelOverlay.canvas.addEventListener('click', function(e) {
+            // Make sure the label is clickable
+            labelOverlay.canvas.style.zIndex = '25';
+
+            $(labelOverlay.canvas).on('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+
                 if (currentTool === 'delete') {
                     deleteEdge(info.connection);
-                    e.stopPropagation();
+                } else {
+                    openInlineEdgeEditor(info.connection);
                 }
             });
         }
@@ -406,5 +509,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.getElementById('close-inline-editor').addEventListener('click', function() {
         closeInlineStateEditor();
+    });
+
+    document.getElementById('close-edge-editor').addEventListener('click', function() {
+        closeInlineEdgeEditor();
     });
 });

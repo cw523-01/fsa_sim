@@ -470,3 +470,62 @@ main {
     color: #000;
     cursor: pointer;
 }
+
+/* Edge Inline Editor */
+#edge-inline-editor {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    padding: 10px;
+    min-width: 200px;
+    z-index: 1000;
+}
+
+#edge-inline-editor .inline-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+#edge-inline-editor h3 {
+    margin: 0;
+}
+
+#edge-inline-editor .close-btn {
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#edge-inline-editor .form-group {
+    margin-bottom: 10px;
+}
+
+#edge-inline-editor label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+#edge-inline-editor input {
+    width: 100%;
+    padding: 5px;
+}
+
+/* Ensure edge labels are more visible */
+.edge-label {
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 2px 4px;
+    border-radius: 3px;
+    cursor: pointer;
+    z-index: 25;
+}
+
+._jsPlumb_connector {
+    cursor: pointer;
+    z-index: 20;
+}
+
+._jsPlumb_connector:hover {
+    stroke-width: 3px;
+}
