@@ -36,6 +36,33 @@ document.addEventListener('DOMContentLoaded', function() {
     let pendingSourceId = null;
     let pendingTargetId = null;
 
+    // Function to update the alphabet display
+    function updateAlphabetDisplay() {
+        // Get all unique symbols from all edges
+        const allSymbols = new Set();
+        edgeSymbolMap.forEach(symbols => {
+            symbols.forEach(symbol => {
+                allSymbols.add(symbol);
+            });
+        });
+
+        // Sort the symbols alphabetically
+        const sortedSymbols = Array.from(allSymbols).sort();
+
+        // Update the alphabet display
+        const alphabetDisplay = document.querySelector('.alphabet-info p');
+        if (alphabetDisplay) {
+            if (sortedSymbols.length > 0) {
+                alphabetDisplay.textContent = 'Σ = {' + sortedSymbols.join(',') + '}';
+            } else {
+                alphabetDisplay.textContent = 'Σ = { }';
+            }
+        }
+    }
+
+    // Initialize the alphabet display
+    updateAlphabetDisplay();
+
     // Tool selection
     document.getElementById('state-tool').addEventListener('click', function() {
         closeInlineStateEditor();
@@ -117,12 +144,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             inputs.forEach(input => {
                 const val = input.value.trim();
-                const upper = val.toUpperCase();
-                if (val.length === 1 && !seen.has(upper)) {
-                    seen.add(upper);
+                if (val.length === 1 && !seen.has(val)) {
+                    seen.add(val);
                     symbols.push(val);
                     input.style.borderColor = '';
-                } else if (seen.has(upper)) {
+                } else if (seen.has(val)) {
                     hasDuplicates = true;
                     input.style.borderColor = 'red';
                 }
@@ -171,9 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
         edgeSymbolMap.set(connection.id, symbols);
 
         // Set label
-        edgeSymbolMap.set(connection.id, symbols);
         connection.getOverlay("label").setLabel(symbols.join(','));
-
 
         // Add click handler
         if (connection.canvas) {
@@ -187,6 +211,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
+
+        // Update the alphabet display with the new symbols
+        updateAlphabetDisplay();
     }
 
     // Function to create a starting state indicator
@@ -436,12 +463,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         inputs.forEach(input => {
             const val = input.value.trim();
-            const upper = val.toUpperCase(); // For duplicate checking only
 
             if (val.length === 1) {
-                if (!seen.has(upper)) {
-                    seen.add(upper);
-                    symbols.push(val); // Keep original casing
+                if (!seen.has(val)) {
+                    seen.add(val);
+                    symbols.push(val); // Keep casing
                     input.style.borderColor = '';
                 } else {
                     hasDuplicates = true;
@@ -456,6 +482,9 @@ document.addEventListener('DOMContentLoaded', function() {
             edgeSymbolMap.set(currentEditingEdge.id, symbols);
             currentEditingEdge.getOverlay("label").setLabel(symbols.join(','));
             jsPlumbInstance.repaintEverything();
+
+            // Update alphabet display when symbols are changed
+            updateAlphabetDisplay();
         }
     }
 
@@ -619,6 +648,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         edgeSymbolMap.delete(connection.id);
         jsPlumbInstance.deleteConnection(connection);
+
+        // Update alphabet display after removing an edge
+        updateAlphabetDisplay();
     }
 
     function selectTool(toolName) {
