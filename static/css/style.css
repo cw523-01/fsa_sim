@@ -537,3 +537,82 @@ main {
 .symbol-edit-input[style*="red"] {
     border: 2px solid red;
 }
+
+/* Hidden source for the starting state arrow */
+.start-source {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: transparent;
+    z-index: 5;
+}
+
+/* Style for the starting state connection - make it bolder */
+.starting-connection {
+    z-index: 15;
+    cursor: default !important;
+}
+
+.starting-connection path {
+    stroke-width: 2px !important;
+    stroke: #333 !important;
+}
+
+/* Make the starting connection not deletable/editable */
+.starting-connection:hover {
+    cursor: default !important;
+}
+
+/* Ensure the starting state connection's arrow is visible */
+.starting-connection ._jsPlumb_overlay {
+    z-index: 25;
+}
+
+/* Adjustment for starting state indicator */
+.starting-state {
+    border-color: #4CAF50 !important;
+}
+
+/* Hidden source for the starting state arrow */
+.start-source {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: transparent;
+    z-index: 5;
+}
+
+/* Style for the starting state connection - make it bolder */
+.starting-connection {
+    z-index: 15;
+    cursor: default !important;
+}
+
+.starting-connection path {
+    stroke-width: 2px !important;
+    stroke: #333 !important;
+}
+
+/* Make the starting connection not deletable/editable */
+.starting-connection:hover {
+    cursor: default !important;
+}
+
+/* Hide any labels on starting connections */
+.starting-connection .edge-label,
+.starting-connection .edge-label-style,
+.starting-connection ._jsPlumb_overlay:not(._jsPlumb_overlay_arrow) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+/* Ensure the starting state connection's arrow is visible */
+.starting-connection ._jsPlumb_overlay_arrow {
+    z-index: 25;
+}
+
+/* Adjustment for starting state indicator */
+.starting-state {
+    border-color: #4CAF50 !important;
+}

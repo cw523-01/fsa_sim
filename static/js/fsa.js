@@ -25,6 +25,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let tempConnection = null;
     let currentEditingState = null;
     let currentEditingEdge = null;
+    let startingStateId = null;
+    let startingStateConnection = null;
     const inlineEditor = document.getElementById('state-inline-editor');
     const edgeInlineEditor = document.getElementById('edge-inline-editor');
     let currentEditingSymbols = [];
@@ -187,11 +189,82 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Function to create a starting state indicator
+    function createStartingStateIndicator(stateId) {
+        // Remove existing starting state connection if it exists
+        if (startingStateConnection) {
+            jsPlumbInstance.deleteConnection(startingStateConnection);
+            startingStateConnection = null;
+        }
+
+        // Set the new starting state
+        startingStateId = stateId;
+
+        if (!stateId) return; // If null, just removing the previous indicator
+
+        // Create a hidden source point
+        const stateElement = document.getElementById(stateId);
+        if (!stateElement) return;
+
+        // Calculate position for the hidden source
+        const stateBounds = stateElement.getBoundingClientRect();
+        const canvasBounds = document.getElementById('fsa-canvas').getBoundingClientRect();
+
+        // Create hidden source for the starting arrow if it doesn't exist
+        let startSource = document.getElementById('start-source');
+        if (!startSource) {
+            startSource = document.createElement('div');
+            startSource.id = 'start-source';
+            startSource.className = 'start-source';
+            document.getElementById('fsa-canvas').appendChild(startSource);
+
+            // Make the start source a source endpoint
+            jsPlumbInstance.makeSource(startSource, {
+                anchor: "Right",
+                connectorStyle: { stroke: "black", strokeWidth: 2 },
+                connectionType: "basic"
+            });
+        }
+
+        // Position the start source to the left of the state
+        const stateLeft = stateBounds.left - canvasBounds.left;
+        const stateTop = stateBounds.top - canvasBounds.top;
+        const stateHeight = stateBounds.height;
+
+        startSource.style.left = (stateLeft - 50) + 'px';
+        startSource.style.top = (stateTop + stateHeight/2 - 5) + 'px';
+
+        // Create a completely custom connection without using the default "basic" type
+        startingStateConnection = jsPlumbInstance.connect({
+            source: 'start-source',
+            target: stateId,
+            connector: "Straight",
+            anchors: ["Right", "Left"],
+            // Only include the arrow overlay, no label
+            overlays: [
+                ["Arrow", { location: 1, width: 12, length: 12 }]
+            ],
+            // Custom paint style to avoid inheritance of default styles
+            paintStyle: { stroke: "black", strokeWidth: 2 }
+        });
+
+        // Make the connection not deletable and not editable
+        if (startingStateConnection && startingStateConnection.canvas) {
+            startingStateConnection.canvas.classList.add('starting-connection');
+
+            // Make sure no label is added
+            if (startingStateConnection.getOverlay('label')) {
+                startingStateConnection.removeOverlay('label');
+            }
+        }
+    }
+
     // Inline state editor functions
     function openInlineStateEditor(stateElement) {
         currentEditingState = stateElement;
         const labelInput = document.getElementById('inline-state-label-input');
         const acceptingCheckbox = document.getElementById('inline-accepting-state-checkbox');
+        const startingCheckbox = document.getElementById('inline-starting-state-checkbox');
 
         // Close edge editor if open
         closeInlineEdgeEditor();
@@ -203,6 +276,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Set current values
         labelInput.value = stateElement.innerHTML;
         acceptingCheckbox.checked = stateElement.classList.contains('accepting-state');
+        startingCheckbox.checked = startingStateId === stateElement.id;
 
         // Show editor
         inlineEditor.style.display = 'block';
@@ -275,18 +349,22 @@ document.addEventListener('DOMContentLoaded', function() {
     function setupLiveUpdates() {
         const labelInput = document.getElementById('inline-state-label-input');
         const acceptingCheckbox = document.getElementById('inline-accepting-state-checkbox');
+        const startingCheckbox = document.getElementById('inline-starting-state-checkbox');
 
         labelInput.addEventListener('input', updateStateLabel);
         acceptingCheckbox.addEventListener('change', updateStateType);
+        startingCheckbox.addEventListener('change', updateStartingState);
     }
 
     // Remove live update event listeners for state editor
     function removeLiveUpdateListeners() {
         const labelInput = document.getElementById('inline-state-label-input');
         const acceptingCheckbox = document.getElementById('inline-accepting-state-checkbox');
+        const startingCheckbox = document.getElementById('inline-starting-state-checkbox');
 
         labelInput.removeEventListener('input', updateStateLabel);
         acceptingCheckbox.removeEventListener('change', updateStateType);
+        startingCheckbox.removeEventListener('change', updateStartingState);
     }
 
     // Setup live update event listeners for edge editor
@@ -326,6 +404,21 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (!isAccepting && currentEditingState.classList.contains('accepting-state')) {
             currentEditingState.classList.remove('accepting-state');
             currentEditingState.classList.add('state');
+        }
+
+        jsPlumbInstance.repaintEverything();
+    }
+
+    function updateStartingState() {
+        if (!currentEditingState) return;
+        const isStarting = document.getElementById('inline-starting-state-checkbox').checked;
+
+        if (isStarting) {
+            // Set this state as the new starting state
+            createStartingStateIndicator(currentEditingState.id);
+        } else if (startingStateId === currentEditingState.id) {
+            // Remove starting state if this was the starting state
+            createStartingStateIndicator(null);
         }
 
         jsPlumbInstance.repaintEverything();
@@ -452,6 +545,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (currentEditingEdge) {
                     closeInlineEdgeEditor();
                 }
+
+                // Update starting state arrow if this is the starting state
+                if (startingStateId === this.id) {
+                    // Need to reposition the start source
+                    const startSource = document.getElementById('start-source');
+                    if (startSource) {
+                        startSource.style.left = (ui.position.left - 50) + 'px';
+                        startSource.style.top = (ui.position.top + 30 - 5) + 'px';
+                    }
+                }
             }
         });
 
@@ -499,11 +602,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function deleteState(stateElement) {
+        // If this is the starting state, remove the starting state indicator
+        if (startingStateId === stateElement.id) {
+            createStartingStateIndicator(null);
+        }
+
         jsPlumbInstance.removeAllEndpoints(stateElement.id);
         stateElement.remove();
     }
 
     function deleteEdge(connection) {
+        // Don't delete the starting state connection
+        if (connection.canvas && connection.canvas.classList.contains('starting-connection')) {
+            return;
+        }
+
         edgeSymbolMap.delete(connection.id);
         jsPlumbInstance.deleteConnection(connection);
     }
@@ -516,6 +629,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add click handlers to existing connections on init
     jsPlumbInstance.bind('connection', function(info) {
+        // Skip processing for starting state connections
+        if (info.connection && info.connection.source && info.connection.source.id === 'start-source') {
+            // Ensure no label for starting connections
+            if (info.connection.getOverlay('label')) {
+                info.connection.removeOverlay('label');
+            }
+
+            // Add the special class
+            if (info.connection.canvas) {
+                info.connection.canvas.classList.add('starting-connection');
+            }
+            return;
+        }
+
         // Make sure we're getting the actual connection element
         if (info.connection && info.connection.canvas) {
             // Add z-index to make sure connection is clickable
@@ -525,6 +652,11 @@ document.addEventListener('DOMContentLoaded', function() {
             $(info.connection.canvas).on('click', function(e) {
                 e.stopPropagation();
                 e.preventDefault();
+
+                // Skip if this is the starting state connection
+                if (info.connection.canvas.classList.contains('starting-connection')) {
+                    return;
+                }
 
                 if (currentTool === 'delete') {
                     deleteEdge(info.connection);
@@ -544,6 +676,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.stopPropagation();
                 e.preventDefault();
 
+                // Skip if this is the starting state connection
+                if (info.connection.canvas.classList.contains('starting-connection')) {
+                    return;
+                }
+
                 if (currentTool === 'delete') {
                     deleteEdge(info.connection);
                 } else {
@@ -560,6 +697,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const connections = jsPlumbInstance.getAllConnections();
             for (let i = 0; i < connections.length; i++) {
                 const conn = connections[i];
+
+                // Skip if this is the starting state connection
+                if (conn.canvas && conn.canvas.classList.contains('starting-connection')) {
+                    continue;
+                }
+
                 const labelOverlay = conn.getOverlay("label");
 
                 if (labelOverlay && labelOverlay.canvas &&
