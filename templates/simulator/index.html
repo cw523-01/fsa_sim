@@ -69,6 +69,12 @@
                 <input type="text" class="symbol-input" maxlength="1">
             </div>
             <button id="add-symbol-input">+ Add Symbol</button>
+            
+            <div class="checkbox-group epsilon-transition">
+                <label for="epsilon-transition-checkbox">Include ε transition</label>
+                <input type="checkbox" id="epsilon-transition-checkbox">
+            </div>
+            
             <div class="modal-buttons">
                 <button id="confirm-symbol-btn">Confirm</button>
                 <button id="cancel-symbol-btn">Cancel</button>
@@ -108,9 +114,19 @@
                     <!-- Inputs will be added dynamically -->
                 </div>
                 <button id="add-symbol-edit-btn">+ Add Symbol</button>
+                
+                <div class="checkbox-group epsilon-transition">
+                    <label for="edge-epsilon-checkbox">Include ε transition</label>
+                    <input type="checkbox" id="edge-epsilon-checkbox">
+                </div>
             </div>
         </div>
     </div>
-
 </div>
+
+{% block extra_js %}
+<!-- Use type="module" for ES6 module support -->
+<script type="module" src="{% static 'js/fsa/app.js' %}"></script>
+{% endblock %}
+
 {% endblock %}

@@ -616,3 +616,75 @@ main {
 .starting-state {
     border-color: #4CAF50 !important;
 }
+
+.epsilon-transition {
+    margin-top: 15px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.epsilon-transition label {
+    margin-right: 10px;
+    font-weight: 500;
+}
+
+.epsilon-label {
+    font-style: italic;
+    color: #666;
+    padding: 2px 4px;
+    background-color: #f9f9f9;
+    border-radius: 3px;
+    margin-right: 4px;
+}
+
+/* Style for edges with epsilon transitions */
+.has-epsilon .edge-label-style {
+    font-style: italic;
+}
+
+/* Make epsilon symbol distinct in edge labels */
+.epsilon-symbol {
+    font-style: italic;
+    color: #666;
+}
+
+#symbol-inputs-container, #edge-symbols-edit-container {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+    padding-right: 5px;
+}
+
+.symbol-input-wrapper {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.symbol-input {
+    flex-grow: 1;
+    margin-right: 8px;
+}
+
+.remove-symbol-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #999;
+    font-size: 12px;
+    padding: 2px 4px;
+}
+
+.remove-symbol-btn:hover {
+    color: #ff0000;
+}
+
+.disabled-remove-btn {
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.disabled-remove-btn:hover {
+    color: #ccc;
+}
