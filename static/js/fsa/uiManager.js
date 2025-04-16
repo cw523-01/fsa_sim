@@ -215,11 +215,14 @@ export function addSymbolEditInput(value = '', container) {
     removeBtn.type = 'button';
     removeBtn.style.cursor = 'pointer';
 
-    // Check if this would be the only input left
+    // MODIFIED: Check if this would be the only input left and if epsilon is checked
     removeBtn.onclick = () => {
         const inputsCount = container.querySelectorAll('.symbol-edit-wrapper').length;
-        // Only allow removal if there will be at least one input left
-        if (inputsCount > 1) {
+        const epsilonCheckbox = document.getElementById('edge-epsilon-checkbox');
+        const hasEpsilon = epsilonCheckbox && epsilonCheckbox.checked;
+
+        // Allow removal if there are multiple inputs OR if epsilon is checked
+        if (inputsCount > 1 || hasEpsilon) {
             wrapper.remove();
             updateCurrentEdgeLabel();
         }
@@ -306,11 +309,14 @@ export function addSymbolInput(container) {
     removeBtn.className = 'remove-symbol-btn';
     removeBtn.type = 'button';
 
-    // Check if this would be the only input left
+    // MODIFIED: Check if this would be the only input left and if epsilon is checked
     removeBtn.onclick = () => {
         const inputsCount = container.querySelectorAll('.symbol-input-wrapper').length;
-        // Only allow removal if there will be at least one input left
-        if (inputsCount > 1) {
+        const epsilonCheckbox = document.getElementById('epsilon-transition-checkbox');
+        const hasEpsilon = epsilonCheckbox && epsilonCheckbox.checked;
+
+        // Allow removal if there are multiple inputs OR if epsilon is checked
+        if (inputsCount > 1 || hasEpsilon) {
             wrapper.remove();
         }
     };
