@@ -6,11 +6,15 @@
 export function updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap) {
     // Get all unique symbols from all edges
     const allSymbols = new Set();
-    edgeSymbolMap.forEach(symbols => {
-        symbols.forEach(symbol => {
-            allSymbols.add(symbol);
+    if (edgeSymbolMap) {
+        edgeSymbolMap.forEach(symbols => {
+            if (symbols && symbols.length) {
+                symbols.forEach(symbol => {
+                    allSymbols.add(symbol);
+                });
+            }
         });
-    });
+    }
 
     // Sort the symbols alphabetically
     const sortedSymbols = Array.from(allSymbols).sort();
@@ -18,8 +22,9 @@ export function updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap) {
     // Check if we have any epsilon transitions
     let hasEpsilon = false;
     if (epsilonTransitionMap) {
-        epsilonTransitionMap.forEach(hasEpsilon => {
-            if (hasEpsilon) {
+        epsilonTransitionMap.forEach(isEpsilon => {
+            // If any edge has an epsilon transition, set hasEpsilon to true
+            if (isEpsilon) {
                 hasEpsilon = true;
             }
         });

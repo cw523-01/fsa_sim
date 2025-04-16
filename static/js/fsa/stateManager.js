@@ -1,6 +1,7 @@
 // stateManager.js - State management for the FSA simulator
 import { createStateId } from './utils.js';
 import { updateAlphabetDisplay } from './alphabetManager.js';
+import {getEpsilonTransitionMap} from "./edgeManager.js";
 
 // State management
 let stateCounter = 0;
@@ -86,11 +87,28 @@ export function deleteState(jsPlumbInstance, stateElement, edgeSymbolMap) {
         createStartingStateIndicator(jsPlumbInstance, null);
     }
 
+    // Get all connections before removing the state
+    const connections = jsPlumbInstance.getConnections({
+        source: stateElement.id
+    }).concat(jsPlumbInstance.getConnections({
+        target: stateElement.id
+    }));
+
+    // Get the epsilonTransitionMap
+    const epsilonTransitionMap = getEpsilonTransitionMap();
+
+    // Remove connections from both maps before deleting the state
+    connections.forEach(conn => {
+        edgeSymbolMap.delete(conn.id);
+        epsilonTransitionMap.delete(conn.id);
+    });
+
+    // Remove the state and its endpoints
     jsPlumbInstance.removeAllEndpoints(stateElement.id);
     stateElement.remove();
 
-    // Update alphabet display
-    updateAlphabetDisplay(edgeSymbolMap);
+    // Update the alphabet display after removing connections
+    updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap);
 }
 
 /**
