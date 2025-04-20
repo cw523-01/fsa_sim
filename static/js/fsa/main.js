@@ -12,7 +12,8 @@ import {
     getEdgeSymbols,
     getEdgeSymbolMap,
     getEpsilonTransitionMap,
-    hasEpsilonTransition
+    hasEpsilonTransition,
+    toggleEdgeStyle
 } from './edgeManager.js';
 import {
     selectTool,
@@ -97,6 +98,12 @@ export function setupEventListeners() {
         closeInlineStateEditor();
         closeInlineEdgeEditor();
         selectTool('delete');
+    });
+
+    // Edge style toggle
+    document.getElementById('edge-style-checkbox').addEventListener('change', function(e) {
+        toggleEdgeStyle(jsPlumbInstance, e.target.checked);
+        updateFSAPropertiesDisplay(jsPlumbInstance);
     });
 
     // Canvas click event

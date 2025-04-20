@@ -1,7 +1,7 @@
 // stateManager.js - State management for the FSA simulator
 import { createStateId } from './utils.js';
 import { updateAlphabetDisplay } from './alphabetManager.js';
-import {getEpsilonTransitionMap} from "./edgeManager.js";
+import { getEpsilonTransitionMap } from "./edgeManager.js";
 
 // State management
 let stateCounter = 0;
@@ -160,11 +160,11 @@ export function createStartingStateIndicator(jsPlumbInstance, stateId) {
     startSource.style.left = (stateLeft - 50) + 'px';
     startSource.style.top = (stateTop + stateHeight/2 - 5) + 'px';
 
-    // Create a completely custom connection without using the default "basic" type
+    // Always use straight connector for starting state connection
     startingStateConnection = jsPlumbInstance.connect({
         source: 'start-source',
         target: stateId,
-        connector: "Straight",
+        connector: "Straight",  // Always straight for starting arrow
         anchors: ["Right", "Left"],
         // Only include the arrow overlay, no label
         overlays: [

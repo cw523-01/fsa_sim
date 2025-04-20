@@ -168,10 +168,32 @@ main {
     border-radius: 4px;
     cursor: pointer;
     width: 100%;
+    margin-bottom: 15px;
 }
 
 #show-table-btn:hover {
     background-color: #eee;
+}
+
+/* Edge Style Toggle */
+.edge-style-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 5px;
+    padding: 8px 0;
+    border-top: 1px solid #ddd;
+}
+
+.edge-style-toggle label {
+    font-weight: 500;
+    color: #555;
+}
+
+.edge-style-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
 }
 
 /* Canvas elements */

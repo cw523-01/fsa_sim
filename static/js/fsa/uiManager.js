@@ -348,7 +348,7 @@ function setupLiveStateUpdates(jsPlumbInstance) {
     const acceptingCheckbox = document.getElementById('inline-accepting-state-checkbox');
     const startingCheckbox = document.getElementById('inline-starting-state-checkbox');
 
-    labelInput.addEventListener('input', updateStateLabel);
+    labelInput.addEventListener('input', () => updateStateLabel(jsPlumbInstance));
     acceptingCheckbox.addEventListener('change', updateStateType);
     startingCheckbox.addEventListener('change', () => updateStartingState(jsPlumbInstance));
 }
@@ -389,12 +389,43 @@ function removeEdgeLiveUpdateListeners() {
 }
 
 // Live update functions
-function updateStateLabel() {
-    if (!currentEditingState) return;
-    const newLabel = document.getElementById('inline-state-label-input').value;
-    if (newLabel) {
-        currentEditingState.innerHTML = newLabel;
+function updateStateLabel(jsPlumbInstance) {
+    if (!currentEditingState || !jsPlumbInstance) return;
+
+    const newLabel = document.getElementById('inline-state-label-input').value.trim();
+    const oldId = currentEditingState.id;
+
+    // Prevent empty or unchanged label
+    if (!newLabel || newLabel === oldId) return;
+
+    // Prevent duplicate ID
+    if (document.getElementById(newLabel)) {
+        alert("A state with that name already exists.");
+        return;
     }
+
+    // Update the DOM element ID and label
+    currentEditingState.id = newLabel;
+    currentEditingState.innerHTML = newLabel;
+
+    // Update all JSPlumb connections
+    jsPlumbInstance.select({ source: oldId }).each(conn => {
+        conn.sourceId = newLabel;
+        conn.endpoints[0].elementId = newLabel;
+        conn.endpoints[0].anchor.elementId = newLabel;
+    });
+
+    jsPlumbInstance.select({ target: oldId }).each(conn => {
+        conn.targetId = newLabel;
+        conn.endpoints[1].elementId = newLabel;
+        conn.endpoints[1].anchor.elementId = newLabel;
+    });
+
+    // Repaint everything
+    jsPlumbInstance.repaintEverything();
+
+    // Update FSA properties display
+    updateFSAPropertiesDisplay(jsPlumbInstance);
 }
 
 function updateStateType() {
@@ -456,7 +487,6 @@ function updateCurrentEdgeLabel() {
         }
     });
 
-    // Only update if no duplicates and either has symbols or epsilon
     if (!hasDuplicates && (symbols.length > 0 || hasEpsilon)) {
         updateEdgeSymbols(currentEditingEdge, symbols, hasEpsilon, editorJsPlumbInstance);
         editorJsPlumbInstance.repaintEverything();
