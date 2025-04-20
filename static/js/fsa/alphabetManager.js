@@ -35,16 +35,16 @@ export function updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap) {
     if (alphabetDisplay) {
         let displayText = 'Σ = {';
 
+        if(hasEpsilon){
+            sortedSymbols.push('ε')
+        }
+
         if (sortedSymbols.length > 0) {
             displayText += sortedSymbols.join(',');
         }
 
         displayText += '}';
 
-        // Add epsilon information if needed
-        if (hasEpsilon) {
-            displayText += ' ∪ {ε}';
-        }
 
         alphabetDisplay.textContent = displayText;
     }
