@@ -18,16 +18,12 @@ export function isDeterministic(jsPlumbInstance) {
         return false;
     }
 
-    console.log(tableData)
 
     // For each state and each symbol, check if there is exactly one transition
     for (const stateId of tableData.states) {
         for (const symbol of tableData.alphabet) {
             // Get the transitions for this state and symbol
             const transitions = tableData.transitions[stateId][symbol];
-            console.log(stateId)
-            console.log(symbol)
-            console.log(transitions)
 
             // If there is not exactly one transition, the FSA is not deterministic
             if (transitions.length !== 1) {
