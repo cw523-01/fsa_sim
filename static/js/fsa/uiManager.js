@@ -4,6 +4,7 @@ import {
     getEdgeSymbols,
     hasEpsilonTransition
 } from './edgeManager.js';
+import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 
 // UI state
 let currentTool = null;
@@ -12,6 +13,7 @@ let currentEditingEdge = null;
 let pendingSourceId = null;
 let pendingTargetId = null;
 let sourceState = null;
+let editorJsPlumbInstance = null;
 
 /**
  * Select a tool
@@ -135,6 +137,8 @@ export function closeInlineStateEditor() {
 export function openInlineEdgeEditor(connection, jsPlumbInstance) {
     const edgeInlineEditor = document.getElementById('edge-inline-editor');
     currentEditingEdge = connection;
+    // Store the jsPlumbInstance for use in updateCurrentEdgeLabel
+    editorJsPlumbInstance = jsPlumbInstance;
 
     // Get symbols for this edge
     const currentEditingSymbols = getEdgeSymbols(connection);
@@ -175,7 +179,7 @@ export function openInlineEdgeEditor(connection, jsPlumbInstance) {
         addSymbolEditInput('', container);
     };
 
-    setupEdgeLiveUpdates(jsPlumbInstance);
+    setupEdgeLiveUpdates();
 }
 
 /**
@@ -185,6 +189,7 @@ export function closeInlineEdgeEditor() {
     const edgeInlineEditor = document.getElementById('edge-inline-editor');
     edgeInlineEditor.style.display = 'none';
     currentEditingEdge = null;
+    editorJsPlumbInstance = null;
 
     // Remove live update event listener
     removeEdgeLiveUpdateListeners();
@@ -360,13 +365,13 @@ function removeLiveStateUpdateListeners() {
 }
 
 // Setup live update event listeners for edge editor
-function setupEdgeLiveUpdates(jsPlumbInstance) {
+function setupEdgeLiveUpdates() {
     const container = document.getElementById('edge-symbols-edit-container');
-    container.addEventListener('input', () => updateCurrentEdgeLabel(jsPlumbInstance));
+    container.addEventListener('input', updateCurrentEdgeLabel);
 
     // Add epsilon checkbox change listener
     const epsilonCheckbox = document.getElementById('edge-epsilon-checkbox');
-    epsilonCheckbox.addEventListener('change', () => updateCurrentEdgeLabel(jsPlumbInstance));
+    epsilonCheckbox.addEventListener('change', updateCurrentEdgeLabel);
 }
 
 // Remove live update event listeners for edge editor
@@ -418,10 +423,13 @@ function updateStartingState(jsPlumbInstance) {
     }
 
     jsPlumbInstance.repaintEverything();
+
+    // Update FSA properties display
+    updateFSAPropertiesDisplay(jsPlumbInstance);
 }
 
-function updateCurrentEdgeLabel(jsPlumbInstance) {
-    if (!currentEditingEdge) return;
+function updateCurrentEdgeLabel() {
+    if (!currentEditingEdge || !editorJsPlumbInstance) return;
 
     const container = document.getElementById('edge-symbols-edit-container');
     const inputs = container.querySelectorAll('.symbol-edit-input');
@@ -450,8 +458,8 @@ function updateCurrentEdgeLabel(jsPlumbInstance) {
 
     // Only update if no duplicates and either has symbols or epsilon
     if (!hasDuplicates && (symbols.length > 0 || hasEpsilon)) {
-        updateEdgeSymbols(currentEditingEdge, symbols, hasEpsilon);
-        jsPlumbInstance.repaintEverything();
+        updateEdgeSymbols(currentEditingEdge, symbols, hasEpsilon, editorJsPlumbInstance);
+        editorJsPlumbInstance.repaintEverything();
     }
 }
 

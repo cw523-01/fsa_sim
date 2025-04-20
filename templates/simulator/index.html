@@ -56,6 +56,10 @@
                     <span>Deterministic:</span>
                     <span class="checkmark">✓</span>
                 </div>
+                <div class="property">
+                    <span>Complete:</span>
+                    <span class="checkmark">✓</span>
+                </div>
             </div>
             <button id="show-table-btn">Show T table</button>
         </div>
@@ -127,6 +131,7 @@
 {% block extra_js %}
 <!-- Use type="module" for ES6 module support -->
 <script type="module" src="{% static 'js/fsa/app.js' %}"></script>
+<script type="module" src="{% static '/js/fsa/transitionTableManager.js' %}"></script>
 {% endblock %}
 
 {% endblock %}

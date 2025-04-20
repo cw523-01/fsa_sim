@@ -31,6 +31,8 @@ import {
     getSourceId,
     resetSourceState
 } from './uiManager.js';
+import { showTransitionTable } from './transitionTableManager.js';
+import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 
 // Global variables
 let jsPlumbInstance;
@@ -63,6 +65,9 @@ export function initializeSimulator() {
 
     // Setup JSPlumb connection event binding
     setupConnectionEvents();
+
+    // Initial properties display update
+    updateFSAPropertiesDisplay(jsPlumbInstance);
 }
 
 /**
@@ -140,8 +145,8 @@ export function setupEventListeners() {
     document.getElementById('close-edge-editor').addEventListener('click', closeInlineEdgeEditor);
     document.getElementById('cancel-symbol-btn').addEventListener('click', closeEdgeSymbolModal);
 
-    // Non-functional buttons (placeholders)
-    setupPlaceholderButtons();
+    // Setup functional buttons
+    setupFunctionalButtons();
 
     // Make tools draggable
     setupDraggableTools();
@@ -169,6 +174,9 @@ function setupConnectionEvents() {
             if (info.connection.canvas) {
                 info.connection.canvas.classList.add('starting-connection');
             }
+
+            // Update properties display
+            updateFSAPropertiesDisplay(jsPlumbInstance);
             return;
         }
 
@@ -219,6 +227,9 @@ function setupConnectionEvents() {
                 }
             });
         }
+
+        // Update properties display
+        updateFSAPropertiesDisplay(jsPlumbInstance);
     });
 }
 
@@ -234,6 +245,9 @@ function handleStateCreation(x, y, isAccepting) {
         onStateDrag: handleStateDrag
     };
     createState(jsPlumbInstance, x, y, isAccepting, callbacks);
+
+    // Update properties display
+    updateFSAPropertiesDisplay(jsPlumbInstance);
 }
 
 /**
@@ -247,6 +261,8 @@ function handleStateClick(stateElement, e) {
     if (currentTool === 'delete'){
         if (stateElement.classList.contains('state') || stateElement.classList.contains('accepting-state')) {
             deleteState(jsPlumbInstance, stateElement, getEdgeSymbolMap());
+            // Update properties display after deleting a state
+            updateFSAPropertiesDisplay(jsPlumbInstance);
         }
     }
     else if (currentTool === 'edge') {
@@ -261,6 +277,8 @@ function handleStateClick(stateElement, e) {
                     createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, {
                         onEdgeClick: handleEdgeClick
                     });
+                    // Update properties display after creating a connection
+                    updateFSAPropertiesDisplay(jsPlumbInstance);
                 });
             }
             resetSourceState();
@@ -286,6 +304,9 @@ function handleStateDrag(stateElement, event, ui) {
     if (getCurrentEditingEdge()) {
         closeInlineEdgeEditor();
     }
+
+    // Update properties display after dragging a state
+    updateFSAPropertiesDisplay(jsPlumbInstance);
 }
 
 /**
@@ -297,15 +318,16 @@ function handleEdgeClick(connection, e) {
     const currentTool = getCurrentTool();
     if (currentTool === 'delete') {
         deleteEdge(jsPlumbInstance, connection);
+        // Update properties display is called inside deleteEdge
     } else {
         openInlineEdgeEditor(connection, jsPlumbInstance);
     }
 }
 
 /**
- * Setup placeholder buttons that are not yet implemented
+ * Setup functional buttons
  */
-function setupPlaceholderButtons() {
+function setupFunctionalButtons() {
     document.getElementById('play-btn').addEventListener('click', function() {
         alert('Play functionality is not implemented yet.');
     });
@@ -318,8 +340,9 @@ function setupPlaceholderButtons() {
         alert('Fast forward functionality is not implemented yet.');
     });
 
+    // Implement the show table button functionality
     document.getElementById('show-table-btn').addEventListener('click', function() {
-        alert('Transition table functionality is not implemented yet.');
+        showTransitionTable(jsPlumbInstance);
     });
 }
 
@@ -328,7 +351,6 @@ function setupPlaceholderButtons() {
  */
 function setupDraggableTools() {
     $('.tool').draggable({
-        helper: 'clone',
         cursor: 'move',
         cursorAt: { left: 25, top: 25 },
         helper: function() {

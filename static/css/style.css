@@ -688,3 +688,95 @@ main {
 .disabled-remove-btn:hover {
     color: #ccc;
 }
+
+/* Transition Table Modal Styles */
+#transition-table-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    overflow: auto;
+}
+
+.transition-table-container {
+    background-color: white;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 80%;
+    max-width: 800px;
+    position: relative;
+}
+
+.transition-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+.transition-table th, .transition-table td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: center;
+}
+
+.transition-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.transition-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.transition-table tr:hover {
+    background-color: #f0f0f0;
+}
+
+.starting-state-cell {
+    font-weight: bold;
+    color: #1e88e5;
+}
+
+.accepting-state-cell {
+    font-weight: bold;
+    color: #43a047;
+}
+
+.starting-indicator {
+    color: #1e88e5;
+    font-weight: bold;
+    margin-right: 4px;
+}
+
+.close-table-btn {
+    padding: 8px 16px;
+    background-color: #e53935;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 15px;
+    float: right;
+}
+
+.close-table-btn:hover {
+    background-color: #c62828;
+}
+
+.checkmark {
+    color: green;
+    font-weight: bold;
+}
+
+.crossmark {
+    color: red;
+    font-weight: bold;
+}

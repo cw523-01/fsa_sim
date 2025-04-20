@@ -1,4 +1,5 @@
 import { updateAlphabetDisplay } from './alphabetManager.js';
+import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 
 // Map to store edge symbols
 const edgeSymbolMap = new Map();
@@ -58,6 +59,9 @@ export function createConnection(jsPlumbInstance, source, target, symbolsString,
     // Update the alphabet display with the new symbols
     updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap);
 
+    // Update FSA properties display
+    updateFSAPropertiesDisplay(jsPlumbInstance);
+
     return connection;
 }
 
@@ -98,6 +102,9 @@ export function deleteEdge(jsPlumbInstance, connection) {
 
     // Update alphabet display after removing an edge
     updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap);
+
+    // Update FSA properties display
+    updateFSAPropertiesDisplay(jsPlumbInstance);
 }
 
 /**
@@ -105,8 +112,9 @@ export function deleteEdge(jsPlumbInstance, connection) {
  * @param {Object} connection - The connection to update
  * @param {Array} symbols - Array of symbols
  * @param {boolean} hasEpsilon - Whether the edge has an epsilon transition
+ * @param {Object} jsPlumbInstance - Optional JSPlumb instance for updating properties
  */
-export function updateEdgeSymbols(connection, symbols, hasEpsilon) {
+export function updateEdgeSymbols(connection, symbols, hasEpsilon, jsPlumbInstance) {
     if (!connection) return;
 
     edgeSymbolMap.set(connection.id, symbols);
@@ -126,6 +134,11 @@ export function updateEdgeSymbols(connection, symbols, hasEpsilon) {
 
     // Update alphabet display
     updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap);
+
+    // Update FSA properties display if jsPlumbInstance is provided
+    if (jsPlumbInstance) {
+        updateFSAPropertiesDisplay(jsPlumbInstance);
+    }
 }
 
 /**
