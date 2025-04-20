@@ -182,6 +182,26 @@ function setupConnectionEvents() {
                 info.connection.canvas.classList.add('starting-connection');
             }
 
+            const conn = info.connection;
+
+            if (!conn.getOverlay("arrow")) {
+                conn.addOverlay(["Arrow", { location: 1, id: "arrow", width: 10, length: 10 }]);
+            }
+            if (!conn.getOverlay("label")) {
+                conn.addOverlay(["Label", {
+                    id: "label",
+                    cssClass: "edge-label",
+                    location: 0.3,
+                    labelStyle: {
+                        cssClass: "edge-label-style"
+                    }
+                }]);
+            }
+
+            // Apply base styles (if not already styled)
+            conn.setPaintStyle({ stroke: "black", strokeWidth: 2 });
+            conn.setHoverPaintStyle({ stroke: "#1e8151", strokeWidth: 3 });
+
             // Update properties display
             updateFSAPropertiesDisplay(jsPlumbInstance);
             return;
