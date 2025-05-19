@@ -70,11 +70,11 @@
             <div class="tools-section">
                 <h5 class="tools-header">Edge Style</h5>
                 <div class="edge-style-buttons">
-                    <button id="straight-edges-btn" class="btn btn-sm btn-secondary" title="Use Straight Edges">
-                        <i class="fas fa-long-arrow-alt-right"></i> Straight
+                    <button id="straight-edges-btn" class="btn btn-sm btn-secondary" title="Set All Edges Straight">
+                        <i class="fas fa-long-arrow-alt-right"></i> All Straight
                     </button>
-                    <button id="curved-edges-btn" class="btn btn-sm btn-secondary" title="Use Curved Edges">
-                        <i class="fas fa-bezier-curve"></i> Curved
+                    <button id="curved-edges-btn" class="btn btn-sm btn-secondary" title="Set All Edges Curved">
+                        <i class="fas fa-bezier-curve"></i> All Curved
                     </button>
                 </div>
             </div>
@@ -121,6 +121,11 @@
                 <input type="checkbox" id="epsilon-transition-checkbox">
             </div>
             
+            <div class="checkbox-group curve-style-transition">
+                <label for="curve-transition-checkbox">Curved transition</label>
+                <input type="checkbox" id="curve-transition-checkbox">
+            </div>
+            
             <div class="modal-buttons">
                 <button id="confirm-symbol-btn">Confirm</button>
                 <button id="cancel-symbol-btn">Cancel</button>
@@ -164,6 +169,11 @@
                 <div class="checkbox-group epsilon-transition">
                     <label for="edge-epsilon-checkbox">Include ε transition</label>
                     <input type="checkbox" id="edge-epsilon-checkbox">
+                </div>
+                
+                <div class="checkbox-group curve-style-transition">
+                    <label for="edge-curve-checkbox">Curved transition</label>
+                    <input type="checkbox" id="edge-curve-checkbox">
                 </div>
             </div>
         </div>

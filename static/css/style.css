@@ -917,3 +917,30 @@ main {
     border-color: #007bff;
     color: white;
 }
+
+.curve-style-transition {
+    margin-top: 15px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.curve-style-transition label {
+    margin-right: 10px;
+    font-weight: 500;
+}
+
+/* Style for disabled checkbox */
+.curve-style-transition input[type="checkbox"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Update edge style button text */
+.edge-style-buttons button {
+    width: 90%;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 8px;
+    margin: 2px auto;
+}

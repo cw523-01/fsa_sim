@@ -1,13 +1,31 @@
 import { updateAlphabetDisplay } from './alphabetManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 
+// Export functions to window for global access
+window.getCurrentTool = function() {
+    // Import from uiManager.js if available
+    if (typeof getCurrentTool === 'function') {
+        return getCurrentTool();
+    }
+    return null;
+};
+
+window.openInlineEdgeEditor = function(connection, jsPlumbInstance) {
+    // Import from uiManager.js if available
+    if (typeof openInlineEdgeEditor === 'function') {
+        openInlineEdgeEditor(connection, jsPlumbInstance);
+    }
+};
+
 // Map to store edge symbols
 const edgeSymbolMap = new Map();
 // Map to track epsilon transitions
 const epsilonTransitionMap = new Map();
 // Map to store all connections
 const connectionMap = new Map();
-// Flag to track if we're using curved edges
+// Map to store edge curve styles (true = curved, false = straight)
+const edgeCurveStyleMap = new Map();
+// Flag to track if we're using curved edges by default
 let useCurvedEdges = false;
 
 // Epsilon symbol
@@ -20,23 +38,43 @@ const EPSILON = 'ε';
  * @param {string} target - Target state ID
  * @param {string} symbolsString - Comma-separated string of symbols
  * @param {boolean} hasEpsilon - Whether the edge has an epsilon transition
+ * @param {boolean} isCurved - Whether the edge should be curved
  * @param {Object} callbacks - Object with callback functions
  * @returns {Object} - The created connection
  */
-export function createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, callbacks) {
-    // Determine connector type based on current setting and if it's a self-loop
-    const connectorType = determineConnectorType(source, target);
+export function createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved = null, callbacks) {
+    // If curve style not specified, use the global default
+    const curveStyle = isCurved !== null ? isCurved : useCurvedEdges;
+
+    // Determine connector type based on curve style and if it's a self-loop
+    const connectorType = determineConnectorType(source, target, curveStyle);
 
     const connection = jsPlumbInstance.connect({
         source: source,
         target: target,
         type: "basic",
         connector: connectorType,
-        anchors: source === target ? ["Top", "Left"] : ["Continuous", "Continuous"]
+        anchors: source === target ? ["Top", "Left"] : ["Continuous", "Continuous"],
+        paintStyle: { stroke: "black", strokeWidth: 2 },
+        hoverPaintStyle: { stroke: "#1e8151", strokeWidth: 3 },
+        overlays: [
+            ["Arrow", { location: 1, id: "arrow", width: 10, length: 10 }],
+            ["Label", {
+                id: "label",
+                cssClass: "edge-label",
+                location: 0.3,
+                labelStyle: {
+                    cssClass: "edge-label-style"
+                }
+            }]
+        ]
     });
 
     // Store the connection in our map
     connectionMap.set(connection.id, connection);
+
+    // Store the curve style in our map
+    edgeCurveStyleMap.set(connection.id, curveStyle);
 
     // Parse and save symbols
     const symbols = symbolsString.split(',')
@@ -59,7 +97,7 @@ export function createConnection(jsPlumbInstance, source, target, symbolsString,
     // Add click handler
     if (connection.canvas) {
         connection.canvas.addEventListener('click', function (e) {
-            if (callbacks.onEdgeClick) {
+            if (callbacks && callbacks.onEdgeClick) {
                 callbacks.onEdgeClick(connection, e);
             }
             e.stopPropagation();
@@ -92,7 +130,10 @@ function updateConnectionLabel(connection, symbols, hasEpsilon) {
         }
     }
 
-    connection.getOverlay("label").setLabel(label);
+    const labelOverlay = connection.getOverlay("label");
+    if (labelOverlay) {
+        labelOverlay.setLabel(label);
+    }
 }
 
 /**
@@ -109,6 +150,7 @@ export function deleteEdge(jsPlumbInstance, connection) {
     // Remove from our maps
     edgeSymbolMap.delete(connection.id);
     epsilonTransitionMap.delete(connection.id);
+    edgeCurveStyleMap.delete(connection.id);
     connectionMap.delete(connection.id);
 
     jsPlumbInstance.deleteConnection(connection);
@@ -155,18 +197,144 @@ export function updateEdgeSymbols(connection, symbols, hasEpsilon, jsPlumbInstan
 }
 
 /**
- * Determines the connector type based on source, target, and current edge style preference
+ * Helper function to add event handlers to a connection
+ * @param {Object} connection - The connection to add handlers to
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ */
+function setupConnectionHandlers(connection, jsPlumbInstance) {
+    // Skip if this is a starting state connection
+    if (connection.canvas && connection.canvas.classList.contains('starting-connection')) {
+        return;
+    }
+
+    // Add click handler to the connection
+    if (connection.canvas) {
+        $(connection.canvas).on('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+
+            const currentTool = window.getCurrentTool ? window.getCurrentTool() : null;
+            if (currentTool === 'delete') {
+                deleteEdge(jsPlumbInstance, connection);
+            } else if (window.openInlineEdgeEditor) {
+                window.openInlineEdgeEditor(connection, jsPlumbInstance);
+            }
+        });
+    }
+
+    // Add click handler for the label
+    const labelOverlay = connection.getOverlay('label');
+    if (labelOverlay && labelOverlay.canvas) {
+        $(labelOverlay.canvas).on('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+
+            const currentTool = window.getCurrentTool ? window.getCurrentTool() : null;
+            if (currentTool === 'delete') {
+                deleteEdge(jsPlumbInstance, connection);
+            } else if (window.openInlineEdgeEditor) {
+                window.openInlineEdgeEditor(connection, jsPlumbInstance);
+            }
+        });
+    }
+}
+
+/**
+ * Updates the curve style for an individual edge by completely recreating it
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @param {Object} connection - The connection to update
+ * @param {boolean} curved - Whether the edge should be curved
+ * @returns {Object} - The new connection
+ */
+export function updateEdgeCurveStyle(jsPlumbInstance, connection, curved) {
+    if (!connection) return null;
+
+    // If the source and target are the same (self-loop), always use curved
+    const isSelfLoop = connection.sourceId === connection.targetId;
+    if (isSelfLoop) {
+        curved = true; // Force curved for self-loops
+    }
+
+    // If the current style is already what we want, do nothing
+    const currentStyle = edgeCurveStyleMap.get(connection.id);
+    if (currentStyle === curved && !isSelfLoop) {
+        return connection; // No change needed
+    }
+
+    // Store all current connection parameters
+    const sourceId = connection.sourceId;
+    const targetId = connection.targetId;
+    const symbols = edgeSymbolMap.get(connection.id) || [];
+    const hasEpsilon = epsilonTransitionMap.get(connection.id) || false;
+
+    // Clean up maps before deleting
+    edgeSymbolMap.delete(connection.id);
+    epsilonTransitionMap.delete(connection.id);
+    edgeCurveStyleMap.delete(connection.id);
+    connectionMap.delete(connection.id);
+
+    // Delete the old connection without firing events
+    jsPlumbInstance.deleteConnection(connection, {fireEvent: false});
+
+    // Create a new connection with the desired connector type
+    const connectorType = determineConnectorType(sourceId, targetId, curved);
+
+    // Recreate the connection with proper overlays
+    const newConnection = jsPlumbInstance.connect({
+        source: sourceId,
+        target: targetId,
+        connector: connectorType,
+        anchors: sourceId === targetId ? ["Top", "Left"] : ["Continuous", "Continuous"],
+        paintStyle: { stroke: "black", strokeWidth: 2 },
+        hoverPaintStyle: { stroke: "#1e8151", strokeWidth: 3 },
+        overlays: [
+            ["Arrow", { location: 1, id: "arrow", width: 10, length: 10 }],
+            ["Label", {
+                id: "label",
+                cssClass: "edge-label",
+                location: 0.3,
+                labelStyle: {
+                    cssClass: "edge-label-style"
+                }
+            }]
+        ]
+    });
+
+    // Update our maps with the new connection
+    connectionMap.set(newConnection.id, newConnection);
+    edgeSymbolMap.set(newConnection.id, symbols);
+    epsilonTransitionMap.set(newConnection.id, hasEpsilon);
+    edgeCurveStyleMap.set(newConnection.id, curved);
+
+    // Set the label with proper symbols
+    updateConnectionLabel(newConnection, symbols, hasEpsilon);
+
+    // Add epsilon class if needed
+    if (hasEpsilon && newConnection.canvas) {
+        newConnection.canvas.classList.add('has-epsilon');
+    }
+
+    // Add click handlers
+    setupConnectionHandlers(newConnection, jsPlumbInstance);
+
+    return newConnection;
+}
+
+
+/**
+ * Determines the connector type based on source, target, and specified curve style
  * @param {string} source - Source state ID
  * @param {string} target - Target state ID
+ * @param {boolean} curved - Whether to use a curved edge
  * @returns {Array} - JSPlumb connector configuration
  */
-function determineConnectorType(source, target) {
+function determineConnectorType(source, target, curved) {
     const isSelfLoop = source === target;
 
     if (isSelfLoop) {
         // Self-loops are always curved
         return ["Bezier", { curviness: 60 }];
-    } else if (useCurvedEdges) {
+    } else if (curved) {
         // Use StateMachine for curved edges (better for FSA diagrams)
         return ["StateMachine", { curviness: 100 }];
     } else {
@@ -176,131 +344,118 @@ function determineConnectorType(source, target) {
 }
 
 /**
- * Toggles between straight and curved edges
+ * Applies a curve style to all edges
  * @param {Object} jsPlumbInstance - The JSPlumb instance
  * @param {boolean} curved - Whether to use curved edges
  */
-export function toggleEdgeStyle(jsPlumbInstance, curved) {
+export function setAllEdgeStyles(jsPlumbInstance, curved) {
+    // Set the default for new edges
     useCurvedEdges = curved;
 
-    // Update all existing connections
-    if (jsPlumbInstance) {
-        // Make a snapshot of all connections before modifying anything
-        const connections = jsPlumbInstance.getAllConnections();
+    if (!jsPlumbInstance) return;
 
-        // Store connection details for recreation
-        const connectionDetails = [];
+    // Get ALL connections as an array (to avoid issues with changing collections)
+    const allConnections = Array.from(jsPlumbInstance.getAllConnections());
 
-        // First, gather all connection details
-        for (let i = 0; i < connections.length; i++) {
-            const connection = connections[i];
+    // First collect all the connection data we'll need
+    const connectionsToUpdate = [];
 
-            // Skip the starting state connection
-            if (connection.canvas && connection.canvas.classList.contains('starting-connection')) {
-                continue;
-            }
+    for (let i = 0; i < allConnections.length; i++) {
+        const connection = allConnections[i];
 
-            // Store connection properties
-            connectionDetails.push({
+        // Skip the starting state connection
+        if (connection.canvas && connection.canvas.classList.contains('starting-connection')) {
+            continue;
+        }
+
+        // Self-loops are always curved, so skip if trying to make straight
+        if (connection.sourceId === connection.targetId && !curved) {
+            continue;
+        }
+
+        // Get current curve style
+        const currentStyle = edgeCurveStyleMap.get(connection.id) || false;
+
+        // Only update if style is different
+        if (currentStyle !== curved) {
+            connectionsToUpdate.push({
                 sourceId: connection.sourceId,
                 targetId: connection.targetId,
-                connectionId: connection.id,
+                originalConnection: connection,
                 symbols: edgeSymbolMap.get(connection.id) || [],
-                hasEpsilon: epsilonTransitionMap.get(connection.id) || false,
-                sourceAnchor: connection.endpoints[0].anchor.type,
-                targetAnchor: connection.endpoints[1].anchor.type
+                hasEpsilon: epsilonTransitionMap.get(connection.id) || false
             });
         }
+    }
 
-        // Now remove all non-starting connections
-        for (let i = connections.length - 1; i >= 0; i--) {
-            const connection = connections[i];
-            if (connection.canvas && !connection.canvas.classList.contains('starting-connection')) {
-                deleteEdge(jsPlumbInstance, connection);
-            }
-        }
+    // Log how many connections we're updating
+    console.log(`Updating ${connectionsToUpdate.length} connections to ${curved ? 'curved' : 'straight'}`);
 
-        // Recreate all connections with the new style
-        connectionDetails.forEach(detail => {
-            const connectorType = determineConnectorType(detail.sourceId, detail.targetId);
+    // Now process each connection one by one
+    connectionsToUpdate.forEach(connData => {
+        // Remove the old connection
+        jsPlumbInstance.deleteConnection(connData.originalConnection);
 
-            // Create a new connection with the desired connector type
-            const newConnection = jsPlumbInstance.connect({
-                source: detail.sourceId,
-                target: detail.targetId,
-                connector: connectorType,
-                anchors: [detail.sourceAnchor, detail.targetAnchor],
-                paintStyle: { stroke: "black", strokeWidth: 2 },
-                hoverPaintStyle: { stroke: "#1e8151", strokeWidth: 3 },
-                overlays: [
-                    ["Arrow", { location: 1, id: "arrow", width: 10, length: 10 }],
-                    ["Label", {
-                        id: "label",
-                        cssClass: "edge-label",
-                        location: 0.3,
-                        labelStyle: {
-                            cssClass: "edge-label-style"
-                        }
-                    }]
-                ]
-            });
+        // Delete from our maps
+        const oldId = connData.originalConnection.id;
+        edgeSymbolMap.delete(oldId);
+        epsilonTransitionMap.delete(oldId);
+        edgeCurveStyleMap.delete(oldId);
+        connectionMap.delete(oldId);
 
-            // Update the maps with the new connection
-            connectionMap.set(newConnection.id, newConnection);
-            edgeSymbolMap.set(newConnection.id, detail.symbols);
-            epsilonTransitionMap.set(newConnection.id, detail.hasEpsilon);
+        // Determine connector type
+        const connectorType = determineConnectorType(connData.sourceId, connData.targetId, curved);
 
-            // Update the label
-            updateConnectionLabel(newConnection, detail.symbols, detail.hasEpsilon);
-
-            // Add epsilon class if needed
-            if (detail.hasEpsilon && newConnection.canvas) {
-                newConnection.canvas.classList.add('has-epsilon');
-            }
-
-            // Add click handlers to the new connection
-            if (newConnection.canvas) {
-                newConnection.canvas.addEventListener('click', function(e) {
-                    if (window.handleEdgeClick) {
-                        window.handleEdgeClick(newConnection, e);
-                    } else {
-                        const currentTool = window.getCurrentTool ? window.getCurrentTool() : null;
-                        if (currentTool === 'delete') {
-                            deleteEdge(jsPlumbInstance, newConnection);
-                        } else if (window.openInlineEdgeEditor) {
-                            window.openInlineEdgeEditor(newConnection, jsPlumbInstance);
-                        }
+        // Create a new connection
+        const newConnection = jsPlumbInstance.connect({
+            source: connData.sourceId,
+            target: connData.targetId,
+            connector: connectorType,
+            anchors: connData.sourceId === connData.targetId ? ["Top", "Left"] : ["Continuous", "Continuous"],
+            paintStyle: { stroke: "black", strokeWidth: 2 },
+            hoverPaintStyle: { stroke: "#1e8151", strokeWidth: 3 },
+            overlays: [
+                ["Arrow", { location: 1, id: "arrow", width: 10, length: 10 }],
+                ["Label", {
+                    id: "label",
+                    cssClass: "edge-label",
+                    location: 0.3,
+                    labelStyle: {
+                        cssClass: "edge-label-style"
                     }
-                    e.stopPropagation();
-                });
-            }
-
-            // Add click handler for the label
-            const labelOverlay = newConnection.getOverlay("label");
-            if (labelOverlay && labelOverlay.canvas) {
-                $(labelOverlay.canvas).on('click', function(e) {
-                    if (window.handleEdgeClick) {
-                        window.handleEdgeClick(newConnection, e);
-                    } else {
-                        const currentTool = window.getCurrentTool ? window.getCurrentTool() : null;
-                        if (currentTool === 'delete') {
-                            deleteEdge(jsPlumbInstance, newConnection);
-                        } else if (window.openInlineEdgeEditor) {
-                            window.openInlineEdgeEditor(newConnection, jsPlumbInstance);
-                        }
-                    }
-                    e.stopPropagation();
-                    e.preventDefault();
-                });
-            }
-
+                }]
+            ]
         });
 
-        // Repaint everything to apply changes
-        jsPlumbInstance.repaintEverything();
+        // Update our maps with the new connection
+        connectionMap.set(newConnection.id, newConnection);
+        edgeSymbolMap.set(newConnection.id, connData.symbols);
+        epsilonTransitionMap.set(newConnection.id, connData.hasEpsilon);
+        edgeCurveStyleMap.set(newConnection.id, curved);
 
-        updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap);
-    }
+        // Set the label with proper symbols
+        updateConnectionLabel(newConnection, connData.symbols, connData.hasEpsilon);
+
+        // Add epsilon class if needed
+        if (connData.hasEpsilon && newConnection.canvas) {
+            newConnection.canvas.classList.add('has-epsilon');
+        }
+
+        // Setup event handlers for the new connection
+        setupConnectionHandlers(newConnection, jsPlumbInstance);
+    });
+
+    // Force a complete repaint
+    jsPlumbInstance.repaintEverything();
+}
+
+/**
+ * Gets the curve style for an edge
+ * @param {Object} connection - The connection to check
+ * @returns {boolean} - Whether the edge is curved
+ */
+export function getEdgeCurveStyle(connection) {
+    return edgeCurveStyleMap.get(connection.id) || false;
 }
 
 /**
@@ -352,3 +507,6 @@ export function getConnectionMap() {
 export function getEpsilonSymbol() {
     return EPSILON;
 }
+
+// For backward compatibility
+export const toggleEdgeStyle = setAllEdgeStyles;

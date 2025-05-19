@@ -13,7 +13,7 @@ import {
     getEdgeSymbolMap,
     getEpsilonTransitionMap,
     hasEpsilonTransition,
-    toggleEdgeStyle
+    toggleEdgeStyle, setAllEdgeStyles
 } from './edgeManager.js';
 import {
     selectTool,
@@ -30,7 +30,8 @@ import {
     getSourceState,
     setSourceState,
     getSourceId,
-    resetSourceState
+    resetSourceState,
+    deselectEdgeStyleButtons
 } from './uiManager.js';
 import { showTransitionTable } from './transitionTableManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
@@ -69,6 +70,10 @@ export function initializeSimulator() {
 
     // Initial properties display update
     updateFSAPropertiesDisplay(jsPlumbInstance);
+
+    // Make sure the correct button is highlighted (Straight is default)
+    document.getElementById('straight-edges-btn').classList.add('active');
+    document.getElementById('curved-edges-btn').classList.remove('active');
 }
 
 /**
@@ -102,8 +107,16 @@ export function setupEventListeners() {
 
     // Edge style buttons
     document.getElementById('straight-edges-btn').addEventListener('click', function() {
-        // Set curved to false
-        toggleEdgeStyle(jsPlumbInstance, false);
+        // Close any open inline editors or modals
+        closeInlineStateEditor();
+        closeInlineEdgeEditor();
+        closeEdgeSymbolModal();
+
+        console.log("Setting all edges to straight");
+        // Apply straight edges to all connections with our improved function
+        setAllEdgeStyles(jsPlumbInstance, false);
+
+        // Update FSA properties display
         updateFSAPropertiesDisplay(jsPlumbInstance);
 
         // Update button styling
@@ -112,8 +125,16 @@ export function setupEventListeners() {
     });
 
     document.getElementById('curved-edges-btn').addEventListener('click', function() {
-        // Set curved to true
-        toggleEdgeStyle(jsPlumbInstance, true);
+        // Close any open inline editors or modals
+        closeInlineStateEditor();
+        closeInlineEdgeEditor();
+        closeEdgeSymbolModal();
+
+        console.log("Setting all edges to curved");
+        // Apply curved edges to all connections with our improved function
+        setAllEdgeStyles(jsPlumbInstance, true);
+
+        // Update FSA properties display
         updateFSAPropertiesDisplay(jsPlumbInstance);
 
         // Update button styling
@@ -202,18 +223,9 @@ function setupConnectionEvents() {
 
             const conn = info.connection;
 
+            // ALWAYS ensure the arrow overlay is present
             if (!conn.getOverlay("arrow")) {
                 conn.addOverlay(["Arrow", { location: 1, id: "arrow", width: 10, length: 10 }]);
-            }
-            if (!conn.getOverlay("label")) {
-                conn.addOverlay(["Label", {
-                    id: "label",
-                    cssClass: "edge-label",
-                    location: 0.3,
-                    labelStyle: {
-                        cssClass: "edge-label-style"
-                    }
-                }]);
             }
 
             // Apply base styles (if not already styled)
@@ -223,6 +235,11 @@ function setupConnectionEvents() {
             // Update properties display
             updateFSAPropertiesDisplay(jsPlumbInstance);
             return;
+        }
+
+        // ALWAYS ensure arrow overlay is present for all connections
+        if (!info.connection.getOverlay("arrow")) {
+            info.connection.addOverlay(["Arrow", { location: 1, id: "arrow", width: 10, length: 10 }]);
         }
 
         // Make sure we're getting the actual connection element
@@ -318,12 +335,18 @@ function handleStateClick(stateElement, e) {
             if (existingConnection) {
                 openInlineEdgeEditor(existingConnection, jsPlumbInstance);
             } else {
-                openEdgeSymbolModal(getSourceId(), stateElement.id, (source, target, symbolsString, hasEpsilon) => {
-                    createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, {
+                openEdgeSymbolModal(getSourceId(), stateElement.id, (source, target, symbolsString, hasEpsilon, isCurved) => {
+                    createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
                         onEdgeClick: handleEdgeClick
                     });
                     // Update properties display after creating a connection
                     updateFSAPropertiesDisplay(jsPlumbInstance);
+
+                    // If the user chose a curve style different from the default,
+                    // deselect the edge style buttons
+                    if (isCurved !== undefined) {
+                        deselectEdgeStyleButtons();
+                    }
                 });
             }
             resetSourceState();

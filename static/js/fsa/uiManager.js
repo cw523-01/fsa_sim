@@ -2,7 +2,7 @@ import { createStartingStateIndicator, getStartingStateId } from './stateManager
 import {
     updateEdgeSymbols,
     getEdgeSymbols,
-    hasEpsilonTransition
+    hasEpsilonTransition, updateEdgeCurveStyle, getEdgeCurveStyle
 } from './edgeManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 
@@ -143,6 +143,7 @@ export function openInlineEdgeEditor(connection, jsPlumbInstance) {
     // Get symbols for this edge
     const currentEditingSymbols = getEdgeSymbols(connection);
     const hasEpsilon = hasEpsilonTransition(connection);
+    const isCurved = getEdgeCurveStyle(connection);
 
     // Close state editor if open
     closeInlineStateEditor();
@@ -174,6 +175,19 @@ export function openInlineEdgeEditor(connection, jsPlumbInstance) {
     // Set epsilon checkbox
     const epsilonCheckbox = document.getElementById('edge-epsilon-checkbox');
     epsilonCheckbox.checked = hasEpsilon;
+
+    // Set curve style checkbox
+    const curveStyleCheckbox = document.getElementById('edge-curve-checkbox');
+    curveStyleCheckbox.checked = isCurved;
+
+    // If this is a self-loop, disable the curve checkbox since self-loops are always curved
+    if (connection.sourceId === connection.targetId) {
+        curveStyleCheckbox.disabled = true;
+        curveStyleCheckbox.title = "Self-loops are always curved";
+    } else {
+        curveStyleCheckbox.disabled = false;
+        curveStyleCheckbox.title = "";
+    }
 
     document.getElementById('add-symbol-edit-btn').onclick = function () {
         addSymbolEditInput('', container);
@@ -259,6 +273,22 @@ export function openEdgeSymbolModal(source, target, onConfirm) {
     const epsilonCheckbox = document.getElementById('epsilon-transition-checkbox');
     epsilonCheckbox.checked = false;
 
+    // Set the curve checkbox to current default or unchecked
+    const curveCheckbox = document.getElementById('curve-transition-checkbox');
+
+    // Check if this is a self-loop, which is always curved
+    const isSelfLoop = source === target;
+    if (isSelfLoop) {
+        curveCheckbox.checked = true;
+        curveCheckbox.disabled = true;
+        curveCheckbox.title = "Self-loops are always curved";
+    } else {
+        // For normal edges, use the default from edgeManager (default unchecked)
+        curveCheckbox.checked = false; // Default to straight
+        curveCheckbox.disabled = false;
+        curveCheckbox.title = "";
+    }
+
     document.getElementById('add-symbol-input').onclick = function () {
         addSymbolInput(inputsContainer);
     };
@@ -267,6 +297,7 @@ export function openEdgeSymbolModal(source, target, onConfirm) {
         const wrappers = inputsContainer.querySelectorAll('.symbol-input-wrapper');
         const inputs = inputsContainer.querySelectorAll('.symbol-input');
         const hasEpsilon = epsilonCheckbox.checked;
+        const isCurved = curveCheckbox.checked;
 
         const symbols = [];
         const seen = new Set();
@@ -287,7 +318,8 @@ export function openEdgeSymbolModal(source, target, onConfirm) {
         // Allow creation if we have symbols or epsilon is checked
         if ((symbols.length > 0 || hasEpsilon) && !hasDuplicates) {
             if (pendingSourceId && pendingTargetId) {
-                onConfirm(pendingSourceId, pendingTargetId, symbols.join(','), hasEpsilon);
+                // Pass the curve style parameter to the callback
+                onConfirm(pendingSourceId, pendingTargetId, symbols.join(','), hasEpsilon, isCurved);
             }
             closeEdgeSymbolModal();
         }
@@ -372,6 +404,29 @@ function setupEdgeLiveUpdates() {
     // Add epsilon checkbox change listener
     const epsilonCheckbox = document.getElementById('edge-epsilon-checkbox');
     epsilonCheckbox.addEventListener('change', updateCurrentEdgeLabel);
+
+    // Add curve style checkbox change listener
+    const curveStyleCheckbox = document.getElementById('edge-curve-checkbox');
+    curveStyleCheckbox.addEventListener('change', updateEdgeCurveStyleChange);
+}
+
+
+function updateEdgeCurveStyleChange() {
+    if (!currentEditingEdge || !editorJsPlumbInstance) return;
+
+    const curveStyleCheckbox = document.getElementById('edge-curve-checkbox');
+    const isCurved = curveStyleCheckbox.checked;
+
+    // Update the curve style for the edge - will return a new connection
+    const newConnection = updateEdgeCurveStyle(editorJsPlumbInstance, currentEditingEdge, isCurved);
+
+    // Update the current editing edge reference to the new connection
+    if (newConnection) {
+        currentEditingEdge = newConnection;
+    }
+
+    // Deselect both edge style buttons since we now have a mix of styles
+    deselectEdgeStyleButtons();
 }
 
 // Remove live update event listeners for edge editor
@@ -385,6 +440,12 @@ function removeEdgeLiveUpdateListeners() {
     const epsilonCheckbox = document.getElementById('edge-epsilon-checkbox');
     if (epsilonCheckbox) {
         epsilonCheckbox.removeEventListener('change', updateCurrentEdgeLabel);
+    }
+
+    // Remove curve style checkbox change listener
+    const curveStyleCheckbox = document.getElementById('edge-curve-checkbox');
+    if (curveStyleCheckbox) {
+        curveStyleCheckbox.removeEventListener('change', updateEdgeCurveStyleChange);
     }
 }
 
@@ -507,4 +568,12 @@ export function getCurrentEditingState() {
  */
 export function getCurrentEditingEdge() {
     return currentEditingEdge;
+}
+
+/**
+ * Deselects both edge style buttons
+ */
+export function deselectEdgeStyleButtons() {
+    document.getElementById('straight-edges-btn').classList.remove('active');
+    document.getElementById('curved-edges-btn').classList.remove('active');
 }
