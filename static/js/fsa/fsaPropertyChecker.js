@@ -26,7 +26,7 @@ export function isDeterministic(jsPlumbInstance) {
             const transitions = tableData.transitions[stateId][symbol];
 
             // If there is not exactly one transition, the FSA is not deterministic
-            if (transitions.length !== 1) {
+            if (transitions.length > 1) {
                 return false;
             }
         }

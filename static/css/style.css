@@ -802,3 +802,68 @@ main {
     color: red;
     font-weight: bold;
 }
+
+.header-row {
+    margin-top: 10px;
+}
+
+.input-controls-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: fit-content;
+}
+
+.input-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 15px;
+}
+
+.input-container input {
+    min-width: 200px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+.controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid #ccc;
+    background-color: white;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.control-btn:hover {
+    background-color: #f0f0f0;
+}
+
+.control-btn img {
+    width: 20px;
+    height: 20px;
+}
+
+/* Make sure the header has proper spacing */
+.fsa-simulator header {
+    padding: 15px;
+    background-color: #f8f8f8;
+    border-bottom: 1px solid #ddd;
+}
+
+.fsa-simulator header h1 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}

@@ -5,20 +5,24 @@
 <div class="fsa-simulator">
     <header>
         <h1>FSA SIM</h1>
-        <div class="input-container">
-            <label for="fsa-input">Input:</label>
-            <input type="text" id="fsa-input" name="fsa-input">
-        </div>
-        <div class="controls">
-            <button id="play-btn" class="control-btn">
-                <img src="{% static 'img/play.svg' %}" alt="Play">
-            </button>
-            <button id="stop-btn" class="control-btn">
-                <img src="{% static 'img/stop.svg' %}" alt="Stop">
-            </button>
-            <button id="fast-forward-btn" class="control-btn">
-                <img src="{% static 'img/fast_forward.svg' %}" alt="Fast Forward">
-            </button>
+        <div class="header-row">
+            <div class="input-controls-container">
+                <div class="input-container">
+                    <label for="fsa-input">Input:</label>
+                    <input type="text" id="fsa-input" name="fsa-input">
+                </div>
+                <div class="controls">
+                    <button id="play-btn" class="control-btn">
+                        <img src="{% static 'img/play.svg' %}" alt="Play">
+                    </button>
+                    <button id="stop-btn" class="control-btn">
+                        <img src="{% static 'img/stop.svg' %}" alt="Stop">
+                    </button>
+                    <button id="fast-forward-btn" class="control-btn">
+                        <img src="{% static 'img/fast_forward.svg' %}" alt="Fast Forward">
+                    </button>
+                </div>
+            </div>
         </div>
     </header>
     
