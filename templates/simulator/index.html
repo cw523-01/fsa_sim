@@ -28,17 +28,55 @@
     
     <main>
         <div class="tools-panel">
-            <div class="tool" id="state-tool">
-                <div class="state-node">S</div>
+            <!-- State Creation Tools Section -->
+            <div class="tools-section">
+                <h5 class="tools-header">States</h5>
+                <div class="state-tools">
+                    <!-- Regular state tool with original markup -->
+                    <div class="tool" id="state-tool" title="Create State">
+                        <div class="state-node">S</div>
+                    </div>
+                    
+                    <!-- Accepting state tool with original markup -->
+                    <div class="tool" id="accepting-state-tool" title="Create Accepting State">
+                        <div class="accepting-state-node">S</div>
+                    </div>
+                </div>
             </div>
-            <div class="tool" id="accepting-state-tool">
-                <div class="accepting-state-node">S</div>
+            
+            <!-- Edge Creation Tool Section -->
+            <div class="tools-section">
+                <h5 class="tools-header">Transitions</h5>
+                <div class="edge-tools">
+                    <!-- Edge creation tool with original markup -->
+                    <div class="tool" id="edge-tool" title="Create Edge">
+                        <div class="edge-icon">➚</div>
+                    </div>
+                </div>
             </div>
-            <div class="tool" id="edge-tool">
-                <div class="edge-icon">➚</div>
+            
+            <!-- Delete Tool Section -->
+            <div class="tools-section">
+                <h5 class="tools-header">Actions</h5>
+                <div class="action-tools">
+                    <!-- Delete tool -->
+                    <div class="tool" id="delete-tool" title="Delete Element">
+                        <div class="edge-icon">🗑️</div>
+                    </div>
+                </div>
             </div>
-            <div class="tool" id="delete-tool">
-                <div class="delete-icon">🗑️</div>
+            
+            <!-- Edge Style Tools Section -->
+            <div class="tools-section">
+                <h5 class="tools-header">Edge Style</h5>
+                <div class="edge-style-buttons">
+                    <button id="straight-edges-btn" class="btn btn-sm btn-secondary" title="Use Straight Edges">
+                        <i class="fas fa-long-arrow-alt-right"></i> Straight
+                    </button>
+                    <button id="curved-edges-btn" class="btn btn-sm btn-secondary" title="Use Curved Edges">
+                        <i class="fas fa-bezier-curve"></i> Curved
+                    </button>
+                </div>
             </div>
         </div>
         
@@ -66,12 +104,6 @@
                 </div>
             </div>
             <button id="show-table-btn">Show T table</button>
-            
-            <!-- Edge Style Toggle Button -->
-            <div class="edge-style-toggle">
-                <label for="edge-style-checkbox">Curved Edges</label>
-                <input type="checkbox" id="edge-style-checkbox">
-            </div>
         </div>
     </main>
     

@@ -100,11 +100,29 @@ export function setupEventListeners() {
         selectTool('delete');
     });
 
-    // Edge style toggle
-    document.getElementById('edge-style-checkbox').addEventListener('change', function(e) {
-        toggleEdgeStyle(jsPlumbInstance, e.target.checked);
+    // Edge style buttons
+    document.getElementById('straight-edges-btn').addEventListener('click', function() {
+        // Set curved to false
+        toggleEdgeStyle(jsPlumbInstance, false);
         updateFSAPropertiesDisplay(jsPlumbInstance);
+
+        // Update button styling
+        this.classList.add('active');
+        document.getElementById('curved-edges-btn').classList.remove('active');
     });
+
+    document.getElementById('curved-edges-btn').addEventListener('click', function() {
+        // Set curved to true
+        toggleEdgeStyle(jsPlumbInstance, true);
+        updateFSAPropertiesDisplay(jsPlumbInstance);
+
+        // Update button styling
+        this.classList.add('active');
+        document.getElementById('straight-edges-btn').classList.remove('active');
+    });
+
+    // Set initial active state for straight edges (default)
+    document.getElementById('straight-edges-btn').classList.add('active');
 
     // Canvas click event
     document.getElementById('fsa-canvas').addEventListener('click', function(e) {
