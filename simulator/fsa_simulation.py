@@ -1,7 +1,7 @@
 from typing import Dict, List, Union, Tuple, Optional
 
 
-def simulate_deterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Tuple[str, str, str]], bool]:
+def simulate_deterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Tuple[str, str, str]], Dict]:
     """
     Simulates a deterministic FSA with the given input string.
 
@@ -17,30 +17,56 @@ def simulate_deterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Tuple
     Returns:
         If the input is accepted, returns a list of transitions in the format:
         [(current_state, symbol, next_state), ...].
-        If the input is rejected, returns False.
+        If the input is rejected, returns a dictionary with:
+        {
+            'accepted': False,
+            'path': [(current_state, symbol, next_state), ...],  # Path up to rejection
+            'rejection_reason': str,  # Why rejected
+            'rejection_position': int  # Position where rejection occurred
+        }
     """
     # Validate the FSA is deterministic
     if not _is_deterministic(fsa):
-        raise ValueError("FSA must be deterministic")
+        return {
+            'accepted': False,
+            'path': [],
+            'rejection_reason': 'FSA must be deterministic',
+            'rejection_position': 0
+        }
 
     current_state = fsa['startingState']
     execution_path = []
 
     # Process each symbol in the input string
-    for symbol in input_string:
+    for position, symbol in enumerate(input_string):
         # Check if the symbol is in the alphabet
         if symbol not in fsa['alphabet']:
-            return False
+            return {
+                'accepted': False,
+                'path': execution_path,
+                'rejection_reason': f"Symbol '{symbol}' not in alphabet",
+                'rejection_position': position
+            }
 
         # Get the next state for this symbol (if any)
         if symbol not in fsa['transitions'][current_state] or not fsa['transitions'][current_state][symbol]:
-            return False  # No transition defined for this symbol from current state
+            return {
+                'accepted': False,
+                'path': execution_path,
+                'rejection_reason': f"No transition defined for symbol '{symbol}' from state '{current_state}'",
+                'rejection_position': position
+            }
 
         next_states = fsa['transitions'][current_state][symbol]
 
         # In a deterministic FSA, there should be at most one next state
         if len(next_states) != 1:
-            return False  # This should not happen if FSA is truly deterministic
+            return {
+                'accepted': False,
+                'path': execution_path,
+                'rejection_reason': f"Non-deterministic transition: multiple states for symbol '{symbol}' from state '{current_state}'",
+                'rejection_position': position
+            }
 
         next_state = next_states[0]
 
@@ -52,9 +78,14 @@ def simulate_deterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Tuple
 
     # Check if we ended in an accepting state
     if current_state in fsa['acceptingStates']:
-        return execution_path
+        return execution_path  # Return path directly for accepted (backwards compatibility)
     else:
-        return False
+        return {
+            'accepted': False,
+            'path': execution_path,
+            'rejection_reason': f"Final state '{current_state}' is not an accepting state",
+            'rejection_position': len(input_string)
+        }
 
 
 def _is_deterministic(fsa: Dict) -> bool:
@@ -63,9 +94,9 @@ def _is_deterministic(fsa: Dict) -> bool:
 
     An FSA is deterministic if:
     1. For each state and each symbol, there is at most one transition
-    2. There are no epsilon transitions
+    2. There are no epsilon transitions (this is assumed)
     """
-    # We're assuming no epsilon transitions since they aren't in the transition table format
+    # Assuming no epsilon transitions
 
     for state in fsa['states']:
         for symbol in fsa['alphabet']:

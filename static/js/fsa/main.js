@@ -33,9 +33,10 @@ import {
     resetSourceState,
     deselectEdgeStyleButtons
 } from './uiManager.js';
-import { showTransitionTable } from './transitionTableManager.js';
+import { showTransitionTable, generateTransitionTable } from './transitionTableManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 import { controlLockManager } from './controlLockManager.js';
+import { runFSASimulation, getInputString, validateInputString, convertFSAToBackendFormat } from './backendIntegration.js';
 
 // Global variables
 let jsPlumbInstance;
@@ -427,15 +428,51 @@ function handleEdgeClick(connection, e) {
  */
 function setupFunctionalButtons() {
     // Play button - locks controls and starts simulation
-    document.getElementById('play-btn').addEventListener('click', function() {
+    document.getElementById('play-btn').addEventListener('click', async function() {
         if (controlLockManager.isControlsLocked()) return;
 
-        console.log('Play button pressed - locking controls');
+        console.log('Play button pressed - starting simulation');
+
+        // Get input string
+        const inputString = getInputString();
+
+        // Lock controls immediately
         controlLockManager.lockControls();
 
-        // TODO: Later we'll add the actual simulation logic here
-        // For now, just show that controls are locked
-        console.log('Simulation would start here...');
+        try {
+            // Quick validation of input string format
+            const tableData = generateTransitionTable(jsPlumbInstance);
+            if (tableData.alphabet.length > 0) {
+                const inputValidation = validateInputString(inputString, tableData.alphabet);
+                if (!inputValidation.valid) {
+                    alert(`❌ INPUT ERROR!\n\n${inputValidation.message}`);
+                    controlLockManager.unlockControls();
+                    return;
+                }
+            }
+
+            console.log(`Simulating input: "${inputString}"`);
+
+            // Run the simulation
+            const simulationResult = await runFSASimulation(jsPlumbInstance, inputString);
+
+            // Display result in alert
+            alert(simulationResult.message);
+
+            // Log detailed result for debugging
+            if (simulationResult.success && simulationResult.rawResult) {
+                console.log('Simulation completed successfully:', simulationResult.rawResult);
+            } else {
+                console.log('Simulation failed:', simulationResult);
+            }
+
+        } catch (error) {
+            console.error('Unexpected error during simulation:', error);
+            alert(`❌ UNEXPECTED ERROR!\n\nAn unexpected error occurred during simulation:\n${error.message}`);
+        } finally {
+            // Always unlock controls when done
+            controlLockManager.unlockControls();
+        }
     });
 
     // Stop button - unlocks controls and stops simulation

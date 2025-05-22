@@ -29,7 +29,9 @@ def simulate_fsa(request):
 
     Returns a JSON response with:
     - accepted: Boolean indicating if the input is accepted
-    - path: The execution path if accepted, null otherwise
+    - path: The execution path if accepted, or path up to rejection if rejected
+    - rejection_reason: Reason for rejection (only for rejected inputs)
+    - rejection_position: Position where rejection occurred (only for rejected inputs)
     - error: Error message if any
     """
     try:
@@ -55,15 +57,28 @@ def simulate_fsa(request):
         # Simulate the FSA
         result = simulate_deterministic_fsa(fsa, input_string)
 
-        if result is False:
-            return JsonResponse({
-                'accepted': False,
-                'path': None
-            })
-        else:
+        # Handle both response formats from the updated function
+        if isinstance(result, list):
+            # Input was accepted - result is the execution path (backwards compatibility)
             return JsonResponse({
                 'accepted': True,
                 'path': result
+            })
+        elif isinstance(result, dict) and 'accepted' in result and not result['accepted']:
+            # Input was rejected - result contains detailed rejection info
+            return JsonResponse({
+                'accepted': False,
+                'path': result.get('path', []),
+                'rejection_reason': result.get('rejection_reason', 'Unknown rejection reason'),
+                'rejection_position': result.get('rejection_position', 0)
+            })
+        else:
+            # Fallback for unexpected result (shouldn't happen)
+            return JsonResponse({
+                'accepted': False,
+                'path': [],
+                'rejection_reason': 'Unexpected result format',
+                'rejection_position': 0
             })
 
     except ValueError as e:
