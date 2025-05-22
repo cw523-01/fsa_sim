@@ -8,6 +8,8 @@ class ControlLockManager {
         this.originalMakeSource = null;
         this.originalMakeTarget = null;
         this.originalConnect = null;
+        this.originalAddEndpoint = null;
+        this.originalSettings = null;
     }
 
     /**
@@ -193,6 +195,13 @@ class ControlLockManager {
     lockJSPlumbInteractions() {
         if (!this.jsPlumbInstance) return;
 
+        // Store current settings so we can restore them later
+        this.originalSettings = {
+            ConnectionsDetachable: this.jsPlumbInstance.Defaults.ConnectionsDetachable,
+            ReattachConnections: this.jsPlumbInstance.Defaults.ReattachConnections,
+            ConnectorsDetachable: this.jsPlumbInstance.Defaults.ConnectorsDetachable
+        };
+
         // Disable drag for all elements
         this.jsPlumbInstance.setDraggable(this.jsPlumbInstance.getSelector('.state, .accepting-state'), false);
 
@@ -201,11 +210,47 @@ class ControlLockManager {
         this.jsPlumbInstance.makeTarget = () => {};
         this.jsPlumbInstance.connect = () => null;
 
-        // Disable connection dragging
+        // Disable connection dragging/detaching completely
         this.jsPlumbInstance.importDefaults({
             ConnectionsDetachable: false,
-            ReattachConnections: false
+            ReattachConnections: false,
+            ConnectorsDetachable: false
         });
+
+        // Get all existing connections and make them non-detachable
+        const allConnections = this.jsPlumbInstance.getAllConnections();
+        allConnections.forEach(connection => {
+            // Make this specific connection non-detachable
+            connection.setDetachable(false);
+
+            // Disable endpoint dragging for this connection
+            if (connection.endpoints) {
+                connection.endpoints.forEach(endpoint => {
+                    if (endpoint) {
+                        endpoint.setEnabled(false);
+                        // Also disable the endpoint's drag capability
+                        if (endpoint.endpoint) {
+                            endpoint.endpoint.enabled = false;
+                        }
+                    }
+                });
+            }
+
+            // Add CSS class to visually indicate locked state
+            if (connection.canvas) {
+                connection.canvas.classList.add('jsplumb-locked');
+            }
+        });
+
+        // Disable all endpoints globally
+        const allEndpoints = this.jsPlumbInstance.selectEndpoints();
+        allEndpoints.each(function(endpoint) {
+            endpoint.setEnabled(false);
+        });
+
+        // Prevent new endpoint creation by overriding addEndpoint
+        this.originalAddEndpoint = this.jsPlumbInstance.addEndpoint;
+        this.jsPlumbInstance.addEndpoint = () => null;
     }
 
     unlockJSPlumbInteractions() {
@@ -225,11 +270,52 @@ class ControlLockManager {
             this.jsPlumbInstance.connect = this.originalConnect;
         }
 
-        // Re-enable connection dragging
-        this.jsPlumbInstance.importDefaults({
-            ConnectionsDetachable: true,
-            ReattachConnections: true
+        // Restore original connection settings
+        if (this.originalSettings) {
+            this.jsPlumbInstance.importDefaults({
+                ConnectionsDetachable: this.originalSettings.ConnectionsDetachable,
+                ReattachConnections: this.originalSettings.ReattachConnections,
+                ConnectorsDetachable: this.originalSettings.ConnectorsDetachable
+            });
+        }
+
+        // Re-enable all existing connections
+        const allConnections = this.jsPlumbInstance.getAllConnections();
+        allConnections.forEach(connection => {
+            // Make this specific connection detachable again (unless it's the starting connection)
+            if (!connection.canvas || !connection.canvas.classList.contains('starting-connection')) {
+                connection.setDetachable(true);
+            }
+
+            // Re-enable endpoint dragging for this connection
+            if (connection.endpoints) {
+                connection.endpoints.forEach(endpoint => {
+                    if (endpoint) {
+                        endpoint.setEnabled(true);
+                        // Re-enable the endpoint's drag capability
+                        if (endpoint.endpoint) {
+                            endpoint.endpoint.enabled = true;
+                        }
+                    }
+                });
+            }
+
+            // Remove locked CSS class
+            if (connection.canvas) {
+                connection.canvas.classList.remove('jsplumb-locked');
+            }
         });
+
+        // Re-enable all endpoints globally
+        const allEndpoints = this.jsPlumbInstance.selectEndpoints();
+        allEndpoints.each(function(endpoint) {
+            endpoint.setEnabled(true);
+        });
+
+        // Restore original addEndpoint method
+        if (this.originalAddEndpoint) {
+            this.jsPlumbInstance.addEndpoint = this.originalAddEndpoint;
+        }
     }
 
     lockStateAndEdgeInteractions() {

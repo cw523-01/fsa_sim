@@ -1028,9 +1028,30 @@ main {
 }
 
 /* Locked connection styling */
-.locked-connection {
+.locked-connection,
+.jsplumb-locked {
     cursor: not-allowed !important;
     filter: brightness(0.8);
+}
+
+/* Locked JSPlumb endpoints */
+.jsplumb-locked ._jsPlumb_endpoint {
+    cursor: not-allowed !important;
+    opacity: 0.6;
+    pointer-events: none !important;
+}
+
+/* Disable hover effects on locked JSPlumb connections */
+.jsplumb-locked:hover {
+    filter: brightness(0.8) !important;
+}
+
+.jsplumb-locked ._jsPlumb_connector {
+    cursor: not-allowed !important;
+}
+
+.jsplumb-locked ._jsPlumb_connector:hover {
+    stroke-width: 2px !important; /* Prevent hover thickness change */
 }
 
 /* Lock indicator message */
