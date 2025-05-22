@@ -944,3 +944,202 @@ main {
     padding: 8px;
     margin: 2px auto;
 }
+
+/* Locked input field styling */
+.locked-input {
+    background-color: #f5f5f5 !important;
+    color: #666 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+/* Locked button styling */
+.locked-button {
+    background-color: #e9ecef !important;
+    color: #6c757d !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+    border-color: #dee2e6 !important;
+}
+
+.locked-button:hover {
+    background-color: #e9ecef !important;
+    color: #6c757d !important;
+    border-color: #dee2e6 !important;
+}
+
+/* Active button styling (for stop button during simulation) */
+.active-button {
+    background-color: #dc3545 !important;
+    color: white !important;
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+}
+
+.active-button:hover {
+    background-color: #c82333 !important;
+    border-color: #bd2130 !important;
+}
+
+/* Locked tool styling */
+.locked-tool {
+    cursor: not-allowed !important;
+    filter: grayscale(50%);
+}
+
+/* Locked panel styling */
+.locked-panel {
+    position: relative;
+}
+
+.locked-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.3);
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* Locked canvas styling */
+.locked-canvas {
+    position: relative;
+}
+
+.locked-canvas::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.05);
+    z-index: 5;
+    pointer-events: none;
+}
+
+/* Locked state styling */
+.locked-state {
+    cursor: not-allowed !important;
+    filter: brightness(0.8);
+}
+
+/* Locked connection styling */
+.locked-connection {
+    cursor: not-allowed !important;
+    filter: brightness(0.8);
+}
+
+/* Lock indicator message */
+.lock-message {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: Arial, sans-serif;
+}
+
+.lock-icon {
+    font-size: 14px;
+}
+
+.lock-text {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Animation for lock indicator */
+#lock-indicator {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.8;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.8;
+    }
+}
+
+/* Disable selection for locked elements */
+.locked-panel *,
+.locked-canvas *,
+.locked-tool,
+.locked-state,
+.locked-connection {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Improved control button states */
+.control-btn {
+    transition: all 0.2s ease;
+}
+
+.control-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(50%);
+}
+
+.control-btn:disabled:hover {
+    background-color: inherit;
+    transform: none;
+}
+
+/* Make the stop button more prominent when active */
+.control-btn.active-button {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25);
+}
+
+.control-btn.active-button img {
+    filter: brightness(0) invert(1); /* Make icon white */
+}
+
+/* Ensure locked elements don't respond to hover effects */
+.locked-tool:hover,
+.locked-button:hover,
+.locked-state:hover,
+.locked-connection:hover {
+    background-color: inherit !important;
+    border-color: inherit !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Lock overlay for specific sections */
+.lock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.7);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #666;
+    cursor: not-allowed;
+}
+
+/* Prevent dragging of locked elements */
+.locked-tool,
+.locked-state {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+}

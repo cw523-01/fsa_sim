@@ -1,0 +1,400 @@
+/**
+ * Control lock manager class to handle disabling/enabling UI during simulation
+ */
+class ControlLockManager {
+    constructor() {
+        this.isLocked = false;
+        this.jsPlumbInstance = null;
+        this.originalMakeSource = null;
+        this.originalMakeTarget = null;
+        this.originalConnect = null;
+    }
+
+    /**
+     * Initialize the control lock manager with JSPlumb instance
+     * @param {Object} jsPlumbInstance - The JSPlumb instance to lock/unlock
+     */
+    initialize(jsPlumbInstance) {
+        this.jsPlumbInstance = jsPlumbInstance;
+
+        // Store original JSPlumb methods so we can restore them later
+        if (jsPlumbInstance) {
+            this.originalMakeSource = jsPlumbInstance.makeSource.bind(jsPlumbInstance);
+            this.originalMakeTarget = jsPlumbInstance.makeTarget.bind(jsPlumbInstance);
+            this.originalConnect = jsPlumbInstance.connect.bind(jsPlumbInstance);
+        }
+    }
+
+    /**
+     * Lock all controls to prevent user interaction during simulation
+     */
+    lockControls() {
+        if (this.isLocked) return; // Already locked
+
+        this.isLocked = true;
+        console.log('Locking all controls...');
+
+        // 1. Disable input field
+        this.lockInputField();
+
+        // 2. Disable tool selection
+        this.lockToolPanel();
+
+        // 3. Disable canvas interactions
+        this.lockCanvasInteractions();
+
+        // 4. Disable JSPlumb interactions
+        this.lockJSPlumbInteractions();
+
+        // 5. Disable state and edge interactions
+        this.lockStateAndEdgeInteractions();
+
+        // 6. Close any open editors/modals
+        this.closeOpenEditors();
+
+        // 7. Update button states
+        this.updateButtonStates(true);
+
+        // 8. Add visual indicator that controls are locked
+        this.addLockedIndicator();
+    }
+
+    /**
+     * Unlock all controls to restore user interaction
+     */
+    unlockControls() {
+        if (!this.isLocked) return; // Already unlocked
+
+        this.isLocked = false;
+        console.log('Unlocking all controls...');
+
+        // 1. Enable input field
+        this.unlockInputField();
+
+        // 2. Enable tool selection
+        this.unlockToolPanel();
+
+        // 3. Enable canvas interactions
+        this.unlockCanvasInteractions();
+
+        // 4. Enable JSPlumb interactions
+        this.unlockJSPlumbInteractions();
+
+        // 5. Enable state and edge interactions
+        this.unlockStateAndEdgeInteractions();
+
+        // 6. Update button states
+        this.updateButtonStates(false);
+
+        // 7. Remove visual indicator
+        this.removeLockedIndicator();
+    }
+
+    /**
+     * Check if controls are currently locked
+     * @returns {boolean} - Whether controls are locked
+     */
+    isControlsLocked() {
+        return this.isLocked;
+    }
+
+    // Private methods for locking specific components
+
+    lockInputField() {
+        const inputField = document.getElementById('fsa-input');
+        if (inputField) {
+            inputField.disabled = true;
+            inputField.classList.add('locked-input');
+        }
+    }
+
+    unlockInputField() {
+        const inputField = document.getElementById('fsa-input');
+        if (inputField) {
+            inputField.disabled = false;
+            inputField.classList.remove('locked-input');
+        }
+    }
+
+    lockToolPanel() {
+        const toolsPanel = document.querySelector('.tools-panel');
+        if (toolsPanel) {
+            toolsPanel.classList.add('locked-panel');
+
+            // Disable all tools
+            const tools = toolsPanel.querySelectorAll('.tool');
+            tools.forEach(tool => {
+                tool.classList.add('locked-tool');
+                tool.style.pointerEvents = 'none';
+                tool.style.opacity = '0.5';
+            });
+
+            // Disable edge style buttons
+            const edgeStyleButtons = toolsPanel.querySelectorAll('.edge-style-buttons button');
+            edgeStyleButtons.forEach(button => {
+                button.disabled = true;
+                button.classList.add('locked-button');
+            });
+
+            // Disable show table button
+            const showTableBtn = document.getElementById('show-table-btn');
+            if (showTableBtn) {
+                showTableBtn.disabled = true;
+                showTableBtn.classList.add('locked-button');
+            }
+        }
+    }
+
+    unlockToolPanel() {
+        const toolsPanel = document.querySelector('.tools-panel');
+        if (toolsPanel) {
+            toolsPanel.classList.remove('locked-panel');
+
+            // Enable all tools
+            const tools = toolsPanel.querySelectorAll('.tool');
+            tools.forEach(tool => {
+                tool.classList.remove('locked-tool');
+                tool.style.pointerEvents = 'auto';
+                tool.style.opacity = '1';
+            });
+
+            // Enable edge style buttons
+            const edgeStyleButtons = toolsPanel.querySelectorAll('.edge-style-buttons button');
+            edgeStyleButtons.forEach(button => {
+                button.disabled = false;
+                button.classList.remove('locked-button');
+            });
+
+            // Enable show table button
+            const showTableBtn = document.getElementById('show-table-btn');
+            if (showTableBtn) {
+                showTableBtn.disabled = false;
+                showTableBtn.classList.remove('locked-button');
+            }
+        }
+    }
+
+    lockCanvasInteractions() {
+        const canvas = document.getElementById('fsa-canvas');
+        if (canvas) {
+            canvas.classList.add('locked-canvas');
+            canvas.style.pointerEvents = 'none';
+        }
+    }
+
+    unlockCanvasInteractions() {
+        const canvas = document.getElementById('fsa-canvas');
+        if (canvas) {
+            canvas.classList.remove('locked-canvas');
+            canvas.style.pointerEvents = 'auto';
+        }
+    }
+
+    lockJSPlumbInteractions() {
+        if (!this.jsPlumbInstance) return;
+
+        // Disable drag for all elements
+        this.jsPlumbInstance.setDraggable(this.jsPlumbInstance.getSelector('.state, .accepting-state'), false);
+
+        // Override JSPlumb methods to prevent new connections
+        this.jsPlumbInstance.makeSource = () => {};
+        this.jsPlumbInstance.makeTarget = () => {};
+        this.jsPlumbInstance.connect = () => null;
+
+        // Disable connection dragging
+        this.jsPlumbInstance.importDefaults({
+            ConnectionsDetachable: false,
+            ReattachConnections: false
+        });
+    }
+
+    unlockJSPlumbInteractions() {
+        if (!this.jsPlumbInstance) return;
+
+        // Re-enable drag for all elements
+        this.jsPlumbInstance.setDraggable(this.jsPlumbInstance.getSelector('.state, .accepting-state'), true);
+
+        // Restore original JSPlumb methods
+        if (this.originalMakeSource) {
+            this.jsPlumbInstance.makeSource = this.originalMakeSource;
+        }
+        if (this.originalMakeTarget) {
+            this.jsPlumbInstance.makeTarget = this.originalMakeTarget;
+        }
+        if (this.originalConnect) {
+            this.jsPlumbInstance.connect = this.originalConnect;
+        }
+
+        // Re-enable connection dragging
+        this.jsPlumbInstance.importDefaults({
+            ConnectionsDetachable: true,
+            ReattachConnections: true
+        });
+    }
+
+    lockStateAndEdgeInteractions() {
+        // Disable all state click handlers
+        const states = document.querySelectorAll('.state, .accepting-state');
+        states.forEach(state => {
+            state.classList.add('locked-state');
+            state.style.pointerEvents = 'none';
+            state.style.opacity = '0.7';
+        });
+
+        // Disable all connection click handlers
+        if (this.jsPlumbInstance) {
+            const connections = this.jsPlumbInstance.getAllConnections();
+            connections.forEach(conn => {
+                if (conn.canvas) {
+                    conn.canvas.classList.add('locked-connection');
+                    conn.canvas.style.pointerEvents = 'none';
+                    conn.canvas.style.opacity = '0.7';
+                }
+
+                // Disable label clicks too
+                const labelOverlay = conn.getOverlay('label');
+                if (labelOverlay && labelOverlay.canvas) {
+                    labelOverlay.canvas.style.pointerEvents = 'none';
+                    labelOverlay.canvas.style.opacity = '0.7';
+                }
+            });
+        }
+    }
+
+    unlockStateAndEdgeInteractions() {
+        // Re-enable all state click handlers
+        const states = document.querySelectorAll('.state, .accepting-state');
+        states.forEach(state => {
+            state.classList.remove('locked-state');
+            state.style.pointerEvents = 'auto';
+            state.style.opacity = '1';
+        });
+
+        // Re-enable all connection click handlers
+        if (this.jsPlumbInstance) {
+            const connections = this.jsPlumbInstance.getAllConnections();
+            connections.forEach(conn => {
+                if (conn.canvas) {
+                    conn.canvas.classList.remove('locked-connection');
+                    conn.canvas.style.pointerEvents = 'auto';
+                    conn.canvas.style.opacity = '1';
+                }
+
+                // Re-enable label clicks too
+                const labelOverlay = conn.getOverlay('label');
+                if (labelOverlay && labelOverlay.canvas) {
+                    labelOverlay.canvas.style.pointerEvents = 'auto';
+                    labelOverlay.canvas.style.opacity = '1';
+                }
+            });
+        }
+    }
+
+    closeOpenEditors() {
+        // Close inline state editor
+        const stateEditor = document.getElementById('state-inline-editor');
+        if (stateEditor) {
+            stateEditor.style.display = 'none';
+        }
+
+        // Close inline edge editor
+        const edgeEditor = document.getElementById('edge-inline-editor');
+        if (edgeEditor) {
+            edgeEditor.style.display = 'none';
+        }
+
+        // Close edge symbol modal
+        const edgeModal = document.getElementById('edge-symbol-modal');
+        if (edgeModal) {
+            edgeModal.style.display = 'none';
+        }
+
+        // Close transition table modal
+        const tableModal = document.getElementById('transition-table-modal');
+        if (tableModal) {
+            tableModal.style.display = 'none';
+        }
+    }
+
+    updateButtonStates(locked) {
+        const playBtn = document.getElementById('play-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const fastForwardBtn = document.getElementById('fast-forward-btn');
+
+        if (locked) {
+            // During simulation: disable play and fast-forward, enable stop
+            if (playBtn) {
+                playBtn.disabled = true;
+                playBtn.classList.add('locked-button');
+            }
+            if (fastForwardBtn) {
+                fastForwardBtn.disabled = true;
+                fastForwardBtn.classList.add('locked-button');
+            }
+            if (stopBtn) {
+                stopBtn.disabled = false;
+                stopBtn.classList.remove('locked-button');
+                stopBtn.classList.add('active-button');
+            }
+        } else {
+            // Not simulating: enable play and fast-forward, disable stop
+            if (playBtn) {
+                playBtn.disabled = false;
+                playBtn.classList.remove('locked-button');
+            }
+            if (fastForwardBtn) {
+                fastForwardBtn.disabled = false;
+                fastForwardBtn.classList.remove('locked-button');
+            }
+            if (stopBtn) {
+                stopBtn.disabled = false; // Keep enabled but not active
+                stopBtn.classList.remove('active-button');
+            }
+        }
+    }
+
+    addLockedIndicator() {
+        // Add a subtle overlay or border to indicate locked state
+        const canvas = document.getElementById('fsa-canvas');
+        if (canvas && !document.getElementById('lock-indicator')) {
+            const indicator = document.createElement('div');
+            indicator.id = 'lock-indicator';
+            indicator.innerHTML = `
+                <div class="lock-message">
+                    <div class="lock-icon">🔒</div>
+                    <div class="lock-text">Simulation Running...</div>
+                </div>
+            `;
+            indicator.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                background-color: rgba(255, 193, 7, 0.9);
+                color: #000;
+                padding: 8px 12px;
+                border-radius: 5px;
+                font-size: 12px;
+                font-weight: bold;
+                z-index: 1000;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            `;
+            canvas.appendChild(indicator);
+        }
+    }
+
+    removeLockedIndicator() {
+        const indicator = document.getElementById('lock-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+}
+
+// Create and export a singleton instance
+export const controlLockManager = new ControlLockManager();
+
+// Export the class as well for potential multiple instances
+export { ControlLockManager };

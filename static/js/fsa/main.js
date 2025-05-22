@@ -35,15 +35,16 @@ import {
 } from './uiManager.js';
 import { showTransitionTable } from './transitionTableManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
+import { controlLockManager } from './controlLockManager.js';
 
 // Global variables
 let jsPlumbInstance;
 
 /**
- * Initialize the FSA simulator
+ * Initialise the FSA simulator
  */
-export function initializeSimulator() {
-    // Initialize JSPlumb
+export function initialiseSimulator() {
+    // Initialise JSPlumb
     jsPlumbInstance = jsPlumb.getInstance({
         Endpoint: ["Dot", { radius: 2 }],
         Connector: "Straight",
@@ -61,6 +62,9 @@ export function initializeSimulator() {
         ],
         Container: "fsa-canvas"
     });
+
+    // Initialise the control lock manager with the JSPlumb instance
+    controlLockManager.initialize(jsPlumbInstance);
 
     // Initial alphabet display
     updateAlphabetDisplay(getEdgeSymbolMap(), getEpsilonTransitionMap());
@@ -82,24 +86,28 @@ export function initializeSimulator() {
 export function setupEventListeners() {
     // Tool selection
     document.getElementById('state-tool').addEventListener('click', function() {
+        if (controlLockManager.isControlsLocked()) return;
         closeInlineStateEditor();
         closeInlineEdgeEditor();
         selectTool('state');
     });
 
     document.getElementById('accepting-state-tool').addEventListener('click', function() {
+        if (controlLockManager.isControlsLocked()) return;
         closeInlineStateEditor();
         closeInlineEdgeEditor();
         selectTool('accepting-state');
     });
 
     document.getElementById('edge-tool').addEventListener('click', function() {
+        if (controlLockManager.isControlsLocked()) return;
         closeInlineStateEditor();
         closeInlineEdgeEditor();
         selectTool('edge');
     });
 
     document.getElementById('delete-tool').addEventListener('click', function() {
+        if (controlLockManager.isControlsLocked()) return;
         closeInlineStateEditor();
         closeInlineEdgeEditor();
         selectTool('delete');
@@ -107,6 +115,8 @@ export function setupEventListeners() {
 
     // Edge style buttons
     document.getElementById('straight-edges-btn').addEventListener('click', function() {
+        if (controlLockManager.isControlsLocked()) return;
+
         // Close any open inline editors or modals
         closeInlineStateEditor();
         closeInlineEdgeEditor();
@@ -125,6 +135,8 @@ export function setupEventListeners() {
     });
 
     document.getElementById('curved-edges-btn').addEventListener('click', function() {
+        if (controlLockManager.isControlsLocked()) return;
+
         // Close any open inline editors or modals
         closeInlineStateEditor();
         closeInlineEdgeEditor();
@@ -147,6 +159,8 @@ export function setupEventListeners() {
 
     // Canvas click event
     document.getElementById('fsa-canvas').addEventListener('click', function(e) {
+        if (controlLockManager.isControlsLocked()) return;
+
         if (e.target.id === 'fsa-canvas') {
             const currentTool = getCurrentTool();
             if (currentTool === 'state') {
@@ -163,6 +177,8 @@ export function setupEventListeners() {
 
     // Handle edge label deletion clicks
     document.addEventListener('click', function(e) {
+        if (controlLockManager.isControlsLocked()) return;
+
         if (getCurrentTool() === 'delete') {
             // Check if we clicked on an edge label
             const connections = jsPlumbInstance.getAllConnections();
@@ -199,7 +215,9 @@ export function setupEventListeners() {
 
     // Window resize event
     window.addEventListener('resize', function() {
-        jsPlumbInstance.repaintEverything();
+        if (!controlLockManager.isControlsLocked()) {
+            jsPlumbInstance.repaintEverything();
+        }
     });
 }
 
@@ -249,6 +267,8 @@ function setupConnectionEvents() {
 
             // Add a more robust click handler
             $(info.connection.canvas).on('click', function(e) {
+                if (controlLockManager.isControlsLocked()) return;
+
                 e.stopPropagation();
                 e.preventDefault();
 
@@ -273,6 +293,8 @@ function setupConnectionEvents() {
             labelOverlay.canvas.style.zIndex = '25';
 
             $(labelOverlay.canvas).on('click', function(e) {
+                if (controlLockManager.isControlsLocked()) return;
+
                 e.stopPropagation();
                 e.preventDefault();
 
@@ -302,6 +324,8 @@ function setupConnectionEvents() {
  * @param {boolean} isAccepting - Whether it's an accepting state
  */
 function handleStateCreation(x, y, isAccepting) {
+    if (controlLockManager.isControlsLocked()) return;
+
     const callbacks = {
         onStateClick: handleStateClick,
         onStateDrag: handleStateDrag
@@ -318,6 +342,8 @@ function handleStateCreation(x, y, isAccepting) {
  * @param {Event} e - The click event
  */
 function handleStateClick(stateElement, e) {
+    if (controlLockManager.isControlsLocked()) return;
+
     const currentTool = getCurrentTool();
 
     if (currentTool === 'delete'){
@@ -365,6 +391,8 @@ function handleStateClick(stateElement, e) {
  * @param {Object} ui - The drag UI object
  */
 function handleStateDrag(stateElement, event, ui) {
+    if (controlLockManager.isControlsLocked()) return;
+
     // Close inline editors if open while dragging
     if (getCurrentEditingState() === stateElement) {
         closeInlineStateEditor();
@@ -383,6 +411,8 @@ function handleStateDrag(stateElement, event, ui) {
  * @param {Event} e - The click event
  */
 function handleEdgeClick(connection, e) {
+    if (controlLockManager.isControlsLocked()) return;
+
     const currentTool = getCurrentTool();
     if (currentTool === 'delete') {
         deleteEdge(jsPlumbInstance, connection);
@@ -396,20 +426,40 @@ function handleEdgeClick(connection, e) {
  * Setup functional buttons
  */
 function setupFunctionalButtons() {
+    // Play button - locks controls and starts simulation
     document.getElementById('play-btn').addEventListener('click', function() {
-        alert('Play functionality is not implemented yet.');
+        if (controlLockManager.isControlsLocked()) return;
+
+        console.log('Play button pressed - locking controls');
+        controlLockManager.lockControls();
+
+        // TODO: Later we'll add the actual simulation logic here
+        // For now, just show that controls are locked
+        console.log('Simulation would start here...');
     });
 
+    // Stop button - unlocks controls and stops simulation
     document.getElementById('stop-btn').addEventListener('click', function() {
-        alert('Stop functionality is not implemented yet.');
+        console.log('Stop button pressed - unlocking controls');
+        controlLockManager.unlockControls();
+
+        // TODO: Later we'll add logic to stop any running simulation here
+        console.log('Simulation stopped');
     });
 
+    // Fast forward button - currently disabled during lock
     document.getElementById('fast-forward-btn').addEventListener('click', function() {
-        alert('Fast forward functionality is not implemented yet.');
+        if (controlLockManager.isControlsLocked()) return;
+
+        console.log('Fast forward button pressed');
+        // TODO: Later we'll implement fast simulation mode
+        alert('Fast forward functionality will be implemented when simulation is added.');
     });
 
-    // Implement the show table button functionality
+    // Show table button - implement the show table button functionality
     document.getElementById('show-table-btn').addEventListener('click', function() {
+        if (controlLockManager.isControlsLocked()) return;
+
         showTransitionTable(jsPlumbInstance);
     });
 }
@@ -427,7 +477,15 @@ function setupDraggableTools() {
             clone.css('z-index', '1000'); // High z-index to stay on top
             return clone;
         },
+        start: function(event, ui) {
+            // Check if controls are locked before allowing drag
+            if (controlLockManager.isControlsLocked()) {
+                return false; // Cancel the drag
+            }
+        },
         stop: function(event, ui) {
+            if (controlLockManager.isControlsLocked()) return;
+
             const tool = $(this).attr('id');
             const canvas = document.getElementById('fsa-canvas');
             const canvasRect = canvas.getBoundingClientRect();
