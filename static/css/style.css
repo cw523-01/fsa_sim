@@ -1489,7 +1489,7 @@ main {
     }
     100% {
         stroke-dasharray: 20 10;
-        stroke-dashoffset: 30;
+        stroke-dashoffset: -30;
     }
 }
 

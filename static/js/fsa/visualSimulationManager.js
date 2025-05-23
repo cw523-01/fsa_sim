@@ -47,16 +47,21 @@ class VisualSimulationManager {
         // Clear any previous highlights
         this.clearAllHighlights();
 
-        // Highlight the starting state initially
-        if (executionPath.length > 0) {
-            const startingState = executionPath[0][0];
-            this.highlightState(startingState, 'current');
-        }
-
         // Clear input field and setup character highlighting
         this.setupInputHighlighting();
 
         try {
+            // First, highlight the starting state transition if we have execution steps
+            if (executionPath.length > 0) {
+                const startingState = executionPath[0][0];
+
+                // Highlight the starting state connection first
+                await this.highlightStartingTransition(startingState);
+
+                // Then highlight the starting state as current
+                this.highlightState(startingState, 'current');
+            }
+
             // Execute each step in the path
             for (let i = 0; i < executionPath.length; i++) {
                 if (!this.isRunning) break;
@@ -75,6 +80,67 @@ class VisualSimulationManager {
             console.error('Error during visual simulation:', error);
             this.stopSimulation();
         }
+    }
+
+    /**
+     * Highlight the starting state transition (arrow pointing to starting state)
+     * @param {string} startingStateId - ID of the starting state
+     */
+    async highlightStartingTransition(startingStateId) {
+        return new Promise((resolve) => {
+            // Find the starting state connection
+            const startingConnection = this.findStartingStateConnection(startingStateId);
+
+            if (startingConnection) {
+                // Highlight the starting connection
+                if (startingConnection.canvas) {
+                    startingConnection.canvas.classList.add('sim-active-transition');
+                    this.highlightedElements.add(startingConnection.canvas);
+                }
+
+                console.log(`Highlighted starting transition to ${startingStateId}`);
+
+                // Wait for a moment to show the starting transition
+                this.currentTimeout = setTimeout(() => {
+                    if (!this.isRunning) {
+                        resolve();
+                        return;
+                    }
+
+                    // Dim the starting transition after highlighting
+                    if (startingConnection.canvas) {
+                        startingConnection.canvas.classList.remove('sim-active-transition');
+                        startingConnection.canvas.classList.add('sim-used-transition');
+                    }
+
+                    resolve();
+                }, this.animationSpeed * 0.7); // Slightly shorter duration for starting transition
+
+                this.animationTimeouts.push(this.currentTimeout);
+            } else {
+                // If no starting connection found, just resolve immediately
+                resolve();
+            }
+        });
+    }
+
+    /**
+     * Find the starting state connection
+     * @param {string} startingStateId - ID of the starting state
+     * @returns {Object|null} - The starting state connection or null
+     */
+    findStartingStateConnection(startingStateId) {
+        if (!this.jsPlumbInstance) return null;
+
+        const allConnections = this.jsPlumbInstance.getAllConnections();
+
+        // Look for connection from 'start-source' to the starting state
+        return allConnections.find(conn =>
+            conn.sourceId === 'start-source' &&
+            conn.targetId === startingStateId &&
+            conn.canvas &&
+            conn.canvas.classList.contains('starting-connection')
+        );
     }
 
     /**
