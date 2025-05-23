@@ -1,6 +1,7 @@
 import { generateTransitionTable } from './transitionTableManager.js';
 import { isDeterministic, isConnected } from './fsaPropertyChecker.js';
 import { getStartingStateId } from './stateManager.js';
+import { visualSimulationManager } from './visualSimulationManager.js';
 
 /**
  * Converts the frontend FSA representation to the backend expected format
@@ -140,7 +141,7 @@ export async function simulateFSAOnBackend(fsa, inputString) {
 }
 
 /**
- * Formats the simulation result for display
+ * Formats the simulation result for display (text-only version)
  * @param {Object} result - Result from backend simulation
  * @param {string} inputString - The input string that was simulated
  * @returns {string} - Formatted result message
@@ -188,12 +189,13 @@ export function formatSimulationResult(result, inputString) {
 }
 
 /**
- * Main function to run FSA simulation
+ * Main function to run FSA simulation with visual animation
  * @param {Object} jsPlumbInstance - The JSPlumb instance
  * @param {string} inputString - Input string to simulate
+ * @param {boolean} visualMode - Whether to show visual animation (default: true)
  * @returns {Promise<Object>} - Promise resolving to simulation result with formatted message
  */
-export async function runFSASimulation(jsPlumbInstance, inputString) {
+export async function runFSASimulation(jsPlumbInstance, inputString, visualMode = true) {
     try {
         // Validate the FSA
         const validation = validateFSAForSimulation(jsPlumbInstance);
@@ -206,18 +208,39 @@ export async function runFSASimulation(jsPlumbInstance, inputString) {
             };
         }
 
+        // Initialize visual simulation manager with JSPlumb instance
+        if (visualMode) {
+            visualSimulationManager.initialize(jsPlumbInstance);
+        }
+
         // Simulate on backend
         const result = await simulateFSAOnBackend(validation.fsa, inputString);
 
-        // Format result for display
-        const formattedMessage = formatSimulationResult(result, inputString);
+        if (visualMode && result.path && result.path.length > 0) {
+            // Start visual simulation for accepted inputs with execution path
+            console.log('Starting visual simulation with path:', result.path);
+            visualSimulationManager.startVisualSimulation(result.path, inputString, result.accepted);
 
-        return {
-            success: true,
-            message: formattedMessage,
-            rawResult: result,
-            type: 'simulation_result'
-        };
+            // Return success without showing text alert (visual simulation will handle display)
+            return {
+                success: true,
+                message: '', // Empty message since visual simulation handles display
+                rawResult: result,
+                type: 'visual_simulation',
+                isVisual: true
+            };
+        } else {
+            // For rejected inputs or when visual mode is off, show text result
+            const formattedMessage = formatSimulationResult(result, inputString);
+
+            return {
+                success: true,
+                message: formattedMessage,
+                rawResult: result,
+                type: 'simulation_result',
+                isVisual: false
+            };
+        }
 
     } catch (error) {
         console.error('Simulation error:', error);
@@ -225,9 +248,35 @@ export async function runFSASimulation(jsPlumbInstance, inputString) {
         return {
             success: false,
             message: `❌ SIMULATION ERROR!\n\n${error.message}`,
-            type: 'backend_error'
+            type: 'backend_error',
+            isVisual: false
         };
     }
+}
+
+/**
+ * Run FSA simulation with fast-forward (no visual animation)
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @param {string} inputString - Input string to simulate
+ * @returns {Promise<Object>} - Promise resolving to simulation result
+ */
+export async function runFSASimulationFastForward(jsPlumbInstance, inputString) {
+    return runFSASimulation(jsPlumbInstance, inputString, false);
+}
+
+/**
+ * Stop any currently running visual simulation
+ */
+export function stopVisualSimulation() {
+    visualSimulationManager.stopSimulation();
+}
+
+/**
+ * Check if visual simulation is currently running
+ * @returns {boolean} - Whether visual simulation is running
+ */
+export function isVisualSimulationRunning() {
+    return visualSimulationManager.isSimulationRunning();
 }
 
 /**

@@ -36,7 +36,15 @@ import {
 import { showTransitionTable, generateTransitionTable } from './transitionTableManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 import { controlLockManager } from './controlLockManager.js';
-import { runFSASimulation, getInputString, validateInputString, convertFSAToBackendFormat } from './backendIntegration.js';
+import {
+    runFSASimulation,
+    runFSASimulationFastForward,
+    getInputString,
+    validateInputString,
+    convertFSAToBackendFormat,
+    stopVisualSimulation,
+    isVisualSimulationRunning
+} from './backendIntegration.js';
 
 // Global variables
 let jsPlumbInstance;
@@ -427,11 +435,11 @@ function handleEdgeClick(connection, e) {
  * Setup functional buttons
  */
 function setupFunctionalButtons() {
-    // Play button - locks controls and starts simulation
+    // Play button - locks controls and starts visual simulation
     document.getElementById('play-btn').addEventListener('click', async function() {
         if (controlLockManager.isControlsLocked()) return;
 
-        console.log('Play button pressed - starting simulation');
+        console.log('Play button pressed - starting visual simulation');
 
         // Get input string
         const inputString = getInputString();
@@ -453,44 +461,95 @@ function setupFunctionalButtons() {
 
             console.log(`Simulating input: "${inputString}"`);
 
-            // Run the simulation
-            const simulationResult = await runFSASimulation(jsPlumbInstance, inputString);
+            // Run the simulation with visual animation (default)
+            const simulationResult = await runFSASimulation(jsPlumbInstance, inputString, true);
 
-            // Display result in alert
-            alert(simulationResult.message);
+            // Only show alert for non-visual results (errors, rejections, etc.)
+            if (!simulationResult.isVisual && simulationResult.message) {
+                alert(simulationResult.message);
+            }
 
             // Log detailed result for debugging
             if (simulationResult.success && simulationResult.rawResult) {
                 console.log('Simulation completed successfully:', simulationResult.rawResult);
-            } else {
+            } else if (!simulationResult.success) {
                 console.log('Simulation failed:', simulationResult);
+            }
+
+            // For visual simulations, don't unlock controls immediately -
+            // they'll be unlocked when simulation ends or stop is pressed
+            if (!simulationResult.isVisual) {
+                controlLockManager.unlockControls();
             }
 
         } catch (error) {
             console.error('Unexpected error during simulation:', error);
             alert(`❌ UNEXPECTED ERROR!\n\nAn unexpected error occurred during simulation:\n${error.message}`);
-        } finally {
-            // Always unlock controls when done
             controlLockManager.unlockControls();
         }
     });
 
-    // Stop button - unlocks controls and stops simulation
+    // Stop button - stops visual simulation and unlocks controls
     document.getElementById('stop-btn').addEventListener('click', function() {
-        console.log('Stop button pressed - unlocking controls');
+        console.log('Stop button pressed - stopping simulation');
+
+        // Stop any running visual simulation
+        stopVisualSimulation();
+
+        // Unlock controls
         controlLockManager.unlockControls();
 
-        // TODO: Later we'll add logic to stop any running simulation here
-        console.log('Simulation stopped');
+        console.log('Simulation stopped and controls unlocked');
     });
 
-    // Fast forward button - currently disabled during lock
-    document.getElementById('fast-forward-btn').addEventListener('click', function() {
+    // Fast forward button - runs simulation without animation
+    document.getElementById('fast-forward-btn').addEventListener('click', async function() {
         if (controlLockManager.isControlsLocked()) return;
 
-        console.log('Fast forward button pressed');
-        // TODO: Later we'll implement fast simulation mode
-        alert('Fast forward functionality will be implemented when simulation is added.');
+        console.log('Fast forward button pressed - running simulation without animation');
+
+        // Get input string
+        const inputString = getInputString();
+
+        // Lock controls briefly for fast simulation
+        controlLockManager.lockControls();
+
+        try {
+            // Quick validation of input string format
+            const tableData = generateTransitionTable(jsPlumbInstance);
+            if (tableData.alphabet.length > 0) {
+                const inputValidation = validateInputString(inputString, tableData.alphabet);
+                if (!inputValidation.valid) {
+                    alert(`❌ INPUT ERROR!\n\n${inputValidation.message}`);
+                    controlLockManager.unlockControls();
+                    return;
+                }
+            }
+
+            console.log(`Fast-forward simulating input: "${inputString}"`);
+
+            // Run the simulation without visual animation
+            const simulationResult = await runFSASimulationFastForward(jsPlumbInstance, inputString);
+
+            // Show result immediately
+            if (simulationResult.message) {
+                alert(simulationResult.message);
+            }
+
+            // Log detailed result for debugging
+            if (simulationResult.success && simulationResult.rawResult) {
+                console.log('Fast-forward simulation completed successfully:', simulationResult.rawResult);
+            } else if (!simulationResult.success) {
+                console.log('Fast-forward simulation failed:', simulationResult);
+            }
+
+        } catch (error) {
+            console.error('Unexpected error during fast-forward simulation:', error);
+            alert(`❌ UNEXPECTED ERROR!\n\nAn unexpected error occurred during simulation:\n${error.message}`);
+        } finally {
+            // Always unlock controls after fast-forward simulation
+            controlLockManager.unlockControls();
+        }
     });
 
     // Show table button - implement the show table button functionality

@@ -1164,3 +1164,489 @@ main {
     -o-user-drag: none;
     user-drag: none;
 }
+
+/* Visual Simulation Styles */
+
+/* State highlighting during simulation */
+.sim-current {
+    border-color: #FF9800 !important;
+    border-width: 4px !important;
+    background-color: rgba(255, 152, 0, 0.2) !important;
+    box-shadow: 0 0 25px rgba(255, 152, 0, 0.8) !important;
+    animation: pulse-current 1s infinite;
+    transform: scale(1.1);
+    transition: all 0.3s ease;
+    z-index: 100 !important;
+}
+
+.sim-visited {
+    border-color: #2196F3 !important;
+    border-width: 3px !important;
+    background-color: rgba(33, 150, 243, 0.1) !important;
+    box-shadow: 0 0 10px rgba(33, 150, 243, 0.4) !important;
+    transition: all 0.3s ease;
+}
+
+.sim-final {
+    border-color: #4CAF50 !important;
+    border-width: 4px !important;
+    background-color: rgba(76, 175, 80, 0.1) !important;
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.6) !important;
+    animation: pulse-final 1.5s infinite;
+    transform: scale(1.15);
+    transition: all 0.3s ease;
+}
+
+.sim-rejected {
+    border-color: #f44336 !important;
+    border-width: 4px !important;
+    background-color: rgba(244, 67, 54, 0.2) !important;
+    box-shadow: 0 0 25px rgba(244, 67, 54, 0.8) !important;
+    animation: shake 0.8s;
+    transition: all 0.3s ease;
+}
+
+/* Pulse animations */
+@keyframes pulse-current {
+    0% {
+        box-shadow: 0 0 20px rgba(255, 152, 0, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(255, 152, 0, 0.6);
+    }
+    100% {
+        box-shadow: 0 0 20px rgba(255, 152, 0, 0.6);
+    }
+}
+
+@keyframes pulse-final {
+    0% {
+        box-shadow: 0 0 25px rgba(76, 175, 80, 0.9);
+        transform: scale(1.15);
+    }
+    50% {
+        box-shadow: 0 0 35px rgba(76, 175, 80, 0.9);
+        transform: scale(1.2);
+    }
+    100% {
+        box-shadow: 0 0 25px rgba(76, 175, 80, 0.9);
+        transform: scale(1.15);
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Transition/connection highlighting */
+.sim-active-transition path {
+    stroke: rgba(255, 152, 0, 0.6) !important;
+    stroke-width: 5px !important;
+    filter: drop-shadow(0 0 8px rgba(255, 152, 0, 0.6));
+    animation: flow 1s infinite;
+}
+
+.sim-used-transition path {
+    stroke: #2196F3 !important;
+    stroke-width: 3px !important;
+    filter: drop-shadow(0 0 4px rgba(33, 150, 243, 0.5));
+    opacity: 0.8;
+}
+
+/* Label highlighting */
+.sim-active-label {
+    background-color: rgba(255, 152, 0, 0.6) !important;
+    color: white !important;
+    font-weight: bold !important;
+    border: 2px solid rgba(255, 152, 0, 0.6) !important;
+    transform: scale(1.2);
+    box-shadow: 0 0 10px rgba(255, 152, 0, 0.6) !important;
+    animation: label-glow 1s infinite;
+    z-index: 100 !important;
+}
+
+.sim-used-label {
+    background-color: #2196F3 !important;
+    color: white !important;
+    border: 1px solid #1976D2 !important;
+    transform: scale(1.05);
+    opacity: 0.9;
+}
+
+@keyframes label-glow {
+    0% {
+        box-shadow: 0 0 10px rgba(255, 152, 0, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 152, 0, 0.6);
+    }
+    100% {
+        box-shadow: 0 0 10px rgba(255, 152, 0, 0.6);
+    }
+}
+
+/* Flowing animation for active transitions */
+@keyframes flow {
+    0% {
+        stroke-dasharray: 20 10;
+        stroke-dashoffset: 0;
+    }
+    100% {
+        stroke-dasharray: 20 10;
+        stroke-dashoffset: 30;
+    }
+}
+
+/* Input field highlighting during simulation */
+.simulation-active {
+    border-color: rgba(255, 152, 0, 0.6) !important;
+    border-width: 2px !important;
+    box-shadow: 0 0 10px rgba(255, 152, 0, 0.2) !important;
+    transition: all 0.3s ease;
+}
+
+/* Character-by-character highlighting animation */
+@keyframes character-blink {
+    0%, 50% {
+        background-color: rgba(255, 152, 0, 0.3);
+        transform: scale(1);
+    }
+    51%, 100% {
+        background-color: rgba(255, 152, 0, 0.6);
+        transform: scale(1.1);
+    }
+}
+
+/* Override locked styles during simulation for highlighted elements */
+.locked-canvas .sim-current,
+.locked-canvas .sim-visited,
+.locked-canvas .sim-final,
+.locked-canvas .sim-rejected {
+    filter: brightness(1) !important;
+    opacity: 1 !important;
+}
+
+.locked-canvas .sim-active-transition,
+.locked-canvas .sim-used-transition {
+    filter: brightness(1) drop-shadow(0 0 25px rgba(255, 152, 0, 0.8)) !important;
+    opacity: 1 !important;
+}
+
+.locked-canvas .sim-active-label,
+.locked-canvas .sim-used-label {
+    opacity: 1 !important;
+    filter: brightness(1) !important;
+}
+
+/* Ensure input field stays visible during locked state */
+.locked-input.simulation-active {
+    opacity: 1 !important;
+    filter: brightness(1) !important;
+}
+
+/* Only add transitions to simulation-specific classes, not base elements */
+.sim-current,
+.sim-visited,
+.sim-final,
+.sim-rejected {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sim-active-label,
+.sim-used-label {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}/* Add these styles to the existing style.css file */
+
+/* Visual Simulation Styles */
+
+/* State highlighting during simulation */
+.sim-current {
+    border-color: #FF9800 !important;
+    border-width: 4px !important;
+    background-color: rgba(255, 152, 0, 0.2) !important;
+    box-shadow: 0 0 25px rgba(255, 152, 0, 0.8) !important;
+    animation: pulse-current 1s infinite;
+    transform: scale(1.1);
+    transition: all 0.3s ease;
+    z-index: 100 !important;
+}
+
+.sim-visited {
+    border-color: #2196F3 !important;
+    border-width: 3px !important;
+    background-color: rgba(33, 150, 243, 0.1) !important;
+    box-shadow: 0 0 10px rgba(33, 150, 243, 0.4) !important;
+    transition: all 0.3s ease;
+}
+
+.sim-final {
+    border-color: #4CAF50 !important;
+    border-width: 4px !important;
+    background-color: rgba(76, 175, 80, 0.1) !important;
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.6) !important;
+    animation: pulse-final 1.5s infinite;
+    transform: scale(1.15);
+    transition: all 0.3s ease;
+}
+
+.sim-rejected {
+    border-color: #f44336 !important;
+    border-width: 4px !important;
+    background-color: rgba(244, 67, 54, 0.2) !important;
+    box-shadow: 0 0 25px rgba(244, 67, 54, 0.8) !important;
+    animation: shake 0.8s;
+    transition: all 0.3s ease;
+}
+
+/* Pulse animations */
+@keyframes pulse-current {
+    0% {
+        box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(76, 175, 80, 0.9);
+    }
+    100% {
+        box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+    }
+}
+
+@keyframes pulse-final {
+    0% {
+        box-shadow: 0 0 25px rgba(255, 152, 0, 0.8);
+        transform: scale(1.15);
+    }
+    50% {
+        box-shadow: 0 0 35px rgba(255, 152, 0, 1);
+        transform: scale(1.2);
+    }
+    100% {
+        box-shadow: 0 0 25px rgba(255, 152, 0, 0.8);
+        transform: scale(1.15);
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Transition/connection highlighting */
+.sim-active-transition path {
+    stroke: rgba(255, 152, 0, 0.6) !important;
+    stroke-width: 5px !important;
+    filter: drop-shadow(0 0 8px rgba(255, 152, 0, 0.6));
+    animation: flow 1s infinite;
+}
+
+.sim-used-transition path {
+    stroke: #2196F3 !important;
+    stroke-width: 3px !important;
+    filter: drop-shadow(0 0 4px rgba(33, 150, 243, 0.5));
+    opacity: 0.8;
+}
+
+/* Label highlighting */
+.sim-active-label {
+    background-color: #FF9800 !important;
+    color: white !important;
+    font-weight: bold !important;
+    border: 2px solid #FF9800 !important;
+    transform: scale(1.2);
+    box-shadow: 0 0 10px rgba(255, 152, 0, 0.8) !important;
+    animation: label-glow 1s infinite;
+    z-index: 100 !important;
+}
+
+.sim-used-label {
+    background-color: #2196F3 !important;
+    color: white !important;
+    border: 1px solid #1976D2 !important;
+    transform: scale(1.05);
+    opacity: 0.9;
+}
+
+@keyframes label-glow {
+    0% {
+        box-shadow: 0 0 10px rgba(255, 152, 0, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 152, 0, 0.8);
+    }
+    100% {
+        box-shadow: 0 0 10px rgba(255, 152, 0, 0.8);
+    }
+}
+
+/* Flowing animation for active transitions */
+@keyframes flow {
+    0% {
+        stroke-dasharray: 20 10;
+        stroke-dashoffset: 0;
+    }
+    100% {
+        stroke-dasharray: 20 10;
+        stroke-dashoffset: 30;
+    }
+}
+
+/* Simulation status display */
+.simulation-status {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.simulation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.simulation-title {
+    font-weight: bold;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.simulation-control-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.simulation-control-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.simulation-progress {
+    margin-bottom: 12px;
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.progress-bar {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.simulation-input {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.input-highlight {
+    margin-top: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.input-highlight .processed {
+    color: #81C784;
+    opacity: 0.7;
+}
+
+.input-highlight .current {
+    color: #FFF;
+    background: rgba(255, 193, 7, 0.8);
+    padding: 2px 4px;
+    border-radius: 3px;
+    animation: blink 1s infinite;
+}
+
+.input-highlight .remaining {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.5; }
+}
+
+/* Ensure simulation elements stay on top */
+#simulation-status-display {
+    pointer-events: auto !important;
+    position: absolute !important;
+    z-index: 2000 !important;
+}
+
+#simulation-status-display * {
+    pointer-events: auto !important;
+}
+
+/* Override locked styles during simulation for highlighted elements */
+.locked-canvas .sim-current,
+.locked-canvas .sim-visited,
+.locked-canvas .sim-final,
+.locked-canvas .sim-rejected {
+    filter: brightness(1) !important;
+    opacity: 1 !important;
+}
+
+.locked-canvas .sim-active-transition,
+.locked-canvas .sim-used-transition {
+    filter: brightness(1) drop-shadow(0 0 8px rgba(255, 152, 0, 0.8)) !important;
+    opacity: 1 !important;
+}
+
+.locked-canvas .sim-active-label,
+.locked-canvas .sim-used-label {
+    opacity: 1 !important;
+    filter: brightness(1) !important;
+}
+
+/* Mobile responsiveness for simulation display */
+@media (max-width: 768px) {
+    #simulation-status-display {
+        top: 10px !important;
+        right: 10px !important;
+        left: 10px !important;
+        min-width: auto !important;
+        font-size: 12px !important;
+    }
+
+    .simulation-title {
+        font-size: 14px !important;
+    }
+
+    .progress-info {
+        font-size: 11px !important;
+    }
+
+    .input-highlight {
+        font-size: 12px !important;
+        letter-spacing: 1px !important;
+    }
+}

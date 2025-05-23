@@ -28,6 +28,11 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks) {
 
     document.getElementById('fsa-canvas').appendChild(state);
 
+    // Automatically set the first state as the starting state
+    if (startingStateId === null) {
+        createStartingStateIndicator(jsPlumbInstance, stateId);
+    }
+
     // Make state draggable
     $(state).draggable({
         containment: "parent",
@@ -151,6 +156,12 @@ export function createStartingStateIndicator(jsPlumbInstance, stateId) {
             connectionType: "basic"
         });
     }
+
+    requestAnimationFrame(() => {
+        startSource.style.left = (stateElement.offsetLeft - 50) + 'px';
+        startSource.style.top = (stateElement.offsetTop + 25) + 'px';
+        jsPlumbInstance.revalidate('start-source');
+    });
 
     // Position the start source to the left of the state
     const stateLeft = stateBounds.left - canvasBounds.left;

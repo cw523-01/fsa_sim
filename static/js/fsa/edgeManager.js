@@ -510,3 +510,8 @@ export function getEpsilonSymbol() {
 
 // For backward compatibility
 export const toggleEdgeStyle = setAllEdgeStyles;
+
+/**
+ * Make getEdgeSymbols available globally for visual simulation
+ */
+window.getEdgeSymbols = getEdgeSymbols;
