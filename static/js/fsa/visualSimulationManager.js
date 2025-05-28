@@ -14,6 +14,8 @@ class VisualSimulationManager {
         this.currentTimeout = null;
         this.inputField = null; // Reference to the input field for highlighting
         this.originalInputValue = ''; // Store original input value
+        this.simulationResult = null; // Store simulation result for popup
+        this.autoCloseTimeout = null; // Track auto-close timeout
     }
 
     /**
@@ -41,6 +43,13 @@ class VisualSimulationManager {
         this.executionPath = executionPath;
         this.inputString = inputString;
         this.originalInputValue = this.inputField ? this.inputField.value : ''; // Store original value
+
+        // Store simulation result for later popup display
+        this.simulationResult = {
+            isAccepted: isAccepted,
+            executionPath: executionPath,
+            inputString: inputString
+        };
 
         console.log('Starting visual simulation with path:', executionPath);
 
@@ -74,6 +83,13 @@ class VisualSimulationManager {
             // Show final result if simulation completed
             if (this.isRunning) {
                 this.showFinalResult(isAccepted);
+
+                // Auto-trigger stop button after showing final result
+                setTimeout(() => {
+                    if (this.isRunning) {
+                        this.autoClickStopButton();
+                    }
+                }, 2000);
             }
 
         } catch (error) {
@@ -328,13 +344,6 @@ class VisualSimulationManager {
 
         // Update input field to show completion
         this.updateInputHighlight(this.executionPath.length, isAccepted);
-
-        // Auto-stop simulation after showing result
-        setTimeout(() => {
-            if (this.isRunning) {
-                this.stopSimulation();
-            }
-        }, 2000);
     }
 
     /**
@@ -449,15 +458,6 @@ class VisualSimulationManager {
     }
 
     /**
-     * Highlight the input field container to show simulation is active
-     */
-    highlightInputField() {
-        if (this.inputField) {
-            this.inputField.classList.add('simulation-active');
-        }
-    }
-
-    /**
      * Clear input field highlighting and restore normal appearance
      */
     clearInputHighlight() {
@@ -477,6 +477,151 @@ class VisualSimulationManager {
     }
 
     /**
+     * Automatically click the stop button to end the simulation
+     */
+    autoClickStopButton() {
+        console.log('Auto-clicking stop button after simulation completion');
+
+        const stopButton = document.getElementById('stop-btn');
+        if (stopButton && !stopButton.disabled) {
+            // Trigger the stop button click event
+            stopButton.click();
+
+            // Show result popup after a brief delay to allow stop processing
+            setTimeout(() => {
+                this.showResultPopup();
+            }, 300);
+        } else {
+            // Fallback: stop simulation manually and show popup
+            this.stopSimulation();
+            this.showResultPopup();
+        }
+    }
+
+    /**
+     * Show the simulation result popup
+     */
+    showResultPopup() {
+        if (!this.simulationResult) return;
+
+        // Remove any existing popup
+        const existingPopup = document.getElementById('simulation-result-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+
+        // Create popup element
+        const popup = document.createElement('div');
+        popup.id = 'simulation-result-popup';
+        popup.className = this.simulationResult.isAccepted ? 'accepted' : 'rejected';
+
+        // Build popup content
+        const statusText = this.simulationResult.isAccepted ? 'ACCEPTED' : 'REJECTED';
+        const statusIcon = this.simulationResult.isAccepted ? '✓' : '✗';
+        const statusClass = this.simulationResult.isAccepted ? 'accepted' : 'rejected';
+
+        let pathDetails = '';
+        if (this.simulationResult.executionPath && this.simulationResult.executionPath.length > 0) {
+            pathDetails = `
+                <div class="popup-path">
+                    ${this.simulationResult.executionPath.map((step, index) => {
+                        const [currentState, symbol, nextState] = step;
+                        return `<div class="popup-path-step">${index + 1}. ${currentState} --${symbol}--> ${nextState}</div>`;
+                    }).join('')}
+                </div>
+            `;
+
+            const finalState = this.simulationResult.executionPath[this.simulationResult.executionPath.length - 1][2];
+            const finalStateText = this.simulationResult.isAccepted ?
+                `Final state: ${finalState} (accepting)` :
+                `Final state: ${finalState} (non-accepting)`;
+
+            pathDetails += `<div class="popup-final-state ${statusClass}">${finalStateText}</div>`;
+        }
+
+        popup.innerHTML = `
+            <div class="popup-header">
+                <div class="popup-status ${statusClass}">
+                    <div class="popup-icon ${statusClass}">${statusIcon}</div>
+                    <span>INPUT ${statusText}</span>
+                </div>
+                <button class="popup-close" onclick="visualSimulationManager.hideResultPopup()">×</button>
+            </div>
+            <div class="popup-input">
+                Input: <span class="popup-input-string">"${this.simulationResult.inputString}"</span>
+            </div>
+            <div class="popup-result ${statusClass}">
+                Result: ${statusText}
+            </div>
+            ${pathDetails}
+            <div class="popup-progress">
+                <div class="popup-progress-bar ${statusClass}"></div>
+            </div>
+        `;
+
+        // Add popup to canvas
+        const canvas = document.getElementById('fsa-canvas');
+        if (canvas) {
+            canvas.appendChild(popup);
+
+            // Trigger show animation
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 100);
+
+            // Start auto-close timer
+            this.startAutoCloseTimer(popup);
+        }
+    }
+
+    /**
+     * Start the auto-close timer for the result popup
+     * @param {HTMLElement} popup - The popup element
+     */
+    startAutoCloseTimer(popup) {
+        const autoCloseDelay = 5000; // 5 seconds
+
+        // Animate progress bar
+        const progressBar = popup.querySelector('.popup-progress-bar');
+        if (progressBar) {
+            progressBar.style.width = '100%';
+            progressBar.style.transition = `width ${autoCloseDelay}ms linear`;
+
+            // Start with 0 width, then animate to full
+            setTimeout(() => {
+                progressBar.style.width = '0%';
+            }, 100);
+        }
+
+        // Set auto-close timeout
+        this.autoCloseTimeout = setTimeout(() => {
+            this.hideResultPopup();
+        }, autoCloseDelay);
+    }
+
+    /**
+     * Hide the result popup
+     */
+    hideResultPopup() {
+        const popup = document.getElementById('simulation-result-popup');
+        if (popup) {
+            popup.classList.add('hide');
+
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 400);
+        }
+
+        // Clear auto-close timeout
+        if (this.autoCloseTimeout) {
+            clearTimeout(this.autoCloseTimeout);
+            this.autoCloseTimeout = null;
+        }
+    }
+
+    /**
      * Stop the simulation and clean up
      */
     stopSimulation() {
@@ -491,6 +636,12 @@ class VisualSimulationManager {
         if (this.currentTimeout) {
             clearTimeout(this.currentTimeout);
             this.currentTimeout = null;
+        }
+
+        // Clear auto-close timeout
+        if (this.autoCloseTimeout) {
+            clearTimeout(this.autoCloseTimeout);
+            this.autoCloseTimeout = null;
         }
 
         // Clear all visual highlights
@@ -553,5 +704,5 @@ class VisualSimulationManager {
 // Create and export a singleton instance
 export const visualSimulationManager = new VisualSimulationManager();
 
-// Export the class as well for potential multiple instances
-export { VisualSimulationManager };
+// Make it globally accessible for popup interactions
+window.visualSimulationManager = visualSimulationManager;
