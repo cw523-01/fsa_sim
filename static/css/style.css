@@ -1866,3 +1866,236 @@ main {
         font-size: 11px;
     }
 }
+
+#simulation-result-popup {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    padding: 20px;
+    min-width: 280px;
+    max-width: 320px;
+    z-index: 2000;
+    transform: translateX(100%);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-left: 6px solid;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#simulation-result-popup.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+#simulation-result-popup.accepted {
+    border-left-color: #4CAF50;
+    background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
+}
+
+#simulation-result-popup.rejected {
+    border-left-color: #f44336;
+    background: linear-gradient(135deg, #ffeaea 0%, #fff5f5 100%);
+}
+
+#simulation-result-popup.error {
+    border-left-color: #ff9800;
+    background: linear-gradient(135deg, #fff3e0 0%, #fafafa 100%);
+}
+
+.popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.popup-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.popup-status.accepted {
+    color: #2e7d32;
+}
+
+.popup-status.rejected {
+    color: #c62828;
+}
+
+.popup-status.error {
+    color: #ef6c00;
+}
+
+.popup-icon {
+    font-size: 20px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: white;
+}
+
+.popup-icon.accepted {
+    background-color: #4CAF50;
+}
+
+.popup-icon.rejected {
+    background-color: #f44336;
+}
+
+.popup-icon.error {
+    background-color: #ff9800;
+}
+
+.popup-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.popup-close:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: #333;
+}
+
+.popup-input {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #555;
+}
+
+.popup-input-string {
+    font-family: 'Courier New', monospace;
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    margin: 0 4px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.popup-result {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.popup-result.accepted {
+    color: #2e7d32;
+}
+
+.popup-result.rejected {
+    color: #c62828;
+}
+
+.popup-result.error {
+    color: #ef6c00;
+}
+
+.popup-details {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.4;
+}
+
+.popup-path {
+    margin-top: 8px;
+    max-height: 120px;
+    overflow-y: auto;
+    background-color: rgba(0, 0, 0, 0.03);
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.popup-path-step {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    margin-bottom: 2px;
+    color: #444;
+}
+
+.popup-final-state {
+    margin-top: 8px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.popup-final-state.accepted {
+    color: #2e7d32;
+}
+
+.popup-final-state.rejected {
+    color: #c62828;
+}
+
+/* Auto-close progress indicator */
+.popup-progress {
+    height: 3px;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 1.5px;
+    overflow: hidden;
+    margin-top: 12px;
+}
+
+.popup-progress-bar {
+    height: 100%;
+    border-radius: 1.5px;
+    transition: width linear;
+}
+
+.popup-progress-bar.accepted {
+    background-color: #4CAF50;
+}
+
+.popup-progress-bar.rejected {
+    background-color: #f44336;
+}
+
+/* Slide out animation */
+#simulation-result-popup.hide {
+    transform: translateX(100%);
+    opacity: 0;
+}
+
+/* Mobile responsiveness for result popup */
+@media (max-width: 768px) {
+    #simulation-result-popup {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+        max-width: none;
+    }
+
+    .popup-status {
+        font-size: 14px;
+    }
+
+    .popup-input,
+    .popup-result {
+        font-size: 12px;
+    }
+
+    .popup-details {
+        font-size: 11px;
+    }
+}

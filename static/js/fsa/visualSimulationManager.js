@@ -99,6 +99,28 @@ class VisualSimulationManager {
     }
 
     /**
+     * Hide the result popup
+     */
+    hideResultPopup() {
+        const popup = document.getElementById('simulation-result-popup');
+        if (popup) {
+            popup.classList.add('hide');
+
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 400);
+        }
+
+        // Clear auto-close timeout
+        if (this.autoCloseTimeout) {
+            clearTimeout(this.autoCloseTimeout);
+            this.autoCloseTimeout = null;
+        }
+    }
+
+    /**
      * Highlight the starting state transition (arrow pointing to starting state)
      * @param {string} startingStateId - ID of the starting state
      */
@@ -577,9 +599,10 @@ class VisualSimulationManager {
     /**
      * Start the auto-close timer for the result popup
      * @param {HTMLElement} popup - The popup element
+     * @param {number} customDelay - Custom delay in milliseconds (optional)
      */
-    startAutoCloseTimer(popup) {
-        const autoCloseDelay = 5000; // 5 seconds
+    startAutoCloseTimer(popup, customDelay = null) {
+        const autoCloseDelay = customDelay || 5000; // Default 5 seconds, or custom delay
 
         // Animate progress bar
         const progressBar = popup.querySelector('.popup-progress-bar');
@@ -600,24 +623,78 @@ class VisualSimulationManager {
     }
 
     /**
-     * Hide the result popup
+     * Show the simulation result popup with fast-forward indicator
      */
-    hideResultPopup() {
-        const popup = document.getElementById('simulation-result-popup');
-        if (popup) {
-            popup.classList.add('hide');
+    showFastForwardResultPopup() {
+        if (!this.simulationResult) return;
 
-            setTimeout(() => {
-                if (popup.parentNode) {
-                    popup.parentNode.removeChild(popup);
-                }
-            }, 400);
+        // Remove any existing popup
+        const existingPopup = document.getElementById('simulation-result-popup');
+        if (existingPopup) {
+            existingPopup.remove();
         }
 
-        // Clear auto-close timeout
-        if (this.autoCloseTimeout) {
-            clearTimeout(this.autoCloseTimeout);
-            this.autoCloseTimeout = null;
+        // Create popup element
+        const popup = document.createElement('div');
+        popup.id = 'simulation-result-popup';
+        popup.className = this.simulationResult.isAccepted ? 'accepted' : 'rejected';
+
+        // Build popup content
+        const statusText = this.simulationResult.isAccepted ? 'ACCEPTED' : 'REJECTED';
+        const statusIcon = this.simulationResult.isAccepted ? '✓' : '✗';
+        const statusClass = this.simulationResult.isAccepted ? 'accepted' : 'rejected';
+
+        let pathDetails = '';
+        if (this.simulationResult.executionPath && this.simulationResult.executionPath.length > 0) {
+            pathDetails = `
+                <div class="popup-path">
+                    ${this.simulationResult.executionPath.map((step, index) => {
+                        const [currentState, symbol, nextState] = step;
+                        return `<div class="popup-path-step">${index + 1}. ${currentState} --${symbol}--> ${nextState}</div>`;
+                    }).join('')}
+                </div>
+            `;
+
+            const finalState = this.simulationResult.executionPath[this.simulationResult.executionPath.length - 1][2];
+            const finalStateText = this.simulationResult.isAccepted ?
+                `Final state: ${finalState} (accepting)` :
+                `Final state: ${finalState} (non-accepting)`;
+
+            pathDetails += `<div class="popup-final-state ${statusClass}">${finalStateText}</div>`;
+        }
+
+        popup.innerHTML = `
+            <div class="popup-header">
+                <div class="popup-status ${statusClass}">
+                    <div class="popup-icon ${statusClass}">${statusIcon}</div>
+                    <span>INPUT ${statusText}</span>
+                </div>
+                <button class="popup-close" onclick="visualSimulationManager.hideResultPopup()">×</button>
+            </div>
+            <div class="popup-input">
+                Input: <span class="popup-input-string">"${this.simulationResult.inputString}"</span>
+            </div>
+            <div class="popup-result ${statusClass}">
+                Result: ${statusText}
+            </div>
+            ${pathDetails}
+            <div class="popup-progress">
+                <div class="popup-progress-bar ${statusClass}"></div>
+            </div>
+        `;
+
+        // Add popup to canvas
+        const canvas = document.getElementById('fsa-canvas');
+        if (canvas) {
+            canvas.appendChild(popup);
+
+            // Trigger show animation
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 100);
+
+            // Start auto-close timer
+            this.startAutoCloseTimer(popup);
         }
     }
 
@@ -706,3 +783,6 @@ export const visualSimulationManager = new VisualSimulationManager();
 
 // Make it globally accessible for popup interactions
 window.visualSimulationManager = visualSimulationManager;
+
+// Export the class as well for potential multiple instances
+export { VisualSimulationManager };

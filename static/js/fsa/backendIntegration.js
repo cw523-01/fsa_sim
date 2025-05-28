@@ -141,50 +141,105 @@ export async function simulateFSAOnBackend(fsa, inputString) {
 }
 
 /**
- * Formats the simulation result for display (text-only version)
+ * Show result popup for any simulation result (visual or fast-forward)
  * @param {Object} result - Result from backend simulation
  * @param {string} inputString - The input string that was simulated
- * @returns {string} - Formatted result message
+ * @param {boolean} isFastForward - Whether this was a fast-forward simulation
  */
-export function formatSimulationResult(result, inputString) {
-    if (result.accepted) {
-        let message = `✅ INPUT ACCEPTED!\n\n`;
-        message += `Input string: "${inputString}"\n`;
-        message += `Result: ACCEPTED\n\n`;
+export function showSimulationResultPopup(result, inputString, isFastForward = false) {
+    // Use the visual simulation manager's popup system
+    const simulationResult = {
+        isAccepted: result.accepted,
+        executionPath: result.path || [],
+        inputString: inputString,
+        isFastForward: isFastForward
+    };
 
-        if (result.path && result.path.length > 0) {
-            message += `Execution Path:\n`;
-            result.path.forEach((step, index) => {
-                const [currentState, symbol, nextState] = step;
-                message += `${index + 1}. ${currentState} --${symbol}--> ${nextState}\n`;
-            });
+    // Store the result in the visual simulation manager
+    visualSimulationManager.simulationResult = simulationResult;
 
-            // Show final state
-            const finalState = result.path[result.path.length - 1][2];
-            message += `\nFinal state: ${finalState} (accepting)`;
-        }
-
-        return message;
+    // Show the popup directly with custom content for fast-forward
+    if (isFastForward) {
+        visualSimulationManager.showFastForwardResultPopup();
     } else {
-        let message = `❌ INPUT REJECTED!\n\n`;
-        message += `Input string: "${inputString}"\n`;
-        message += `Result: REJECTED\n\n`;
+        visualSimulationManager.showResultPopup();
+    }
+}
 
-        if (result.path && result.path.length > 0) {
-            message += `Execution path (before rejection):\n`;
-            result.path.forEach((step, index) => {
-                const [currentState, symbol, nextState] = step;
-                message += `${index + 1}. ${currentState} --${symbol}--> ${nextState}\n`;
-            });
-        } else {
-            message += `The input was rejected immediately.\n`;
-            message += `This could be due to:\n`;
-            message += `• Invalid symbol in input\n`;
-            message += `• No transition defined for a symbol\n`;
-            message += `• Ending in a non-accepting state`;
-        }
+/**
+ * Show error popup for validation or simulation errors
+ * @param {string} errorMessage - The error message to display
+ * @param {string} inputString - The input string (if any)
+ */
+export function showSimulationErrorPopup(errorMessage, inputString = '') {
+    // Remove any existing popup
+    const existingPopup = document.getElementById('simulation-result-popup');
+    if (existingPopup) {
+        existingPopup.remove();
+    }
 
-        return message;
+    // Create error popup element
+    const popup = document.createElement('div');
+    popup.id = 'simulation-result-popup';
+    popup.className = 'error';
+
+    // Create error-specific styles if they don't exist
+    if (!document.querySelector('style[data-error-popup]')) {
+        const style = document.createElement('style');
+        style.setAttribute('data-error-popup', 'true');
+        style.textContent = `
+            #simulation-result-popup.error {
+                border-left-color: #ff9800;
+                background: linear-gradient(135deg, #fff3e0 0%, #fafafa 100%);
+            }
+            .popup-status.error {
+                color: #ef6c00;
+            }
+            .popup-icon.error {
+                background-color: #ff9800;
+            }
+            .popup-result.error {
+                color: #ef6c00;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    const inputDisplay = inputString ?
+        `<div class="popup-input">Input: <span class="popup-input-string">"${inputString}"</span></div>` : '';
+
+    popup.innerHTML = `
+        <div class="popup-header">
+            <div class="popup-status error">
+                <div class="popup-icon error">⚠</div>
+                <span>SIMULATION ERROR</span>
+            </div>
+            <button class="popup-close" onclick="visualSimulationManager.hideResultPopup()">×</button>
+        </div>
+        ${inputDisplay}
+        <div class="popup-result error">
+            Error: Simulation Failed
+        </div>
+        <div class="popup-details">
+            ${errorMessage.replace(/\n/g, '<br>')}
+        </div>
+        <div class="popup-progress">
+            <div class="popup-progress-bar" style="background-color: #ff9800;"></div>
+        </div>
+    `;
+
+    // Add popup to canvas
+    const canvas = document.getElementById('fsa-canvas');
+    if (canvas) {
+        canvas.appendChild(popup);
+
+        // Trigger show animation
+        setTimeout(() => {
+            popup.classList.add('show');
+        }, 100);
+
+        // Start auto-close timer (longer for error messages)
+        visualSimulationManager.startAutoCloseTimer(popup, 7000); // 7 seconds for errors
     }
 }
 
@@ -201,11 +256,22 @@ export async function runFSASimulation(jsPlumbInstance, inputString, visualMode 
         const validation = validateFSAForSimulation(jsPlumbInstance);
 
         if (!validation.success) {
-            return {
-                success: false,
-                message: validation.message,
-                type: 'validation_error'
-            };
+            if (visualMode) {
+                // Show error popup instead of alert for visual mode
+                showSimulationErrorPopup(validation.message, inputString);
+                return {
+                    success: false,
+                    message: '', // Empty since popup handles display
+                    type: 'validation_error',
+                    isVisual: true
+                };
+            } else {
+                return {
+                    success: false,
+                    message: validation.message,
+                    type: 'validation_error'
+                };
+            }
         }
 
         // Initialize visual simulation manager with JSPlumb instance
@@ -230,27 +296,50 @@ export async function runFSASimulation(jsPlumbInstance, inputString, visualMode 
                 isVisual: true
             };
         } else {
-            // For rejected inputs or when visual mode is off, show text result
-            const formattedMessage = formatSimulationResult(result, inputString);
-
-            return {
-                success: true,
-                message: formattedMessage,
-                rawResult: result,
-                type: 'simulation_result',
-                isVisual: false
-            };
+            // For rejected inputs, fast-forward mode, or when visual mode is off
+            if (!visualMode) {
+                // Fast-forward mode - show popup instead of alert
+                showSimulationResultPopup(result, inputString, true);
+                return {
+                    success: true,
+                    message: '', // Empty since popup handles display
+                    rawResult: result,
+                    type: 'fast_forward_simulation',
+                    isVisual: true // Set to true since we're using popup
+                };
+            } else {
+                // Visual mode but rejected - show popup
+                showSimulationResultPopup(result, inputString, false);
+                return {
+                    success: true,
+                    message: '', // Empty since popup handles display
+                    rawResult: result,
+                    type: 'simulation_result',
+                    isVisual: true
+                };
+            }
         }
 
     } catch (error) {
         console.error('Simulation error:', error);
 
-        return {
-            success: false,
-            message: `❌ SIMULATION ERROR!\n\n${error.message}`,
-            type: 'backend_error',
-            isVisual: false
-        };
+        if (visualMode) {
+            // Show error popup instead of alert
+            showSimulationErrorPopup(`An error occurred during simulation:\n${error.message}`, inputString);
+            return {
+                success: false,
+                message: '', // Empty since popup handles display
+                type: 'backend_error',
+                isVisual: true
+            };
+        } else {
+            return {
+                success: false,
+                message: `❌ SIMULATION ERROR!\n\n${error.message}`,
+                type: 'backend_error',
+                isVisual: false
+            };
+        }
     }
 }
 
@@ -312,3 +401,6 @@ export function validateInputString(inputString, alphabet) {
 
     return { valid: true };
 }
+
+// Make error popup function globally available
+window.showSimulationErrorPopup = showSimulationErrorPopup;

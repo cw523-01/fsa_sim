@@ -453,7 +453,8 @@ function setupFunctionalButtons() {
             if (tableData.alphabet.length > 0) {
                 const inputValidation = validateInputString(inputString, tableData.alphabet);
                 if (!inputValidation.valid) {
-                    alert(`❌ INPUT ERROR!\n\n${inputValidation.message}`);
+                    // Show error popup instead of alert
+                    showSimulationErrorPopup(`INPUT ERROR!\n\n${inputValidation.message}`, inputString);
                     controlLockManager.unlockControls();
                     return;
                 }
@@ -464,11 +465,6 @@ function setupFunctionalButtons() {
             // Run the simulation with visual animation (default)
             const simulationResult = await runFSASimulation(jsPlumbInstance, inputString, true);
 
-            // Only show alert for non-visual results (errors, rejections, etc.)
-            if (!simulationResult.isVisual && simulationResult.message) {
-                alert(simulationResult.message);
-            }
-
             // Log detailed result for debugging
             if (simulationResult.success && simulationResult.rawResult) {
                 console.log('Simulation completed successfully:', simulationResult.rawResult);
@@ -478,13 +474,14 @@ function setupFunctionalButtons() {
 
             // For visual simulations, don't unlock controls immediately -
             // they'll be unlocked when simulation ends or stop is pressed
-            if (!simulationResult.isVisual) {
+            // For error cases where popup is shown, unlock controls
+            if (!simulationResult.success || !simulationResult.isVisual) {
                 controlLockManager.unlockControls();
             }
 
         } catch (error) {
             console.error('Unexpected error during simulation:', error);
-            alert(`❌ UNEXPECTED ERROR!\n\nAn unexpected error occurred during simulation:\n${error.message}`);
+            showSimulationErrorPopup(`UNEXPECTED ERROR!\n\nAn unexpected error occurred during simulation:\n${error.message}`, inputString);
             controlLockManager.unlockControls();
         }
     });
@@ -520,7 +517,8 @@ function setupFunctionalButtons() {
             if (tableData.alphabet.length > 0) {
                 const inputValidation = validateInputString(inputString, tableData.alphabet);
                 if (!inputValidation.valid) {
-                    alert(`❌ INPUT ERROR!\n\n${inputValidation.message}`);
+                    // Show error popup instead of alert
+                    showSimulationErrorPopup(`INPUT ERROR!\n\n${inputValidation.message}`, inputString);
                     controlLockManager.unlockControls();
                     return;
                 }
@@ -531,11 +529,6 @@ function setupFunctionalButtons() {
             // Run the simulation without visual animation
             const simulationResult = await runFSASimulationFastForward(jsPlumbInstance, inputString);
 
-            // Show result immediately
-            if (simulationResult.message) {
-                alert(simulationResult.message);
-            }
-
             // Log detailed result for debugging
             if (simulationResult.success && simulationResult.rawResult) {
                 console.log('Fast-forward simulation completed successfully:', simulationResult.rawResult);
@@ -543,9 +536,11 @@ function setupFunctionalButtons() {
                 console.log('Fast-forward simulation failed:', simulationResult);
             }
 
+            // Note: No alert needed anymore as the popup system handles display
+
         } catch (error) {
             console.error('Unexpected error during fast-forward simulation:', error);
-            alert(`❌ UNEXPECTED ERROR!\n\nAn unexpected error occurred during simulation:\n${error.message}`);
+            showSimulationErrorPopup(`UNEXPECTED ERROR!\n\nAn unexpected error occurred during simulation:\n${error.message}`, inputString);
         } finally {
             // Always unlock controls after fast-forward simulation
             controlLockManager.unlockControls();
