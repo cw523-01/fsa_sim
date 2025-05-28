@@ -60,8 +60,34 @@ class VisualSimulationManager {
         this.setupInputHighlighting();
 
         try {
-            // First, highlight the starting state transition if we have execution steps
-            if (executionPath.length > 0) {
+            // Handle empty string case
+            if (executionPath.length === 0) {
+                // For empty string, we need to show the starting state
+                const startingStateId = this.getStartingStateId();
+
+                if (startingStateId) {
+                    // Highlight the starting state transition
+                    await this.highlightStartingTransition(startingStateId);
+
+                    // Then highlight the starting state as current
+                    this.highlightState(startingStateId, 'current');
+
+                    // Wait for a moment to show the starting state
+                    await this.waitForAnimation(this.animationSpeed);
+
+                    // Show final result (accepted or rejected based on whether starting state is accepting)
+                    this.showFinalResult(isAccepted);
+
+                    // Auto-trigger stop button after showing final result
+                    setTimeout(() => {
+                        if (this.isRunning) {
+                            this.autoClickStopButton();
+                        }
+                    }, 2000);
+                }
+            } else {
+                // Normal case with non-empty execution path
+                // First, highlight the starting state transition if we have execution steps
                 const startingState = executionPath[0][0];
 
                 // Highlight the starting state connection first
@@ -69,33 +95,87 @@ class VisualSimulationManager {
 
                 // Then highlight the starting state as current
                 this.highlightState(startingState, 'current');
-            }
 
-            // Execute each step in the path
-            for (let i = 0; i < executionPath.length; i++) {
-                if (!this.isRunning) break;
+                // Execute each step in the path
+                for (let i = 0; i < executionPath.length; i++) {
+                    if (!this.isRunning) break;
 
-                await this.executeStep(i);
+                    await this.executeStep(i);
 
-                if (!this.isRunning) break;
-            }
+                    if (!this.isRunning) break;
+                }
 
-            // Show final result if simulation completed
-            if (this.isRunning) {
-                this.showFinalResult(isAccepted);
+                // Show final result if simulation completed
+                if (this.isRunning) {
+                    this.showFinalResult(isAccepted);
 
-                // Auto-trigger stop button after showing final result
-                setTimeout(() => {
-                    if (this.isRunning) {
-                        this.autoClickStopButton();
-                    }
-                }, 2000);
+                    // Auto-trigger stop button after showing final result
+                    setTimeout(() => {
+                        if (this.isRunning) {
+                            this.autoClickStopButton();
+                        }
+                    }, 2000);
+                }
             }
 
         } catch (error) {
             console.error('Error during visual simulation:', error);
             this.stopSimulation();
         }
+    }
+
+    /**
+     * Get the starting state ID from the DOM or backend data
+     * @returns {string|null} - The starting state ID
+     */
+    getStartingStateId() {
+        // Try to get starting state from the state manager
+        if (typeof getStartingStateId === 'function') {
+            return getStartingStateId();
+        }
+
+        // Fallback: look for starting state indicator in DOM
+        const startingConnections = document.querySelectorAll('.starting-connection');
+        if (startingConnections.length > 0) {
+            // Get the target of the starting connection
+            const startingConnection = startingConnections[0];
+            if (this.jsPlumbInstance) {
+                const allConnections = this.jsPlumbInstance.getAllConnections();
+                const connection = allConnections.find(conn =>
+                    conn.canvas === startingConnection
+                );
+                if (connection) {
+                    return connection.targetId;
+                }
+            }
+        }
+
+        // Final fallback: get first state element
+        const stateElements = document.querySelectorAll('.state, .accepting-state');
+        if (stateElements.length > 0) {
+            return stateElements[0].id;
+        }
+
+        return null;
+    }
+
+    /**
+     * Wait for animation timing
+     * @param {number} duration - Duration to wait in milliseconds
+     * @returns {Promise} - Promise that resolves after the duration
+     */
+    waitForAnimation(duration) {
+        return new Promise((resolve) => {
+            this.currentTimeout = setTimeout(() => {
+                if (this.isRunning) {
+                    resolve();
+                } else {
+                    resolve(); // Always resolve to avoid hanging
+                }
+            }, duration);
+
+            this.animationTimeouts.push(this.currentTimeout);
+        });
     }
 
     /**
@@ -362,6 +442,12 @@ class VisualSimulationManager {
 
             // Highlight final state appropriately
             this.highlightState(finalState, isAccepted ? 'final' : 'rejected');
+        } else {
+            // For empty string, highlight the starting state as final
+            const startingStateId = this.getStartingStateId();
+            if (startingStateId) {
+                this.highlightState(startingStateId, isAccepted ? 'final' : 'rejected');
+            }
         }
 
         // Update input field to show completion
@@ -430,7 +516,27 @@ class VisualSimulationManager {
         overlay.style.boxSizing = 'border-box';
         overlay.style.paddingLeft = '8px'; // Match input field padding
 
-        // Build highlighted version character by character
+        // Handle empty string case
+        if (this.inputString.length === 0) {
+            if (stepIndex === -1) {
+                // Initial state for empty string
+                overlay.innerHTML = '<span style="color: #666; font-style: italic;">ε (empty string)</span>';
+            } else if (isComplete !== null) {
+                // Completion state for empty string
+                if (isComplete) {
+                    overlay.innerHTML = '<span style="color: #4CAF50; font-weight: bold; font-style: italic;">ε (empty string)</span>';
+                    overlay.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
+                    overlay.style.borderColor = '#4CAF50';
+                } else {
+                    overlay.innerHTML = '<span style="color: #f44336; font-weight: bold; font-style: italic;">ε (empty string)</span>';
+                    overlay.style.backgroundColor = 'rgba(244, 67, 54, 0.1)';
+                    overlay.style.borderColor = '#f44336';
+                }
+            }
+            return;
+        }
+
+        // Build highlighted version character by character for non-empty strings
         let highlightedHTML = '';
 
         for (let i = 0; i < this.inputString.length; i++) {
@@ -559,6 +665,21 @@ class VisualSimulationManager {
                 `Final state: ${finalState} (non-accepting)`;
 
             pathDetails += `<div class="popup-final-state ${statusClass}">${finalStateText}</div>`;
+        } else {
+            // Handle empty string case - show starting state info
+            const startingStateId = this.getStartingStateId();
+            if (startingStateId) {
+                const finalStateText = this.simulationResult.isAccepted ?
+                    `Final state: ${startingStateId} (accepting)` :
+                    `Final state: ${startingStateId} (non-accepting)`;
+
+                pathDetails = `
+                    <div class="popup-path">
+                        <div class="popup-path-step">Empty string processed in starting state</div>
+                    </div>
+                    <div class="popup-final-state ${statusClass}">${finalStateText}</div>
+                `;
+            }
         }
 
         popup.innerHTML = `
@@ -661,6 +782,21 @@ class VisualSimulationManager {
                 `Final state: ${finalState} (non-accepting)`;
 
             pathDetails += `<div class="popup-final-state ${statusClass}">${finalStateText}</div>`;
+        } else {
+            // Handle empty string case for fast-forward too
+            const startingStateId = this.getStartingStateId();
+            if (startingStateId) {
+                const finalStateText = this.simulationResult.isAccepted ?
+                    `Final state: ${startingStateId} (accepting)` :
+                    `Final state: ${startingStateId} (non-accepting)`;
+
+                pathDetails = `
+                    <div class="popup-path">
+                        <div class="popup-path-step">Empty string processed in starting state</div>
+                    </div>
+                    <div class="popup-final-state ${statusClass}">${finalStateText}</div>
+                `;
+            }
         }
 
         popup.innerHTML = `

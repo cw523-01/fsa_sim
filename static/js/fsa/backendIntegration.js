@@ -282,8 +282,8 @@ export async function runFSASimulation(jsPlumbInstance, inputString, visualMode 
         // Simulate on backend
         const result = await simulateFSAOnBackend(validation.fsa, inputString);
 
-        if (visualMode && result.path && result.path.length > 0) {
-            // Start visual simulation for accepted inputs with execution path
+        if (visualMode) {
+            // Always start visual simulation in visual mode (handles both empty and non-empty strings)
             console.log('Starting visual simulation with path:', result.path);
             visualSimulationManager.startVisualSimulation(result.path, inputString, result.accepted);
 
@@ -296,28 +296,15 @@ export async function runFSASimulation(jsPlumbInstance, inputString, visualMode 
                 isVisual: true
             };
         } else {
-            // For rejected inputs, fast-forward mode, or when visual mode is off
-            if (!visualMode) {
-                // Fast-forward mode - show popup instead of alert
-                showSimulationResultPopup(result, inputString, true);
-                return {
-                    success: true,
-                    message: '', // Empty since popup handles display
-                    rawResult: result,
-                    type: 'fast_forward_simulation',
-                    isVisual: true // Set to true since we're using popup
-                };
-            } else {
-                // Visual mode but rejected - show popup
-                showSimulationResultPopup(result, inputString, false);
-                return {
-                    success: true,
-                    message: '', // Empty since popup handles display
-                    rawResult: result,
-                    type: 'simulation_result',
-                    isVisual: true
-                };
-            }
+            // Fast-forward mode - show popup instead of alert
+            showSimulationResultPopup(result, inputString, true);
+            return {
+                success: true,
+                message: '', // Empty since popup handles display
+                rawResult: result,
+                type: 'fast_forward_simulation',
+                isVisual: true // Set to true since we're using popup
+            };
         }
 
     } catch (error) {
