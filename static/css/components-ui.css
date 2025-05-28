@@ -1,0 +1,217 @@
+/* Tools */
+.tool {
+    width: var(--tool-size);
+    height: var(--tool-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    user-select: none;
+    margin: 0 auto;
+}
+
+.state-node {
+    width: var(--control-btn-size);
+    height: var(--control-btn-size);
+    border: 2px solid var(--black);
+    border-radius: var(--radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.accepting-state-node {
+    width: var(--control-btn-size);
+    height: var(--control-btn-size);
+    border: 2px solid var(--black);
+    border-radius: var(--radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.accepting-state-node:before {
+    content: '';
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border: 2px solid var(--black);
+    border-radius: var(--radius-circle);
+}
+
+.edge-icon {
+    font-size: 30px;
+    text-align: center;
+    width: 100%;
+}
+
+/* Control Buttons */
+.control-btn {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    width: var(--control-btn-size);
+    height: var(--control-btn-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-circle);
+    border: 1px solid var(--border-color);
+    background-color: var(--white);
+    transition: var(--transition-fast);
+}
+
+.control-btn:hover {
+    background-color: var(--hover-bg);
+}
+
+.control-btn img {
+    width: 20px;
+    height: 20px;
+}
+
+.control-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(50%);
+}
+
+.control-btn:disabled:hover {
+    background-color: inherit;
+    transform: none;
+}
+
+/* Buttons */
+.btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    border: none;
+    transition: var(--transition-fast);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: var(--white);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+}
+
+.btn-secondary {
+    background-color: #f1f1f1;
+    color: var(--dark-gray);
+}
+
+.btn-secondary:hover {
+    background-color: #e4e4e4;
+}
+
+/* Edge Style Buttons */
+.edge-style-buttons {
+    margin-top: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    width: 100%;
+}
+
+.edge-style-buttons button {
+    width: 90%;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: var(--spacing-sm);
+    margin: 2px auto;
+}
+
+.edge-style-buttons button.active {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: var(--white);
+}
+
+/* Show Table Button */
+#show-table-btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--light-gray);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: var(--spacing-lg);
+}
+
+#show-table-btn:hover {
+    background-color: var(--hover-bg);
+}
+
+/* Form Elements */
+.form-group {
+    margin-bottom: var(--spacing-xl);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--spacing-sm);
+    font-weight: var(--font-weight-medium);
+    color: #555;
+}
+
+.form-control {
+    width: 100%;
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-md);
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: var(--shadow-focus);
+}
+
+/* Checkbox Groups */
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.checkbox-group label {
+    margin: 0;
+    font-weight: normal;
+    display: inline-block;
+    vertical-align: middle;
+    cursor: pointer;
+    line-height: 16px;
+}
+
+#accepting-state-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    margin: 0;
+    vertical-align: middle;
+    position: relative;
+}
+
+/* Status Indicators */
+.checkmark {
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+.crossmark {
+    color: var(--error-color);
+    font-weight: bold;
+}
+
+/* Selected State Indicator */
+.selected-source {
+    box-shadow: 0 0 0 2px var(--primary-color) !important;
+}

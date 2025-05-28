@@ -1,0 +1,188 @@
+/* Locked Input Field */
+.locked-input {
+    background-color: #f5f5f5 !important;
+    color: var(--text-gray) !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+/* Locked Button */
+.locked-button {
+    background-color: #e9ecef !important;
+    color: #6c757d !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+    border-color: #dee2e6 !important;
+}
+
+.locked-button:hover {
+    background-color: #e9ecef !important;
+    color: #6c757d !important;
+    border-color: #dee2e6 !important;
+}
+
+/* Active Button (stop button during simulation) */
+.active-button {
+    background-color: var(--error-color) !important;
+    color: var(--white) !important;
+    border-color: var(--error-color) !important;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+}
+
+.active-button:hover {
+    background-color: var(--error-hover) !important;
+    border-color: #bd2130 !important;
+}
+
+.control-btn.active-button img {
+    filter: brightness(0) invert(1);
+}
+
+/* Locked Tool */
+.locked-tool {
+    cursor: not-allowed !important;
+    filter: grayscale(50%);
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+}
+
+/* Locked Panel */
+.locked-panel {
+    position: relative;
+}
+
+.locked-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.3);
+    z-index: var(--z-overlays);
+    pointer-events: none;
+}
+
+/* Locked Canvas */
+.locked-canvas {
+    position: relative;
+}
+
+.locked-canvas::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.05);
+    z-index: 5;
+    pointer-events: none;
+}
+
+/* Locked State */
+.locked-state {
+    cursor: not-allowed !important;
+    filter: brightness(0.8);
+}
+
+/* Locked Connections */
+.locked-connection,
+.jsplumb-locked {
+    cursor: not-allowed !important;
+    filter: brightness(0.8);
+}
+
+.jsplumb-locked ._jsPlumb_endpoint {
+    cursor: not-allowed !important;
+    opacity: 0.6;
+    pointer-events: none !important;
+}
+
+.jsplumb-locked:hover {
+    filter: brightness(0.8) !important;
+}
+
+.jsplumb-locked ._jsPlumb_connector {
+    cursor: not-allowed !important;
+}
+
+.jsplumb-locked ._jsPlumb_connector:hover {
+    stroke-width: 2px !important;
+}
+
+/* Lock Indicator */
+.lock-message {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-family: var(--font-family);
+}
+
+.lock-icon {
+    font-size: var(--font-size-md);
+}
+
+.lock-text {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+}
+
+#lock-indicator {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.8;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.8;
+    }
+}
+
+/* Lock Overlay */
+.lock-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.7);
+    z-index: var(--z-modals);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: var(--text-gray);
+    cursor: not-allowed;
+}
+
+/* Disable Selection for Locked Elements */
+.locked-panel *,
+.locked-canvas *,
+.locked-tool,
+.locked-state,
+.locked-connection {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Prevent Hover Effects on Locked Elements */
+.locked-tool:hover,
+.locked-button:hover,
+.locked-state:hover,
+.locked-connection:hover {
+    background-color: inherit !important;
+    border-color: inherit !important;
+    transform: none !important;
+    box-shadow: none !important;
+}

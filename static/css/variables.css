@@ -1,0 +1,111 @@
+:root {
+    /* Colors */
+    --primary-color: #4CAF50;
+    --primary-hover: #45a049;
+    --secondary-color: #2196F3;
+    --secondary-hover: #1976D2;
+    --accent-color: #FF9800;
+    --error-color: #f44336;
+    --error-hover: #c62828;
+    --warning-color: #ff9800;
+    --success-color: #4CAF50;
+
+    /* Neutral Colors */
+    --white: #ffffff;
+    --light-gray: #f8f8f8;
+    --medium-gray: #f0f0f0;
+    --border-gray: #ddd;
+    --text-gray: #666;
+    --dark-gray: #333;
+    --black: #000000;
+
+    /* Specific UI Colors */
+    --background-color: var(--white);
+    --header-bg: var(--light-gray);
+    --panel-bg: var(--medium-gray);
+    --border-color: var(--border-gray);
+    --text-color: var(--dark-gray);
+    --muted-text: var(--text-gray);
+
+    /* State Colors */
+    --hover-bg: #eee;
+    --selected-border: var(--primary-color);
+    --starting-border: var(--primary-color);
+    --accepting-border: var(--black);
+
+    /* Simulation Colors */
+    --sim-current: var(--accent-color);
+    --sim-current-bg: rgba(255, 152, 0, 0.2);
+    --sim-current-shadow: rgba(255, 152, 0, 0.8);
+    --sim-visited: var(--secondary-color);
+    --sim-visited-bg: rgba(33, 150, 243, 0.1);
+    --sim-visited-shadow: rgba(33, 150, 243, 0.4);
+    --sim-final: var(--success-color);
+    --sim-final-bg: rgba(76, 175, 80, 0.1);
+    --sim-final-shadow: rgba(76, 175, 80, 0.6);
+    --sim-rejected: var(--error-color);
+    --sim-rejected-bg: rgba(244, 67, 54, 0.2);
+    --sim-rejected-shadow: rgba(244, 67, 54, 0.8);
+
+    /* Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 20px;
+    --spacing-xxl: 24px;
+
+    /* Border Radius */
+    --radius-sm: 3px;
+    --radius-md: 4px;
+    --radius-lg: 5px;
+    --radius-xl: 8px;
+    --radius-circle: 50%;
+
+    /* Shadows */
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+    --shadow-md: 0 4px 8px rgba(0,0,0,0.15);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.15);
+    --shadow-focus: 0 0 0 2px rgba(76, 175, 80, 0.2);
+
+    /* Typography */
+    --font-family: Arial, sans-serif;
+    --font-family-mono: 'Courier New', monospace;
+    --font-family-ui: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-md: 14px;
+    --font-size-lg: 16px;
+    --font-size-xl: 18px;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-bold: 600;
+    --line-height: 1.4;
+
+    /* Transitions */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Z-Index Layers */
+    --z-canvas: 1;
+    --z-states: 10;
+    --z-connections: 20;
+    --z-labels: 25;
+    --z-overlays: 100;
+    --z-modals: 1000;
+    --z-tooltips: 2000;
+
+    /* Component Dimensions */
+    --tools-panel-width: 100px;
+    --info-panel-width: 200px;
+    --state-size: 60px;
+    --tool-size: 50px;
+    --control-btn-size: 40px;
+    --input-min-width: 200px;
+
+    /* Animation Durations */
+    --animation-fast: 0.3s;
+    --animation-normal: 1s;
+    --animation-slow: 1.5s;
+}

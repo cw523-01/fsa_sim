@@ -1,0 +1,201 @@
+/* Base Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: var(--z-modals);
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+    background-color: var(--white);
+    margin: 15% auto;
+    padding: 25px;
+    border: 1px solid var(--border-color);
+    width: 350px;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+.modal h3 {
+    margin-bottom: var(--spacing-xl);
+    font-size: var(--font-size-xl);
+    color: var(--dark-gray);
+    border-bottom: 1px solid var(--hover-bg);
+    padding-bottom: var(--spacing-md);
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-md);
+    margin-top: 25px;
+}
+
+#confirm-symbol-btn {
+    background-color: var(--primary-color);
+    color: var(--white);
+    border-color: var(--primary-color);
+}
+
+#cancel-symbol-btn {
+    background-color: var(--light-gray);
+}
+
+/* Inline Editors */
+.inline-editor {
+    position: absolute;
+    background-color: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-md);
+    z-index: var(--z-modals);
+    width: 180px;
+}
+
+.inline-editor-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.inline-editor h3 {
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: var(--font-size-lg);
+    color: var(--dark-gray);
+    border-bottom: 1px solid var(--hover-bg);
+    padding-bottom: 6px;
+}
+
+.inline-editor input[type="text"] {
+    width: 100%;
+    padding: 6px var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+
+.inline-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-md);
+}
+
+.inline-editor-header h3 {
+    margin: 0;
+}
+
+.close-btn {
+    font-size: var(--spacing-xl);
+    font-weight: bold;
+    cursor: pointer;
+    color: #888;
+    transition: var(--transition-fast);
+    padding: 0 var(--spacing-xs);
+    line-height: 1;
+    margin-top: -var(--spacing-xs);
+    margin-right: -var(--spacing-xs);
+}
+
+.close-btn:hover {
+    color: var(--black);
+    cursor: pointer;
+}
+
+/* Edge Inline Editor */
+#edge-inline-editor {
+    position: absolute;
+    background-color: var(--white);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-md);
+    min-width: 200px;
+    z-index: var(--z-modals);
+}
+
+#edge-inline-editor .inline-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+#edge-inline-editor h3 {
+    margin: 0;
+}
+
+#edge-inline-editor .close-btn {
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#edge-inline-editor .form-group {
+    margin-bottom: var(--spacing-md);
+}
+
+#edge-inline-editor label {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+}
+
+#edge-inline-editor input {
+    width: 100%;
+    padding: var(--spacing-xs);
+}
+
+/* Symbol Input Management */
+#symbol-inputs-container,
+#edge-symbols-edit-container {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-bottom: var(--spacing-md);
+    padding-right: var(--spacing-xs);
+}
+
+.symbol-input-wrapper,
+.symbol-edit-wrapper {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+}
+
+.symbol-input,
+.symbol-edit-input {
+    flex-grow: 1;
+    margin-right: var(--spacing-sm);
+}
+
+.remove-symbol-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #999;
+    font-size: var(--font-size-sm);
+    padding: 2px var(--spacing-xs);
+}
+
+.remove-symbol-btn:hover {
+    color: var(--error-color);
+}
+
+.disabled-remove-btn {
+    color: #ccc;
+    cursor: not-allowed;
+}
+
+.disabled-remove-btn:hover {
+    color: #ccc;
+}
+
+.symbol-edit-input {
+    transition: var(--transition-fast);
+}
+
+.symbol-edit-input:invalid,
+.symbol-edit-input[style*="red"] {
+    border: 2px solid var(--error-color);
+}

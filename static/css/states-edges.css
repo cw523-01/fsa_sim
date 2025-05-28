@@ -1,0 +1,161 @@
+/* Canvas States */
+.state {
+    position: absolute;
+    width: var(--state-size);
+    height: var(--state-size);
+    border: 2px solid var(--black);
+    border-radius: var(--radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--white);
+    cursor: move;
+    z-index: var(--z-states);
+}
+
+.accepting-state {
+    position: absolute;
+    width: var(--state-size);
+    height: var(--state-size);
+    border: 2px solid var(--black);
+    border-radius: var(--radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--white);
+    cursor: move;
+    z-index: var(--z-states);
+}
+
+.accepting-state:before {
+    content: '';
+    position: absolute;
+    width: 45px;
+    height: 45px;
+    border: 2px solid var(--black);
+    border-radius: var(--radius-circle);
+}
+
+/* Starting State Indicator */
+.starting-state {
+    border-color: var(--starting-border) !important;
+}
+
+.start-source {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: transparent;
+    z-index: 5;
+}
+
+/* Starting Connection Styles */
+.starting-connection {
+    z-index: 15;
+    cursor: default !important;
+}
+
+.starting-connection path {
+    stroke-width: 2px !important;
+    stroke: var(--dark-gray) !important;
+}
+
+.starting-connection:hover {
+    cursor: default !important;
+}
+
+.starting-connection .edge-label,
+.starting-connection .edge-label-style,
+.starting-connection ._jsPlumb_overlay:not(._jsPlumb_overlay_arrow) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+.starting-connection ._jsPlumb_overlay_arrow {
+    z-index: var(--z-labels);
+}
+
+/* Edge Labels */
+.edge-label {
+    z-index: var(--z-labels);
+    cursor: pointer;
+    pointer-events: auto;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-sm);
+}
+
+.edge-label-style {
+    background-color: var(--white);
+    padding: 2px var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    font-size: var(--font-size-sm);
+    margin-top: -20px;
+}
+
+/* JSPlumb Connection Styles */
+._jsPlumb_connector {
+    cursor: pointer;
+    z-index: var(--z-connections);
+}
+
+._jsPlumb_connector:hover {
+    stroke-width: 3px;
+}
+
+/* Epsilon Transitions */
+.has-epsilon .edge-label-style {
+    font-style: italic;
+}
+
+.epsilon-symbol {
+    font-style: italic;
+    color: var(--text-gray);
+}
+
+.epsilon-label {
+    font-style: italic;
+    color: var(--text-gray);
+    padding: 2px var(--spacing-xs);
+    background-color: #f9f9f9;
+    border-radius: var(--radius-sm);
+    margin-right: var(--spacing-xs);
+}
+
+/* Epsilon Transition Controls */
+.epsilon-transition {
+    margin-top: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    align-items: center;
+}
+
+.epsilon-transition label {
+    margin-right: var(--spacing-md);
+    font-weight: var(--font-weight-medium);
+}
+
+/* Curve Style Controls */
+.curve-style-transition {
+    margin-top: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    align-items: center;
+}
+
+.curve-style-transition label {
+    margin-right: var(--spacing-md);
+    font-weight: var(--font-weight-medium);
+}
+
+.curve-style-transition input[type="checkbox"]:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Draggable States */
+.ui-draggable-dragging {
+    z-index: 1000 !important;
+}

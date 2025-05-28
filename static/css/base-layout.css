@@ -1,0 +1,144 @@
+/* Base Reset and Layout */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-family);
+}
+
+/* Main Application Layout */
+.fsa-simulator {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Header Layout */
+header {
+    background-color: var(--header-bg);
+    padding: var(--spacing-md) var(--spacing-xl);
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+h1 {
+    font-style: italic;
+    margin-right: var(--spacing-xl);
+    margin-top: 0;
+    margin-bottom: var(--spacing-md);
+}
+
+.header-row {
+    margin-top: var(--spacing-md);
+}
+
+/* Main Content Layout */
+main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Tools Panel Layout */
+.tools-panel {
+    width: var(--tools-panel-width);
+    background-color: var(--panel-bg);
+    padding: var(--spacing-xl) var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+    align-items: center;
+    border-right: 1px solid var(--border-color);
+}
+
+.tools-section {
+    width: 100%;
+    margin-bottom: var(--spacing-xl);
+    text-align: center;
+}
+
+.state-tools,
+.edge-tools,
+.action-tools,
+.edge-style-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.tools-header {
+    font-size: 0.9rem;
+    font-weight: var(--font-weight-bold);
+    margin: 0 auto var(--spacing-md) auto;
+    text-align: center;
+    color: #495057;
+    padding: var(--spacing-xs) 0;
+    border-bottom: 1px solid #dee2e6;
+    width: 100%;
+}
+
+/* Canvas Layout */
+#fsa-canvas {
+    flex: 1;
+    background-color: var(--background-color);
+    position: relative;
+    overflow: auto;
+    z-index: var(--z-canvas);
+}
+
+/* Info Panel Layout */
+.info-panel {
+    width: var(--info-panel-width);
+    background-color: var(--panel-bg);
+    padding: var(--spacing-xl);
+    border-left: 1px solid var(--border-color);
+}
+
+.alphabet-info {
+    margin-bottom: var(--spacing-xl);
+}
+
+.fsa-properties {
+    margin-bottom: var(--spacing-xl);
+}
+
+.property {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-md);
+}
+
+/* Input Controls Layout */
+.input-controls-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: fit-content;
+}
+
+.input-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-right: var(--spacing-lg);
+}
+
+.input-container label {
+    margin-right: var(--spacing-md);
+}
+
+.input-container input {
+    min-width: var(--input-min-width);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+/* Controls Layout */
+.controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}

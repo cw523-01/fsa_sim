@@ -1,0 +1,232 @@
+#simulation-result-popup {
+    position: absolute;
+    top: var(--spacing-xl);
+    right: var(--spacing-xl);
+    background: linear-gradient(135deg, var(--white) 0%, var(--light-gray) 100%);
+    border-radius: var(--spacing-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-xl);
+    min-width: 280px;
+    max-width: 320px;
+    z-index: var(--z-tooltips);
+    transform: translateX(100%);
+    opacity: 0;
+    transition: var(--transition-slow);
+    border-left: 6px solid;
+    font-family: var(--font-family-ui);
+}
+
+#simulation-result-popup.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+#simulation-result-popup.accepted {
+    border-left-color: var(--success-color);
+    background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
+}
+
+#simulation-result-popup.rejected {
+    border-left-color: var(--error-color);
+    background: linear-gradient(135deg, #ffeaea 0%, #fff5f5 100%);
+}
+
+#simulation-result-popup.error {
+    border-left-color: var(--warning-color);
+    background: linear-gradient(135deg, #fff3e0 0%, #fafafa 100%);
+}
+
+.popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-md);
+}
+
+.popup-status {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-weight: bold;
+    font-size: var(--font-size-lg);
+}
+
+.popup-status.accepted {
+    color: #2e7d32;
+}
+
+.popup-status.rejected {
+    color: var(--error-hover);
+}
+
+.popup-status.error {
+    color: #ef6c00;
+}
+
+.popup-icon {
+    font-size: var(--spacing-xl);
+    width: var(--spacing-xxl);
+    height: var(--spacing-xxl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-circle);
+    color: var(--white);
+}
+
+.popup-icon.accepted {
+    background-color: var(--success-color);
+}
+
+.popup-icon.rejected {
+    background-color: var(--error-color);
+}
+
+.popup-icon.error {
+    background-color: var(--warning-color);
+}
+
+.popup-close {
+    background: none;
+    border: none;
+    font-size: var(--spacing-xl);
+    color: var(--text-gray);
+    cursor: pointer;
+    padding: 0;
+    width: var(--spacing-xxl);
+    height: var(--spacing-xxl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    transition: var(--transition-fast);
+}
+
+.popup-close:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: var(--dark-gray);
+}
+
+.popup-input {
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-md);
+    color: #555;
+}
+
+.popup-input-string {
+    font-family: var(--font-family-mono);
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-md);
+    font-weight: bold;
+    margin: 0 var(--spacing-xs);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.popup-result {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--spacing-md);
+}
+
+.popup-result.accepted {
+    color: #2e7d32;
+}
+
+.popup-result.rejected {
+    color: var(--error-hover);
+}
+
+.popup-result.error {
+    color: #ef6c00;
+}
+
+.popup-details {
+    font-size: var(--font-size-sm);
+    color: var(--text-gray);
+    line-height: var(--line-height);
+}
+
+.popup-path {
+    margin-top: var(--spacing-sm);
+    max-height: 120px;
+    overflow-y: auto;
+    background-color: rgba(0, 0, 0, 0.03);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.popup-path-step {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+    margin-bottom: 2px;
+    color: #444;
+}
+
+.popup-final-state {
+    margin-top: var(--spacing-sm);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-sm);
+}
+
+.popup-final-state.accepted {
+    color: #2e7d32;
+}
+
+.popup-final-state.rejected {
+    color: var(--error-hover);
+}
+
+/* Auto-close Progress Indicator */
+.popup-progress {
+    height: 3px;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 1.5px;
+    overflow: hidden;
+    margin-top: var(--spacing-md);
+}
+
+.popup-progress-bar {
+    height: 100%;
+    border-radius: 1.5px;
+    transition: width linear;
+}
+
+.popup-progress-bar.accepted {
+    background-color: var(--success-color);
+}
+
+.popup-progress-bar.rejected {
+    background-color: var(--error-color);
+}
+
+/* Slide Out Animation */
+#simulation-result-popup.hide {
+    transform: translateX(100%);
+    opacity: 0;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    #simulation-result-popup {
+        top: var(--spacing-md);
+        right: var(--spacing-md);
+        left: var(--spacing-md);
+        min-width: auto;
+        max-width: none;
+    }
+
+    .popup-status {
+        font-size: var(--font-size-md);
+    }
+
+    .popup-input,
+    .popup-result {
+        font-size: var(--font-size-sm);
+    }
+
+    .popup-details {
+        font-size: var(--font-size-xs);
+    }
+}
