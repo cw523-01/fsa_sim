@@ -230,3 +230,130 @@
         font-size: var(--font-size-xs);
     }
 }
+
+.notification-popup {
+    position: absolute;
+    top: calc(var(--spacing-xl) + 60px);
+    right: var(--spacing-xl);
+    background: linear-gradient(135deg, var(--white) 0%, var(--light-gray) 100%);
+    border-radius: var(--spacing-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-lg);
+    min-width: 280px;
+    max-width: 350px;
+    z-index: var(--z-tooltips);
+    transform: translateX(100%);
+    opacity: 0;
+    transition: var(--transition-slow);
+    border-left: 4px solid;
+    font-family: var(--font-family-ui);
+    margin-bottom: var(--spacing-sm);
+}
+
+.notification-popup.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.notification-popup.hide {
+    transform: translateX(100%);
+    opacity: 0;
+}
+
+/* Notification Type Styling */
+.notification-popup.error {
+    border-left-color: var(--error-color);
+    background: linear-gradient(135deg, #ffeaea 0%, #fff5f5 100%);
+}
+
+.notification-popup.warning {
+    border-left-color: var(--warning-color);
+    background: linear-gradient(135deg, #fff3e0 0%, #fafafa 100%);
+}
+
+.notification-popup.success {
+    border-left-color: var(--success-color);
+    background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
+}
+
+.notification-popup.info {
+    border-left-color: var(--secondary-color);
+    background: linear-gradient(135deg, #e3f2fd 0%, #f3f8ff 100%);
+}
+
+/* Status Styling for Notifications */
+.notification-popup .popup-status.error {
+    color: var(--error-hover);
+}
+
+.notification-popup .popup-status.warning {
+    color: #ef6c00;
+}
+
+.notification-popup .popup-status.success {
+    color: #2e7d32;
+}
+
+.notification-popup .popup-status.info {
+    color: var(--secondary-hover);
+}
+
+/* Icon Styling for Notifications */
+.notification-popup .popup-icon.error {
+    background-color: var(--error-color);
+}
+
+.notification-popup .popup-icon.warning {
+    background-color: var(--warning-color);
+}
+
+.notification-popup .popup-icon.success {
+    background-color: var(--success-color);
+}
+
+.notification-popup .popup-icon.info {
+    background-color: var(--secondary-color);
+}
+
+/* Progress Bar Styling for Notifications */
+.notification-popup .popup-progress-bar.error {
+    background-color: var(--error-color);
+}
+
+.notification-popup .popup-progress-bar.warning {
+    background-color: var(--warning-color);
+}
+
+.notification-popup .popup-progress-bar.success {
+    background-color: var(--success-color);
+}
+
+.notification-popup .popup-progress-bar.info {
+    background-color: var(--secondary-color);
+}
+
+/* Mobile Responsiveness for Notifications */
+@media (max-width: 768px) {
+    .notification-popup {
+        top: var(--spacing-md);
+        right: var(--spacing-md);
+        left: var(--spacing-md);
+        min-width: auto;
+        max-width: none;
+    }
+}
+
+/* Hover effect for interactive notifications */
+.notification-popup:hover {
+    transform: translateX(-5px);
+    box-shadow: var(--shadow-lg), 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.notification-popup.show:hover {
+    transform: translateX(-5px);
+}
+
+/* Animation for stacking notifications */
+.notification-popup {
+    transition: all var(--transition-slow), top var(--transition-normal);
+}

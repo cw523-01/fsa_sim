@@ -2,9 +2,18 @@ import { createStartingStateIndicator, getStartingStateId } from './stateManager
 import {
     updateEdgeSymbols,
     getEdgeSymbols,
-    hasEpsilonTransition, updateEdgeCurveStyle, getEdgeCurveStyle
+    hasEpsilonTransition,
+    updateEdgeCurveStyle,
+    getEdgeCurveStyle,
+    createConnection,
+    deleteEdge,
+    getEpsilonTransitionMap,
+    getEdgeSymbolMap
 } from './edgeManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
+import {updateAlphabetDisplay} from "./alphabetManager.js";
+
+import { notificationManager } from './notificationManager.js';
 
 // UI state
 let currentTool = null;
@@ -461,31 +470,125 @@ function updateStateLabel(jsPlumbInstance) {
 
     // Prevent duplicate ID
     if (document.getElementById(newLabel)) {
-        alert("A state with that name already exists.");
+        // Use notification system instead of blocking alert
+        notificationManager.showError(
+            'Duplicate State Name',
+            `A state with the name "${newLabel}" already exists. Please choose a different name.`
+        );
+
+        // Reset the input field to the old value
+        document.getElementById('inline-state-label-input').value = oldId;
         return;
     }
+
+    // Store all connections that need to be recreated
+    const connectionsToRecreate = [];
+
+    // Get all connections involving this state
+    const allConnections = jsPlumbInstance.getAllConnections();
+    allConnections.forEach(conn => {
+        if (conn.sourceId === oldId || conn.targetId === oldId) {
+            // Skip the starting state connection - handle it separately
+            if (conn.canvas && conn.canvas.classList.contains('starting-connection')) {
+                return;
+            }
+
+            // Store connection data
+            connectionsToRecreate.push({
+                sourceId: conn.sourceId === oldId ? newLabel : conn.sourceId,
+                targetId: conn.targetId === oldId ? newLabel : conn.targetId,
+                symbols: getEdgeSymbols(conn),
+                hasEpsilon: hasEpsilonTransition(conn),
+                isCurved: getEdgeCurveStyle(conn)
+            });
+        }
+    });
 
     // Update the DOM element ID and label
     currentEditingState.id = newLabel;
     currentEditingState.innerHTML = newLabel;
 
-    // Update all JSPlumb connections
-    jsPlumbInstance.select({ source: oldId }).each(conn => {
-        conn.sourceId = newLabel;
-        conn.endpoints[0].elementId = newLabel;
-        conn.endpoints[0].anchor.elementId = newLabel;
+    // Remove all endpoints and connections for the old element ID
+    jsPlumbInstance.removeAllEndpoints(oldId);
+
+    // Re-initialize the state as a JSPlumb source and target with the new ID
+    jsPlumbInstance.makeSource(currentEditingState, {
+        filter: ".edge-source",
+        anchor: "Continuous",
+        connectorStyle: { stroke: "black", strokeWidth: 2 },
+        connectionType: "basic"
     });
 
-    jsPlumbInstance.select({ target: oldId }).each(conn => {
-        conn.targetId = newLabel;
-        conn.endpoints[1].elementId = newLabel;
-        conn.endpoints[1].anchor.elementId = newLabel;
+    jsPlumbInstance.makeTarget(currentEditingState, {
+        anchor: "Continuous",
+        connectionType: "basic"
     });
+
+    // Recreate all the stored connections (without triggering property updates)
+    connectionsToRecreate.forEach(connData => {
+        // Create connection but temporarily skip property updates during recreation
+        const connection = jsPlumbInstance.connect({
+            source: connData.sourceId,
+            target: connData.targetId,
+            type: "basic",
+            connector: connData.isCurved ?
+                (connData.sourceId === connData.targetId ? ["Bezier", { curviness: 60 }] : ["StateMachine", { curviness: 100 }]) :
+                "Straight",
+            anchors: connData.sourceId === connData.targetId ? ["Top", "Left"] : ["Continuous", "Continuous"],
+            paintStyle: { stroke: "black", strokeWidth: 2 },
+            hoverPaintStyle: { stroke: "#1e8151", strokeWidth: 3 },
+            overlays: [
+                ["Arrow", { location: 1, id: "arrow", width: 10, length: 10 }],
+                ["Label", {
+                    id: "label",
+                    cssClass: "edge-label",
+                    location: 0.3,
+                    labelStyle: {
+                        cssClass: "edge-label-style"
+                    }
+                }]
+            ]
+        });
+
+        // Manually update the edge data without triggering property updates
+        if (connection) {
+            // Update edge symbols and epsilon state
+            updateEdgeSymbols(connection, connData.symbols, connData.hasEpsilon, null); // Pass null to skip property update
+
+            // Add epsilon class if needed
+            if (connData.hasEpsilon && connection.canvas) {
+                connection.canvas.classList.add('has-epsilon');
+            }
+
+            // Add click handler
+            if (connection.canvas) {
+                connection.canvas.addEventListener('click', function (e) {
+                    const currentTool = getCurrentTool();
+                    if (currentTool === 'delete') {
+                        deleteEdge(jsPlumbInstance, connection);
+                    } else {
+                        openInlineEdgeEditor(connection, jsPlumbInstance);
+                    }
+                    e.stopPropagation();
+                });
+            }
+        }
+    });
+
+    // Handle starting state connection if this state is the starting state
+    const wasStartingState = getStartingStateId() === oldId;
+    if (wasStartingState) {
+        // The createStartingStateIndicator function will handle cleanup and recreation
+        createStartingStateIndicator(jsPlumbInstance, newLabel);
+    }
 
     // Repaint everything
     jsPlumbInstance.repaintEverything();
 
-    // Update FSA properties display
+    // Update alphabet display after all connections are recreated
+    updateAlphabetDisplay(getEdgeSymbolMap(), getEpsilonTransitionMap());
+
+    // Update FSA properties display after everything is consistent
     updateFSAPropertiesDisplay(jsPlumbInstance);
 }
 

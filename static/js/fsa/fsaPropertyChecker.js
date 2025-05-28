@@ -95,8 +95,19 @@ export function isConnected(jsPlumbInstance) {
     while (queue.length > 0) {
         const currentState = queue.shift();
 
+        // Safety check: make sure currentState exists in transitions
+        if (!tableData.transitions[currentState]) {
+            console.warn(`State ${currentState} not found in transitions during connectivity check`);
+            continue;
+        }
+
         // Check all possible transitions from this state
         for (const symbol of [...tableData.alphabet, ...(tableData.hasEpsilon ? [epsilon] : [])]) {
+            // Safety check: make sure the symbol exists for this state
+            if (!tableData.transitions[currentState][symbol]) {
+                continue;
+            }
+
             const transitions = tableData.transitions[currentState][symbol];
 
             for (const nextState of transitions) {
