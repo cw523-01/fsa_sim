@@ -346,3 +346,142 @@ def is_nondeterministic(fsa: Dict) -> bool:
                     return True
 
     return False
+
+
+def simulate_nondeterministic_fsa_generator(fsa: Dict, input_string: str):
+    """
+    Generator version of simulate_nondeterministic_fsa that yields results as they are found.
+
+    Args:
+        fsa: A dictionary representing the FSA
+        input_string: The input string to simulate
+
+    Yields:
+        Dictionary with information about each result:
+        - For accepting paths: {'type': 'accepting_path', 'path': [...], 'path_number': int}
+        - For rejected paths: {'type': 'rejected_path', 'path': [...], 'reason': str}
+        - For progress updates: {'type': 'progress', 'paths_explored': int, 'queue_size': int}
+        - For final summary: {'type': 'summary', 'total_accepting_paths': int, 'total_paths_explored': int}
+    """
+    # Validate FSA structure
+    if not _is_valid_nfa_structure(fsa):
+        yield {
+            'type': 'error',
+            'message': 'Invalid FSA structure',
+            'accepted': False
+        }
+        return
+
+    # Get epsilon closure of starting state
+    start_states = _epsilon_closure(fsa, {fsa['startingState']})
+
+    # Build initial path with epsilon transitions if any occurred
+    initial_epsilon_path = []
+    if len(start_states) > 1 or fsa['startingState'] not in start_states:
+        for state in start_states:
+            if state != fsa['startingState']:
+                initial_epsilon_path.append((fsa['startingState'], 'ε', state))
+
+    # Configuration: (current_state, input_position, path_so_far)
+    initial_configs = []
+    for state in start_states:
+        if state == fsa['startingState']:
+            initial_configs.append((state, 0, initial_epsilon_path))
+        else:
+            eps_path = initial_epsilon_path + [(fsa['startingState'], 'ε', state)]
+            initial_configs.append((state, 0, eps_path))
+
+    queue = deque(initial_configs)
+    accepting_path_count = 0
+    seen_configurations = set()
+    paths_explored = 0
+    progress_interval = 25  # Yield progress every 25 paths
+
+    while queue:
+        current_state, pos, path = queue.popleft()
+        paths_explored += 1
+
+        # Yield progress updates periodically
+        if paths_explored % progress_interval == 0:
+            yield {
+                'type': 'progress',
+                'paths_explored': paths_explored,
+                'queue_size': len(queue),
+                'current_state': current_state,
+                'input_position': pos
+            }
+
+        # Create configuration signature for cycle detection
+        config_sig = (current_state, pos, tuple(path))
+
+        # Skip if we've seen this exact configuration before
+        if config_sig in seen_configurations:
+            continue
+        seen_configurations.add(config_sig)
+
+        # If we've consumed all input
+        if pos >= len(input_string):
+            if current_state in fsa['acceptingStates']:
+                accepting_path_count += 1
+                yield {
+                    'type': 'accepting_path',
+                    'path': path.copy(),
+                    'path_number': accepting_path_count,
+                    'final_state': current_state
+                }
+            else:
+                yield {
+                    'type': 'rejected_path',
+                    'path': path.copy(),
+                    'reason': f"Final state '{current_state}' is not an accepting state",
+                    'final_state': current_state
+                }
+            continue
+
+        # Process next input symbol
+        next_symbol = input_string[pos]
+
+        # Check if symbol is in alphabet
+        if next_symbol not in fsa['alphabet']:
+            yield {
+                'type': 'rejected_path',
+                'path': path.copy(),
+                'reason': f"Symbol '{next_symbol}' not in alphabet",
+                'rejection_position': pos
+            }
+            continue
+
+        # Get transitions for this symbol from current state
+        next_states = _get_transitions(fsa, current_state, next_symbol)
+
+        if not next_states:
+            yield {
+                'type': 'rejected_path',
+                'path': path.copy(),
+                'reason': f"No transition for symbol '{next_symbol}' from state '{current_state}'",
+                'rejection_position': pos
+            }
+            continue
+
+        for next_state in next_states:
+            # Compute epsilon closure of the next state
+            epsilon_closure_states = _epsilon_closure(fsa, {next_state})
+
+            # Build path for this transition
+            new_path = path + [(current_state, next_symbol, next_state)]
+
+            # Create separate configurations for each state in epsilon closure
+            for eps_state in epsilon_closure_states:
+                final_path = new_path.copy()
+                if eps_state != next_state:
+                    final_path.append((next_state, 'ε', eps_state))
+
+                queue.append((eps_state, pos + 1, final_path))
+
+    # Final summary
+    yield {
+        'type': 'summary',
+        'total_accepting_paths': accepting_path_count,
+        'total_paths_explored': paths_explored,
+        'accepted': accepting_path_count > 0
+    }

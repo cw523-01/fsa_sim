@@ -3,7 +3,7 @@ from simulator.fsa_simulation import (
     simulate_deterministic_fsa,
     _is_deterministic,
     simulate_nondeterministic_fsa,
-    is_nondeterministic
+    is_nondeterministic, simulate_nondeterministic_fsa_generator
 )
 
 class TestFsaSimulation(unittest.TestCase):
@@ -37,11 +37,22 @@ class TestFsaSimulation(unittest.TestCase):
         expected_path = [('S0', 'a', 'S0'), ('S0', 'b', 'S1'), ('S1', 'b', 'S1')]
         self.assertEqual(simulate_deterministic_fsa(fsa, 'abb'), expected_path)
 
-        # Test rejected strings
-        self.assertFalse(simulate_deterministic_fsa(fsa, ''))
-        self.assertFalse(simulate_deterministic_fsa(fsa, 'a'))
-        self.assertFalse(simulate_deterministic_fsa(fsa, 'aa'))
-        self.assertFalse(simulate_deterministic_fsa(fsa, 'aba'))
+        # Test rejected strings - should return dict with 'accepted': False
+        result = simulate_deterministic_fsa(fsa, '')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+
+        result = simulate_deterministic_fsa(fsa, 'a')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+
+        result = simulate_deterministic_fsa(fsa, 'aa')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+
+        result = simulate_deterministic_fsa(fsa, 'aba')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
 
     def test_execution_path(self):
         # FSA that accepts strings with an even number of 'a's
@@ -65,8 +76,10 @@ class TestFsaSimulation(unittest.TestCase):
         self.assertEqual(simulate_deterministic_fsa(fsa, 'aba'), expected_path)
 
         # Test execution path for "aabba"
-        # This should return False because we end in S1 which is not an accepting state
-        self.assertFalse(simulate_deterministic_fsa(fsa, 'aabba'))
+        # This should return a dict with 'accepted': False because we end in S1 which is not an accepting state
+        result = simulate_deterministic_fsa(fsa, 'aabba')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
 
         # Test additional accepted strings
         # Test "aa" (even number of 'a's, should be accepted)
@@ -97,8 +110,10 @@ class TestFsaSimulation(unittest.TestCase):
             'acceptingStates': ['S0']
         }
 
-        # Test with a symbol not in the alphabet
-        self.assertFalse(simulate_deterministic_fsa(fsa, 'abc'))
+        # Test with a symbol not in the alphabet - should return dict with 'accepted': False
+        result = simulate_deterministic_fsa(fsa, 'abc')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
 
     def test_deterministic_check(self):
         # Valid deterministic FSA
@@ -192,11 +207,22 @@ class TestFsaSimulation(unittest.TestCase):
         ]
         self.assertEqual(simulate_deterministic_fsa(fsa, 'abbbb'), expected_path)
 
-        # Test rejected strings
-        self.assertFalse(simulate_deterministic_fsa(fsa, ''))
-        self.assertFalse(simulate_deterministic_fsa(fsa, 'a'))
-        self.assertFalse(simulate_deterministic_fsa(fsa, 'ab'))
-        self.assertFalse(simulate_deterministic_fsa(fsa, 'aab'))
+        # Test rejected strings - should return dict with 'accepted': False
+        result = simulate_deterministic_fsa(fsa, '')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+
+        result = simulate_deterministic_fsa(fsa, 'a')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+
+        result = simulate_deterministic_fsa(fsa, 'ab')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+
+        result = simulate_deterministic_fsa(fsa, 'aab')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
 
 
     def test_basic_nondeterministic_fsa(self):
@@ -301,7 +327,6 @@ class TestFsaSimulation(unittest.TestCase):
         # Test 'aa' - should have multiple accepting paths
         result = simulate_nondeterministic_fsa(nfa, 'aa')
         self.assertIsInstance(result, list)
-        print(result)
         self.assertEqual(len(result), 2)  # Should have exactly 2 paths
 
         expected_path1 = [('S0', 'a', 'S1'), ('S1', 'a', 'S3')]
@@ -474,6 +499,362 @@ class TestFsaSimulation(unittest.TestCase):
         result = simulate_nondeterministic_fsa(nfa, 'a')
         self.assertIsInstance(result, list)
         self.assertTrue(len(result) >= 1)
+
+
+    def test_nfa_generator_basic(self):
+        """Test basic functionality of the generator version"""
+        # Simple NFA that accepts strings ending with 'ab'
+        nfa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S0', 'S1'], 'b': ['S0']},
+                'S1': {'b': ['S2']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        # Test accepted string 'ab'
+        results = list(simulate_nondeterministic_fsa_generator(nfa, 'ab'))
+
+        # Should have at least one accepting path and a summary
+        accepting_paths = [r for r in results if r['type'] == 'accepting_path']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        self.assertEqual(len(accepting_paths), 1)
+        self.assertEqual(len(summary), 1)
+        self.assertTrue(summary[0]['accepted'])
+        self.assertEqual(summary[0]['total_accepting_paths'], 1)
+
+        # Check the accepting path content
+        expected_path = [('S0', 'a', 'S1'), ('S1', 'b', 'S2')]
+        self.assertEqual(accepting_paths[0]['path'], expected_path)
+        self.assertEqual(accepting_paths[0]['final_state'], 'S2')
+
+
+    def test_nfa_generator_multiple_paths(self):
+        """Test generator with multiple accepting paths"""
+        # NFA that can accept 'aa' via multiple paths
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1', 'S2']},
+                'S1': {'a': ['S3']},
+                'S2': {'a': ['S3']},
+                'S3': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        results = list(simulate_nondeterministic_fsa_generator(nfa, 'aa'))
+
+        accepting_paths = [r for r in results if r['type'] == 'accepting_path']
+        rejected_paths = [r for r in results if r['type'] == 'rejected_path']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        # Should have exactly 2 accepting paths
+        self.assertEqual(len(accepting_paths), 2)
+        self.assertEqual(len(summary), 1)
+        self.assertTrue(summary[0]['accepted'])
+        self.assertEqual(summary[0]['total_accepting_paths'], 2)
+
+        # Check both paths are present
+        expected_path1 = [('S0', 'a', 'S1'), ('S1', 'a', 'S3')]
+        expected_path2 = [('S0', 'a', 'S2'), ('S2', 'a', 'S3')]
+
+        actual_paths = [path['path'] for path in accepting_paths]
+        self.assertIn(expected_path1, actual_paths)
+        self.assertIn(expected_path2, actual_paths)
+
+        # Check path numbering
+        path_numbers = [path['path_number'] for path in accepting_paths]
+        self.assertEqual(sorted(path_numbers), [1, 2])
+
+
+    def test_nfa_generator_rejected_string(self):
+        """Test generator with rejected string"""
+        nfa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S0', 'S1'], 'b': ['S0']},
+                'S1': {'b': ['S2']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        # Test rejected string 'a'
+        results = list(simulate_nondeterministic_fsa_generator(nfa, 'a'))
+
+        accepting_paths = [r for r in results if r['type'] == 'accepting_path']
+        rejected_paths = [r for r in results if r['type'] == 'rejected_path']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        self.assertEqual(len(accepting_paths), 0)
+        self.assertTrue(len(rejected_paths) > 0)
+        self.assertEqual(len(summary), 1)
+        self.assertFalse(summary[0]['accepted'])
+        self.assertEqual(summary[0]['total_accepting_paths'], 0)
+
+        # Check rejection reasons
+        for rejected in rejected_paths:
+            self.assertIn('reason', rejected)
+            # Should be rejected because final states are not accepting
+            self.assertIn('not an accepting state', rejected['reason'])
+
+
+    def test_nfa_generator_invalid_symbol(self):
+        """Test generator with invalid symbol in input"""
+        nfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1'], 'b': ['S0']},
+                'S1': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        # Test with invalid symbol 'c'
+        results = list(simulate_nondeterministic_fsa_generator(nfa, 'ac'))
+
+        rejected_paths = [r for r in results if r['type'] == 'rejected_path']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        # Should have at least one rejection due to invalid symbol
+        symbol_rejections = [r for r in rejected_paths if 'not in alphabet' in r['reason']]
+        self.assertTrue(len(symbol_rejections) > 0)
+
+        self.assertEqual(len(summary), 1)
+        self.assertFalse(summary[0]['accepted'])
+
+
+    def test_nfa_generator_with_epsilon_transitions(self):
+        """Test generator with epsilon transitions"""
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S0']},  # Epsilon transition to S1
+                'S1': {'b': ['S2']},
+                'S2': {'': ['S3']},  # Epsilon transition to S3
+                'S3': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        # Test string 'b' which should be accepted via epsilon transitions
+        results = list(simulate_nondeterministic_fsa_generator(nfa, 'b'))
+
+        accepting_paths = [r for r in results if r['type'] == 'accepting_path']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        self.assertTrue(len(accepting_paths) >= 1)
+        self.assertEqual(len(summary), 1)
+        self.assertTrue(summary[0]['accepted'])
+
+        # Check for epsilon transitions in the path
+        found_epsilon = False
+        for path_result in accepting_paths:
+            for transition in path_result['path']:
+                if transition[1] == 'ε':
+                    found_epsilon = True
+                    break
+            if found_epsilon:
+                break
+        self.assertTrue(found_epsilon, "Expected epsilon transitions in the path")
+
+
+    def test_nfa_generator_progress_updates(self):
+        """Test that generator yields progress updates for complex FSAs"""
+        # Create an FSA that will generate many paths to trigger progress updates
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S0', 'S1'], 'b': ['S0', 'S2']},  # Multiple non-deterministic choices
+                'S1': {'a': ['S1'], 'b': ['S1', 'S3']},
+                'S2': {'a': ['S2', 'S3'], 'b': ['S2']},
+                'S3': {'a': ['S3'], 'b': ['S3']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        # Use a longer string to generate more paths
+        results = list(simulate_nondeterministic_fsa_generator(nfa, 'aaabbb'))
+
+        progress_updates = [r for r in results if r['type'] == 'progress']
+
+        # Should have some progress updates (though may not always trigger depending on path count)
+        # This test verifies the structure is correct when progress updates do occur
+        for progress in progress_updates:
+            self.assertIn('paths_explored', progress)
+            self.assertIn('queue_size', progress)
+            self.assertIn('current_state', progress)
+            self.assertIn('input_position', progress)
+            self.assertIsInstance(progress['paths_explored'], int)
+            self.assertIsInstance(progress['queue_size'], int)
+
+
+    def test_nfa_generator_empty_string(self):
+        """Test generator with empty string"""
+        # NFA where start state is accepting
+        nfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1']},
+                'S1': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+
+        results = list(simulate_nondeterministic_fsa_generator(nfa, ''))
+
+        accepting_paths = [r for r in results if r['type'] == 'accepting_path']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        self.assertEqual(len(accepting_paths), 1)
+        self.assertEqual(len(summary), 1)
+        self.assertTrue(summary[0]['accepted'])
+
+        # Empty string should result in empty path
+        self.assertEqual(accepting_paths[0]['path'], [])
+        self.assertEqual(accepting_paths[0]['final_state'], 'S0')
+
+
+    def test_nfa_generator_no_transitions(self):
+        """Test generator when no transitions are possible"""
+        nfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1'], 'b': ['S0']},
+                'S1': {}  # No transitions from S1
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        # Test string 'ab' - should be rejected because no transition on 'b' from S1
+        results = list(simulate_nondeterministic_fsa_generator(nfa, 'ab'))
+
+        accepting_paths = [r for r in results if r['type'] == 'accepting_path']
+        rejected_paths = [r for r in results if r['type'] == 'rejected_path']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        self.assertEqual(len(accepting_paths), 0)
+        self.assertTrue(len(rejected_paths) > 0)
+        self.assertFalse(summary[0]['accepted'])
+
+        # Should have rejection due to no transition
+        no_transition_rejections = [r for r in rejected_paths if 'No transition' in r['reason']]
+        self.assertTrue(len(no_transition_rejections) > 0)
+
+
+    def test_nfa_generator_invalid_fsa_structure(self):
+        """Test generator with invalid FSA structure"""
+        # Missing required keys
+        invalid_nfa = {
+            'states': ['S0'],
+            'alphabet': ['a']
+            # Missing transitions, startingState, acceptingStates
+        }
+
+        results = list(simulate_nondeterministic_fsa_generator(invalid_nfa, 'a'))
+
+        # Should yield an error immediately
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['type'], 'error')
+        self.assertIn('Invalid FSA structure', results[0]['message'])
+        self.assertFalse(results[0]['accepted'])
+
+
+    def test_nfa_generator_result_structure(self):
+        """Test that all generator results have proper structure"""
+        nfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1']},
+                'S1': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        results = list(simulate_nondeterministic_fsa_generator(nfa, 'a'))
+
+        for result in results:
+            # Every result should have a 'type' field
+            self.assertIn('type', result)
+
+            if result['type'] == 'accepting_path':
+                required_fields = ['path', 'path_number', 'final_state']
+                for field in required_fields:
+                    self.assertIn(field, result)
+
+            elif result['type'] == 'rejected_path':
+                required_fields = ['path', 'reason']
+                for field in required_fields:
+                    self.assertIn(field, result)
+
+            elif result['type'] == 'progress':
+                required_fields = ['paths_explored', 'queue_size', 'current_state', 'input_position']
+                for field in required_fields:
+                    self.assertIn(field, result)
+
+            elif result['type'] == 'summary':
+                required_fields = ['total_accepting_paths', 'total_paths_explored', 'accepted']
+                for field in required_fields:
+                    self.assertIn(field, result)
+
+
+    def test_nfa_generator_comparison_with_regular_function(self):
+        """Test that generator produces same final results as regular function"""
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1', 'S2']},
+                'S1': {'a': ['S3']},
+                'S2': {'a': ['S3']},
+                'S3': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        test_string = 'aa'
+
+        # Get results from regular function
+        regular_result = simulate_nondeterministic_fsa(nfa, test_string)
+
+        # Get results from generator
+        generator_results = list(simulate_nondeterministic_fsa_generator(nfa, test_string))
+        accepting_paths = [r['path'] for r in generator_results if r['type'] == 'accepting_path']
+        summary = [r for r in generator_results if r['type'] == 'summary'][0]
+
+        # Compare results
+        if isinstance(regular_result, list):  # Accepted
+            self.assertTrue(summary['accepted'])
+            self.assertEqual(len(accepting_paths), len(regular_result))
+
+            # Check that all paths from regular function are in generator results
+            for path in regular_result:
+                self.assertIn(path, accepting_paths)
+
+        else:  # Rejected
+            self.assertFalse(summary['accepted'])
+            self.assertEqual(len(accepting_paths), 0)
 
 
 if __name__ == '__main__':
