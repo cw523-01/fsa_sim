@@ -1,0 +1,425 @@
+.nfa-results-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    width: 600px;
+    max-width: 90vw;
+    max-height: 80vh;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #6c757d;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    opacity: 0;
+    transition: all 0.3s ease;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+.nfa-results-popup.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.nfa-results-popup.hide {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+}
+
+/* Header */
+.nfa-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    border-bottom: 2px solid #6c757d;
+}
+
+.nfa-popup-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.nfa-popup-icon {
+    font-size: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nfa-popup-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+}
+
+.nfa-popup-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Input Display */
+.nfa-popup-input {
+    padding: 12px 20px;
+    font-size: 14px;
+    color: #495057;
+    background: rgba(255, 255, 255, 0.7);
+    border-bottom: 1px solid #dee2e6;
+}
+
+.nfa-popup-input-string {
+    font-family: monospace;
+    font-weight: bold;
+    color: #212529;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* Status Section */
+.nfa-popup-status {
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.5);
+    border-bottom: 1px solid #dee2e6;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.nfa-status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+}
+
+.nfa-status-label {
+    color: #495057;
+    font-weight: 500;
+}
+
+.nfa-status-value {
+    font-weight: bold;
+    color: #212529;
+}
+
+.nfa-status-value.accepted {
+    color: #28a745;
+}
+
+.nfa-status-value.rejected {
+    color: #dc3545;
+}
+
+.nfa-status-value.error {
+    color: #fd7e14;
+}
+
+/* Tabs */
+.nfa-popup-tabs {
+    display: flex;
+    background: rgba(255, 255, 255, 0.3);
+    border-bottom: 1px solid #dee2e6;
+}
+
+.nfa-tab-btn {
+    flex: 1;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.nfa-tab-btn.active {
+    color: #495057;
+    font-weight: bold;
+    border-bottom-color: #007bff;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.nfa-tab-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.3);
+    color: #495057;
+}
+
+/* Content Area */
+.nfa-popup-content {
+    flex: 1;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.nfa-tab-content {
+    display: none;
+    height: 300px;
+    overflow-y: auto;
+}
+
+.nfa-tab-content.active {
+    display: block;
+}
+
+.nfa-paths-container {
+    padding: 16px;
+}
+
+.nfa-no-paths {
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    padding: 40px 20px;
+}
+
+/* Path Items */
+.nfa-path-item {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.nfa-path-item:hover {
+    background: rgba(255, 255, 255, 1);
+    border-color: #adb5bd;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.nfa-path-item.selected {
+    border-color: #007bff;
+    background: rgba(0, 123, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+}
+
+.nfa-path-item.accepting {
+    border-left: 4px solid #28a745;
+}
+
+.nfa-path-item.rejected {
+    border-left: 4px solid #dc3545;
+}
+
+.nfa-path-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.nfa-path-number {
+    font-weight: bold;
+    color: #495057;
+    font-size: 14px;
+}
+
+.nfa-visualize-path-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.nfa-visualize-path-btn:hover {
+    background: #0056b3;
+}
+
+.nfa-path-content {
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.nfa-path-step {
+    color: #495057;
+    font-family: monospace;
+    margin: 2px 0;
+}
+
+.nfa-final-state {
+    margin-top: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.nfa-final-state.accepting {
+    background: rgba(40, 167, 69, 0.2);
+    color: #155724;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.nfa-final-state.rejected {
+    background: rgba(220, 53, 69, 0.2);
+    color: #721c24;
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.nfa-rejection-reason {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #dc3545;
+    font-style: italic;
+}
+
+/* Actions */
+.nfa-popup-actions {
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.7);
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.nfa-action-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.nfa-action-btn:hover:not(.disabled) {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+.nfa-action-btn.disabled {
+    background: #adb5bd;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+#nfa-visualize-btn:not(.disabled) {
+    background: #28a745;
+}
+
+#nfa-visualize-btn:not(.disabled):hover {
+    background: #218838;
+}
+
+#nfa-stop-btn {
+    background: #dc3545;
+}
+
+#nfa-stop-btn:hover {
+    background: #c82333;
+}
+
+/* Progress */
+.nfa-popup-progress {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 0 0 10px 10px;
+    overflow: hidden;
+}
+
+.nfa-progress-bar {
+    height: 100%;
+    background: #007bff;
+    width: 0%;
+    transition: all 0.3s ease;
+    opacity: 0.3;
+}
+
+/* Scrollbar styling for webkit browsers */
+.nfa-tab-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.nfa-tab-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.nfa-tab-content::-webkit-scrollbar-thumb {
+    background: rgba(108, 117, 125, 0.5);
+    border-radius: 4px;
+}
+
+.nfa-tab-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(108, 117, 125, 0.7);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .nfa-results-popup {
+        width: 95vw;
+        max-height: 90vh;
+    }
+
+    .nfa-popup-status {
+        grid-template-columns: 1fr;
+    }
+
+    .nfa-popup-actions {
+        flex-direction: column;
+    }
+
+    .nfa-action-btn {
+        width: 100%;
+    }
+}
+
+/* Animation for path items appearing */
+@keyframes nfa-path-appear {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.nfa-path-item {
+    animation: nfa-path-appear 0.3s ease-out;
+}
+
+/* Pulse animation for progress indication */
+@keyframes nfa-progress-pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.3; }
+}
+
+.nfa-progress-bar.pulsing {
+    animation: nfa-progress-pulse 1.5s infinite;
+}

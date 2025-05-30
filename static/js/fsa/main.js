@@ -34,7 +34,7 @@ import {
     deselectEdgeStyleButtons
 } from './uiManager.js';
 import { showTransitionTable, generateTransitionTable } from './transitionTableManager.js';
-import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
+import { updateFSAPropertiesDisplay, isDeterministic } from './fsaPropertyChecker.js';
 import { controlLockManager } from './controlLockManager.js';
 import {
     runFSASimulation,
@@ -45,6 +45,12 @@ import {
     stopVisualSimulation,
     isVisualSimulationRunning
 } from './backendIntegration.js';
+
+// Import the NFA results manager to ensure it's loaded
+import { nfaResultsManager } from './nfaResultsManager.js';
+
+// Make NFA results manager globally available
+window.nfaResultsManager = nfaResultsManager;
 
 // Global variables
 let jsPlumbInstance;
@@ -444,7 +450,10 @@ function setupFunctionalButtons() {
         // Get input string
         const inputString = getInputString();
 
-        // Lock controls immediately
+        // Check if FSA is deterministic to provide appropriate feedback
+        const isDFA = isDeterministic(jsPlumbInstance);
+
+        // Lock controls immediately for all simulation types
         controlLockManager.lockControls();
 
         try {
@@ -460,7 +469,7 @@ function setupFunctionalButtons() {
                 }
             }
 
-            console.log(`Simulating input: "${inputString}"`);
+            console.log(`Simulating ${isDFA ? 'DFA' : 'NFA'} with input: "${inputString}"`);
 
             // Run the simulation with visual animation (default)
             const simulationResult = await runFSASimulation(jsPlumbInstance, inputString, true);
@@ -472,10 +481,11 @@ function setupFunctionalButtons() {
                 console.log('Simulation failed:', simulationResult);
             }
 
-            // For visual simulations, don't unlock controls immediately -
+            // For DFA visual simulations, don't unlock controls immediately -
             // they'll be unlocked when simulation ends or stop is pressed
+            // For NFA simulations, controls remain locked until popup is closed
             // For error cases where popup is shown, unlock controls
-            if (!simulationResult.success || !simulationResult.isVisual) {
+            if (!simulationResult.success || (!simulationResult.isVisual && simulationResult.type !== 'nfa_visual_simulation')) {
                 controlLockManager.unlockControls();
             }
 
@@ -490,8 +500,13 @@ function setupFunctionalButtons() {
     document.getElementById('stop-btn').addEventListener('click', function() {
         console.log('Stop button pressed - stopping simulation');
 
-        // Stop any running visual simulation
+        // Stop any running visual simulation (DFA or NFA)
         stopVisualSimulation();
+
+        // Hide NFA popup if it's open
+        if (nfaResultsManager && nfaResultsManager.currentPopup) {
+            nfaResultsManager.hideNFAResultsPopup();
+        }
 
         // Unlock controls
         controlLockManager.unlockControls();
@@ -507,6 +522,9 @@ function setupFunctionalButtons() {
 
         // Get input string
         const inputString = getInputString();
+
+        // Check if FSA is deterministic to provide appropriate feedback
+        const isDFA = isDeterministic(jsPlumbInstance);
 
         // Lock controls briefly for fast simulation
         controlLockManager.lockControls();
@@ -524,7 +542,7 @@ function setupFunctionalButtons() {
                 }
             }
 
-            console.log(`Fast-forward simulating input: "${inputString}"`);
+            console.log(`Fast-forward simulating ${isDFA ? 'DFA' : 'NFA'} with input: "${inputString}"`);
 
             // Run the simulation without visual animation
             const simulationResult = await runFSASimulationFastForward(jsPlumbInstance, inputString);

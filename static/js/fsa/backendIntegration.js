@@ -2,6 +2,7 @@ import { generateTransitionTable } from './transitionTableManager.js';
 import { isDeterministic, isConnected } from './fsaPropertyChecker.js';
 import { getStartingStateId } from './stateManager.js';
 import { visualSimulationManager } from './visualSimulationManager.js';
+import { nfaResultsManager } from './nfaResultsManager.js';
 
 /**
  * Converts the frontend FSA representation to the backend expected format
@@ -27,22 +28,21 @@ export function convertFSAToBackendFormat(jsPlumbInstance) {
         throw new Error('No alphabet defined. Please create at least one transition with symbols.');
     }
 
-    // Check for epsilon transitions - backend doesn't support them for deterministic FSA
-    if (tableData.hasEpsilon) {
-        throw new Error('Epsilon transitions are not supported for deterministic FSA simulation.');
-    }
-
     // Convert transitions to the backend expected format
     const backendTransitions = {};
 
     tableData.states.forEach(stateId => {
         backendTransitions[stateId] = {};
 
-        tableData.alphabet.forEach(symbol => {
-            const targets = tableData.transitions[stateId][symbol];
+        // Include epsilon transitions if they exist
+        const allSymbols = [...tableData.alphabet];
+        if (tableData.hasEpsilon) {
+            allSymbols.push(''); // Empty string for epsilon
+        }
 
+        allSymbols.forEach(symbol => {
+            const targets = tableData.transitions[stateId][symbol];
             // For backend format, we need an array of target states
-            // Even for deterministic FSA, the backend expects arrays
             backendTransitions[stateId][symbol] = targets || [];
         });
     });
@@ -66,16 +66,6 @@ export function convertFSAToBackendFormat(jsPlumbInstance) {
  */
 export function validateFSAForSimulation(jsPlumbInstance) {
     try {
-        // Check if FSA is deterministic
-        if (!isDeterministic(jsPlumbInstance)) {
-            return {
-                success: false,
-                message: 'FSA must be deterministic for simulation. Please ensure:\n' +
-                        '• No epsilon transitions\n' +
-                        '• At most one transition per state-symbol pair'
-            };
-        }
-
         // Check if FSA is connected
         if (!isConnected(jsPlumbInstance)) {
             return {
@@ -136,6 +126,41 @@ export async function simulateFSAOnBackend(fsa, inputString) {
 
     } catch (error) {
         console.error('Error during FSA simulation:', error);
+        throw error;
+    }
+}
+
+/**
+ * Sends FSA and input string to backend for streaming NFA simulation
+ * @param {Object} fsa - FSA in backend format
+ * @param {string} inputString - Input string to simulate
+ * @returns {Promise<Object>} - Promise resolving to streaming response
+ */
+export async function simulateNFAStreamOnBackend(fsa, inputString) {
+    const requestData = {
+        fsa: fsa,
+        input: inputString
+    };
+
+    try {
+        console.log('Sending NFA streaming simulation request:', requestData);
+
+        const response = await fetch('/api/simulate-nfa-stream/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        // Don't throw for HTTP errors here, let the streaming handler deal with them
+        // The response might have error data in the stream even if status is not 200
+
+        console.log('Received NFA streaming response:', response.status, response.statusText);
+        return response; // Return the streaming response
+
+    } catch (error) {
+        console.error('Error during NFA streaming simulation:', error);
         throw error;
     }
 }
@@ -274,37 +299,15 @@ export async function runFSASimulation(jsPlumbInstance, inputString, visualMode 
             }
         }
 
-        // Initialize visual simulation manager with JSPlumb instance
-        if (visualMode) {
-            visualSimulationManager.initialize(jsPlumbInstance);
-        }
+        // Check if FSA is deterministic or non-deterministic
+        const isDFA = isDeterministic(jsPlumbInstance);
 
-        // Simulate on backend
-        const result = await simulateFSAOnBackend(validation.fsa, inputString);
-
-        if (visualMode) {
-            // Always start visual simulation in visual mode (handles both empty and non-empty strings)
-            console.log('Starting visual simulation with path:', result.path);
-            visualSimulationManager.startVisualSimulation(result.path, inputString, result.accepted);
-
-            // Return success without showing text alert (visual simulation will handle display)
-            return {
-                success: true,
-                message: '', // Empty message since visual simulation handles display
-                rawResult: result,
-                type: 'visual_simulation',
-                isVisual: true
-            };
+        if (isDFA) {
+            // Handle DFA simulation (existing logic)
+            return await runDFASimulation(jsPlumbInstance, inputString, visualMode, validation.fsa);
         } else {
-            // Fast-forward mode - show popup instead of alert
-            showSimulationResultPopup(result, inputString, true);
-            return {
-                success: true,
-                message: '', // Empty since popup handles display
-                rawResult: result,
-                type: 'fast_forward_simulation',
-                isVisual: true // Set to true since we're using popup
-            };
+            // Handle NFA simulation
+            return await runNFASimulation(jsPlumbInstance, inputString, visualMode, validation.fsa);
         }
 
     } catch (error) {
@@ -331,6 +334,172 @@ export async function runFSASimulation(jsPlumbInstance, inputString, visualMode 
 }
 
 /**
+ * Run DFA simulation (existing logic)
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @param {string} inputString - Input string to simulate
+ * @param {boolean} visualMode - Whether to show visual animation
+ * @param {Object} fsa - FSA in backend format
+ * @returns {Promise<Object>} - Promise resolving to simulation result
+ */
+async function runDFASimulation(jsPlumbInstance, inputString, visualMode, fsa) {
+    // Initialize visual simulation manager with JSPlumb instance
+    if (visualMode) {
+        visualSimulationManager.initialize(jsPlumbInstance);
+    }
+
+    // Simulate on backend
+    const result = await simulateFSAOnBackend(fsa, inputString);
+
+    if (visualMode) {
+        // Always start visual simulation in visual mode (handles both empty and non-empty strings)
+        console.log('Starting visual simulation with path:', result.path);
+        visualSimulationManager.startVisualSimulation(result.path, inputString, result.accepted);
+
+        // Return success without showing text alert (visual simulation will handle display)
+        return {
+            success: true,
+            message: '', // Empty message since visual simulation handles display
+            rawResult: result,
+            type: 'visual_simulation',
+            isVisual: true
+        };
+    } else {
+        // Fast-forward mode - show popup instead of alert
+        showSimulationResultPopup(result, inputString, true);
+        return {
+            success: true,
+            message: '', // Empty since popup handles display
+            rawResult: result,
+            type: 'fast_forward_simulation',
+            isVisual: true // Set to true since we're using popup
+        };
+    }
+}
+
+/**
+ * Run NFA simulation
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @param {string} inputString - Input string to simulate
+ * @param {boolean} visualMode - Whether to show visual animation
+ * @param {Object} fsa - FSA in backend format
+ * @returns {Promise<Object>} - Promise resolving to simulation result
+ */
+async function runNFASimulation(jsPlumbInstance, inputString, visualMode, fsa) {
+    if (visualMode) {
+        // For visual mode, show NFA results popup with streaming data
+        await nfaResultsManager.showNFAResultsPopup(fsa, inputString, jsPlumbInstance);
+
+        return {
+            success: true,
+            message: '',
+            type: 'nfa_visual_simulation',
+            isVisual: true
+        };
+    } else {
+        // For fast-forward mode, try to get first accepting path quickly
+        try {
+            const streamResponse = await simulateNFAStreamOnBackend(fsa, inputString);
+            const reader = streamResponse.body.getReader();
+            const decoder = new TextDecoder();
+
+            let firstAcceptingPath = null;
+            let hasResults = false;
+
+            while (true) {
+                const { done, value } = await reader.read();
+
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            hasResults = true;
+
+                            if (data.type === 'accepting_path' && !firstAcceptingPath) {
+                                firstAcceptingPath = data.path;
+                                // Close the reader early since we found what we need
+                                reader.cancel();
+
+                                // Show result popup with the first accepting path
+                                const simulationResult = {
+                                    isAccepted: true,
+                                    executionPath: firstAcceptingPath,
+                                    inputString: inputString,
+                                    isFastForward: true
+                                };
+
+                                visualSimulationManager.simulationResult = simulationResult;
+                                visualSimulationManager.showFastForwardResultPopup();
+
+                                return {
+                                    success: true,
+                                    message: '',
+                                    type: 'nfa_fast_forward_simulation',
+                                    isVisual: true
+                                };
+                            }
+
+                            if (data.type === 'summary') {
+                                // If we reach the summary and haven't found accepting paths
+                                if (data.total_accepting_paths === 0) {
+                                    // Show rejection result
+                                    const simulationResult = {
+                                        isAccepted: false,
+                                        executionPath: [],
+                                        inputString: inputString,
+                                        isFastForward: true
+                                    };
+
+                                    visualSimulationManager.simulationResult = simulationResult;
+                                    visualSimulationManager.showFastForwardResultPopup();
+
+                                    return {
+                                        success: true,
+                                        message: '',
+                                        type: 'nfa_fast_forward_simulation',
+                                        isVisual: true
+                                    };
+                                }
+                                break;
+                            }
+                        } catch (parseError) {
+                            console.error('Error parsing streaming data:', parseError);
+                        }
+                    }
+                }
+            }
+
+            // If we get here without finding results, show error
+            if (!hasResults) {
+                showSimulationErrorPopup('No simulation results received from server', inputString);
+            }
+
+            return {
+                success: hasResults,
+                message: hasResults ? '' : 'No results received',
+                type: 'nfa_fast_forward_simulation',
+                isVisual: true
+            };
+
+        } catch (error) {
+            console.error('Error during NFA fast-forward simulation:', error);
+            showSimulationErrorPopup(`Error during NFA simulation:\n${error.message}`, inputString);
+
+            return {
+                success: false,
+                message: '',
+                type: 'nfa_backend_error',
+                isVisual: true
+            };
+        }
+    }
+}
+
+/**
  * Run FSA simulation with fast-forward (no visual animation)
  * @param {Object} jsPlumbInstance - The JSPlumb instance
  * @param {string} inputString - Input string to simulate
@@ -345,6 +514,11 @@ export async function runFSASimulationFastForward(jsPlumbInstance, inputString) 
  */
 export function stopVisualSimulation() {
     visualSimulationManager.stopSimulation();
+
+    // Also stop NFA results manager if it's running
+    if (typeof nfaResultsManager !== 'undefined' && nfaResultsManager.stopStreaming) {
+        nfaResultsManager.stopStreaming();
+    }
 }
 
 /**
@@ -352,7 +526,12 @@ export function stopVisualSimulation() {
  * @returns {boolean} - Whether visual simulation is running
  */
 export function isVisualSimulationRunning() {
-    return visualSimulationManager.isSimulationRunning();
+    const visualRunning = visualSimulationManager.isSimulationRunning();
+    const nfaRunning = (typeof nfaResultsManager !== 'undefined' &&
+                       nfaResultsManager.isStreamingActive &&
+                       nfaResultsManager.isStreamingActive());
+
+    return visualRunning || nfaRunning;
 }
 
 /**

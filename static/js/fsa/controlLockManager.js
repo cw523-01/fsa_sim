@@ -42,7 +42,7 @@ class ControlLockManager {
         // 2. Disable tool selection
         this.lockToolPanel();
 
-        // 3. Disable canvas interactions
+        // 3. Disable canvas interactions (but preserve popup interactions)
         this.lockCanvasInteractions();
 
         // 4. Disable JSPlumb interactions
@@ -180,7 +180,11 @@ class ControlLockManager {
         const canvas = document.getElementById('fsa-canvas');
         if (canvas) {
             canvas.classList.add('locked-canvas');
-            canvas.style.pointerEvents = 'none';
+
+            // Instead of disabling all pointer events on the canvas,
+            // we'll use CSS to selectively disable interaction with FSA elements
+            // while preserving popup interactions
+            this.addCanvasLockStyles();
         }
     }
 
@@ -188,7 +192,58 @@ class ControlLockManager {
         const canvas = document.getElementById('fsa-canvas');
         if (canvas) {
             canvas.classList.remove('locked-canvas');
-            canvas.style.pointerEvents = 'auto';
+            this.removeCanvasLockStyles();
+        }
+    }
+
+    /**
+     * Add CSS styles to selectively lock canvas interactions while preserving popups
+     */
+    addCanvasLockStyles() {
+        if (document.getElementById('canvas-lock-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'canvas-lock-styles';
+        style.textContent = `
+            /* Disable interactions with FSA elements during simulation */
+            .locked-canvas .state,
+            .locked-canvas .accepting-state,
+            .locked-canvas .jsplumb-connector,
+            .locked-canvas .jsplumb-endpoint,
+            .locked-canvas .edge-label,
+            .locked-canvas ._jsPlumb_connector,
+            .locked-canvas ._jsPlumb_endpoint,
+            .locked-canvas .starting-connection {
+                pointer-events: none !important;
+            }
+            
+            /* Preserve popup interactions */
+            .locked-canvas .nfa-results-popup,
+            .locked-canvas .nfa-results-popup *,
+            .locked-canvas #simulation-result-popup,
+            .locked-canvas #simulation-result-popup *,
+            .locked-canvas .notification-popup,
+            .locked-canvas .notification-popup *,
+            .locked-canvas #lock-indicator,
+            .locked-canvas #lock-indicator * {
+                pointer-events: auto !important;
+            }
+            
+            /* Ensure canvas background doesn't interfere with popups */
+            .locked-canvas {
+                pointer-events: auto;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    /**
+     * Remove CSS styles for canvas lock
+     */
+    removeCanvasLockStyles() {
+        const style = document.getElementById('canvas-lock-styles');
+        if (style) {
+            style.remove();
         }
     }
 
@@ -323,7 +378,7 @@ class ControlLockManager {
         const states = document.querySelectorAll('.state, .accepting-state');
         states.forEach(state => {
             state.classList.add('locked-state');
-            state.style.pointerEvents = 'none';
+            // Don't disable pointer events here - let CSS handle it
             state.style.opacity = '0.7';
         });
 
@@ -333,14 +388,14 @@ class ControlLockManager {
             connections.forEach(conn => {
                 if (conn.canvas) {
                     conn.canvas.classList.add('locked-connection');
-                    conn.canvas.style.pointerEvents = 'none';
+                    // Don't disable pointer events here - let CSS handle it
                     conn.canvas.style.opacity = '0.7';
                 }
 
                 // Disable label clicks too
                 const labelOverlay = conn.getOverlay('label');
                 if (labelOverlay && labelOverlay.canvas) {
-                    labelOverlay.canvas.style.pointerEvents = 'none';
+                    // Don't disable pointer events here - let CSS handle it
                     labelOverlay.canvas.style.opacity = '0.7';
                 }
             });
@@ -466,6 +521,7 @@ class ControlLockManager {
                 display: flex;
                 align-items: center;
                 gap: 5px;
+                pointer-events: auto;
             `;
             canvas.appendChild(indicator);
         }

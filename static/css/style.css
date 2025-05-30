@@ -27,5 +27,8 @@
 /* 9. Simulation Result Popup */
 @import url('simulation-popup.css');
 
-/* 10. Responsive Styles - Must be last */
+/* 10. NFA Simulation Result Popup */
+@import url('nfa-popup.css');
+
+/* 11. Responsive Styles - Must be last */
 @import url('responsive.css');

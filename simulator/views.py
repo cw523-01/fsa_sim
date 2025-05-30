@@ -218,7 +218,11 @@ def simulate_nfa_stream(request):
             def error_generator():
                 yield f"data: {json.dumps({'error': 'Missing FSA definition'})}\n\n"
 
-            return StreamingHttpResponse(error_generator(), content_type='text/event-stream')
+            return StreamingHttpResponse(
+                error_generator(),
+                content_type='text/event-stream',
+                status=400
+            )
 
         # Validate FSA structure
         required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
@@ -228,7 +232,11 @@ def simulate_nfa_stream(request):
             def error_generator():
                 yield f"data: {json.dumps({'error': f'FSA definition is missing required keys: {', '.join(missing_keys)}'})}\n\n"
 
-            return StreamingHttpResponse(error_generator(), content_type='text/event-stream')
+            return StreamingHttpResponse(
+                error_generator(),
+                content_type='text/event-stream',
+                status=400
+            )
 
         def result_generator():
             """Generator to stream NFA simulation results as Server-Sent Events"""
@@ -243,21 +251,36 @@ def simulate_nfa_stream(request):
             except Exception as e:
                 yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
+        # Create the streaming response
         response = StreamingHttpResponse(result_generator(), content_type='text/event-stream')
+
+        # Set only the headers that are allowed (no hop-by-hop headers)
         response['Cache-Control'] = 'no-cache'
-        response['Connection'] = 'keep-alive'
+        response['X-Accel-Buffering'] = 'no'  # Disable nginx buffering
+
+        # DO NOT set Connection: keep-alive - it's handled automatically by HTTP/1.1
+        # The browser will maintain the connection for streaming
+
         return response
 
     except ValueError as e:
         def error_generator():
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
-        return StreamingHttpResponse(error_generator(), content_type='text/event-stream')
+        return StreamingHttpResponse(
+            error_generator(),
+            content_type='text/event-stream',
+            status=400
+        )
     except Exception as e:
         def error_generator():
             yield f"data: {json.dumps({'error': f'Server error: {str(e)}'})}\n\n"
 
-        return StreamingHttpResponse(error_generator(), content_type='text/event-stream')
+        return StreamingHttpResponse(
+            error_generator(),
+            content_type='text/event-stream',
+            status=500
+        )
 
 
 @csrf_exempt
