@@ -90,8 +90,6 @@ export function isConnected(jsPlumbInstance) {
     const queue = [tableData.startingState];
     reachableStates.add(tableData.startingState);
 
-    const epsilon = getEpsilonSymbol();
-
     while (queue.length > 0) {
         const currentState = queue.shift();
 
@@ -101,8 +99,14 @@ export function isConnected(jsPlumbInstance) {
             continue;
         }
 
+        // Create symbols array
+        const symbolsToCheck = [...tableData.alphabet];
+        if (tableData.hasEpsilon) {
+            symbolsToCheck.push(''); // Use empty string for epsilon transitions
+        }
+
         // Check all possible transitions from this state
-        for (const symbol of [...tableData.alphabet, ...(tableData.hasEpsilon ? [epsilon] : [])]) {
+        for (const symbol of symbolsToCheck) {
             // Safety check: make sure the symbol exists for this state
             if (!tableData.transitions[currentState][symbol]) {
                 continue;

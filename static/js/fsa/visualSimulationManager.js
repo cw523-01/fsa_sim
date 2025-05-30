@@ -1,3 +1,5 @@
+import {hasEpsilonTransition} from "./edgeManager.js";
+
 /**
  * Visual simulation manager class to handle step-by-step animation of FSA execution
  */
@@ -42,7 +44,7 @@ class VisualSimulationManager {
         this.currentStep = 0;
         this.executionPath = executionPath;
         this.inputString = inputString;
-        this.originalInputValue = this.inputField ? this.inputField.value : ''; // Store original value
+        this.originalInputValue = this.inputField ? this.inputField.value : '';
 
         // Store simulation result for later popup display
         this.simulationResult = {
@@ -62,23 +64,14 @@ class VisualSimulationManager {
         try {
             // Handle empty string case
             if (executionPath.length === 0) {
-                // For empty string, we need to show the starting state
                 const startingStateId = this.getStartingStateId();
 
                 if (startingStateId) {
-                    // Highlight the starting state transition
                     await this.highlightStartingTransition(startingStateId);
-
-                    // Then highlight the starting state as current
                     this.highlightState(startingStateId, 'current');
-
-                    // Wait for a moment to show the starting state
                     await this.waitForAnimation(this.animationSpeed);
-
-                    // Show final result (accepted or rejected based on whether starting state is accepting)
                     this.showFinalResult(isAccepted);
 
-                    // Auto-trigger stop button after showing final result
                     setTimeout(() => {
                         if (this.isRunning) {
                             this.autoClickStopButton();
@@ -87,20 +80,57 @@ class VisualSimulationManager {
                 }
             } else {
                 // Normal case with non-empty execution path
-                // First, highlight the starting state transition if we have execution steps
                 const startingState = executionPath[0][0];
 
-                // Highlight the starting state connection first
                 await this.highlightStartingTransition(startingState);
-
-                // Then highlight the starting state as current
                 this.highlightState(startingState, 'current');
+
+                // FIXED: Track input position separately from step index for epsilon transitions
+                let inputPosition = 0;
 
                 // Execute each step in the path
                 for (let i = 0; i < executionPath.length; i++) {
                     if (!this.isRunning) break;
 
-                    await this.executeStep(i);
+                    const [currentState, symbol, nextState] = executionPath[i];
+                    const isEpsilonTransition = symbol === 'ε' || symbol === '';
+
+                    // Update input highlighting based on input position, not step index
+                    if (!isEpsilonTransition) {
+                        this.updateInputHighlight(inputPosition);
+                        inputPosition++; // Only increment for non-epsilon transitions
+                    }
+
+                    this.highlightTransition(currentState, nextState, symbol);
+
+                    // Wait for animation
+                    await new Promise((resolve) => {
+                        this.currentTimeout = setTimeout(() => {
+                            if (!this.isRunning) {
+                                resolve();
+                                return;
+                            }
+
+                            this.clearStateHighlight(currentState);
+                            this.highlightState(nextState, 'current');
+
+                            const nextStep = executionPath[i + 1];
+                            const isSelfLoop = nextStep &&
+                                nextStep[0] === currentState &&
+                                nextStep[1] === symbol &&
+                                nextStep[2] === nextState;
+
+                            if (!isSelfLoop) {
+                                setTimeout(() => {
+                                    this.dimTransition(currentState, nextState, symbol);
+                                }, 200);
+                            }
+
+                            resolve();
+                        }, this.animationSpeed);
+
+                        this.animationTimeouts.push(this.currentTimeout);
+                    });
 
                     if (!this.isRunning) break;
                 }
@@ -109,7 +139,6 @@ class VisualSimulationManager {
                 if (this.isRunning) {
                     this.showFinalResult(isAccepted);
 
-                    // Auto-trigger stop button after showing final result
                     setTimeout(() => {
                         if (this.isRunning) {
                             this.autoClickStopButton();
@@ -275,7 +304,12 @@ class VisualSimulationManager {
             const step = this.executionPath[stepIndex];
             const [currentState, symbol, nextState] = step;
 
-            this.updateInputHighlight(stepIndex);
+            // Only update input highlight for non-epsilon transitions
+            const isEpsilonTransition = symbol === 'ε' || symbol === '';
+            if (!isEpsilonTransition) {
+                this.updateInputHighlight(stepIndex);
+            }
+
             this.highlightTransition(currentState, nextState, symbol);
 
             this.currentTimeout = setTimeout(() => {
@@ -414,8 +448,17 @@ class VisualSimulationManager {
      * @returns {boolean} - Whether the connection has this symbol
      */
     connectionHasSymbol(connection, symbol) {
+        // Handle epsilon transitions
+        const isEpsilonSymbol = symbol === 'ε' || symbol === '';
+
         // Import the edge manager functions
-        if (typeof getEdgeSymbols === 'function') {
+        if (typeof getEdgeSymbols === 'function' && typeof hasEpsilonTransition === 'function') {
+            // Check for epsilon transition
+            if (isEpsilonSymbol) {
+                return hasEpsilonTransition(connection);
+            }
+
+            // Check for regular symbols
             const symbols = getEdgeSymbols(connection);
             return symbols.includes(symbol);
         }
@@ -424,11 +467,18 @@ class VisualSimulationManager {
         const labelOverlay = connection.getOverlay('label');
         if (labelOverlay) {
             const labelText = labelOverlay.getLabel();
+
+            // Check for epsilon in label
+            if (isEpsilonSymbol) {
+                return labelText.includes('ε');
+            }
+
             return labelText.includes(symbol);
         }
 
         return false;
     }
+
 
     /**
      * Show the final result of the simulation
@@ -450,8 +500,20 @@ class VisualSimulationManager {
             }
         }
 
-        // Update input field to show completion
-        this.updateInputHighlight(this.executionPath.length, isAccepted);
+        // Calculate the final input position based on non-epsilon transitions
+        let finalInputPosition = 0;
+        if (this.executionPath.length > 0) {
+            // Count only non-epsilon transitions to get the correct input position
+            for (const [currentState, symbol, nextState] of this.executionPath) {
+                const isEpsilonTransition = symbol === 'ε' || symbol === '';
+                if (!isEpsilonTransition) {
+                    finalInputPosition++;
+                }
+            }
+        }
+
+        // Update input field to show completion with correct position
+        this.updateInputHighlight(finalInputPosition, isAccepted);
     }
 
     /**

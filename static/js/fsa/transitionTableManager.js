@@ -14,7 +14,7 @@ export function generateTransitionTable(jsPlumbInstance) {
     const startingStateId = getStartingStateId();
     const edgeSymbolMap = getEdgeSymbolMap();
     const epsilonTransitionMap = getEpsilonTransitionMap();
-    const epsilon = getEpsilonSymbol();
+    const epsilon = getEpsilonSymbol(); // This is 'ε' for display purposes
 
     // Get all connections
     const connections = jsPlumbInstance.getAllConnections();
@@ -66,9 +66,9 @@ export function generateTransitionTable(jsPlumbInstance) {
             table.transitions[stateId][symbol] = [];
         });
 
-        // Initialize for epsilon if needed
+        // Initialize for epsilon using empty string ''
         if (table.hasEpsilon) {
-            table.transitions[stateId][epsilon] = [];
+            table.transitions[stateId][''] = []; // Use empty string for backend compatibility
         }
     });
 
@@ -95,11 +95,11 @@ export function generateTransitionTable(jsPlumbInstance) {
             }
         });
 
-        // Add epsilon transition if needed
+        // FIXED: Add epsilon transition using empty string '' instead of epsilon symbol
         if (isEpsilon && table.hasEpsilon) {
-            if (table.transitions[sourceId] && table.transitions[sourceId][epsilon]) {
-                if (!table.transitions[sourceId][epsilon].includes(targetId)) {
-                    table.transitions[sourceId][epsilon].push(targetId);
+            if (table.transitions[sourceId] && table.transitions[sourceId]['']) { // Use empty string
+                if (!table.transitions[sourceId][''].includes(targetId)) {
+                    table.transitions[sourceId][''].push(targetId);
                 }
             }
         }
@@ -144,7 +144,7 @@ export function createTransitionTableElement(tableData) {
     // Add epsilon column if needed
     if (tableData.hasEpsilon) {
         const epsilonTh = document.createElement('th');
-        epsilonTh.textContent = getEpsilonSymbol();
+        epsilonTh.textContent = getEpsilonSymbol(); // Display as 'ε'
         headerRow.appendChild(epsilonTh);
     }
 
@@ -194,11 +194,12 @@ export function createTransitionTableElement(tableData) {
             row.appendChild(cell);
         });
 
-        // Add epsilon transition cell if needed
+        // Add epsilon transition cell using empty string '' as key but display as ε
         if (tableData.hasEpsilon) {
             const epsilonCell = document.createElement('td');
-            if (tableData.transitions[stateId] && tableData.transitions[stateId][getEpsilonSymbol()]) {
-                const targets = tableData.transitions[stateId][getEpsilonSymbol()];
+            // Use empty string '' as the key to access epsilon transitions
+            if (tableData.transitions[stateId] && tableData.transitions[stateId]['']) {
+                const targets = tableData.transitions[stateId][''];
                 if (targets.length > 0) {
                     epsilonCell.textContent = targets.join(', ');
                 } else {
