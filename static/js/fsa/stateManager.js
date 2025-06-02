@@ -1,4 +1,3 @@
-// stateManager.js - State management for the FSA simulator
 import { createStateId } from './utils.js';
 import { updateAlphabetDisplay } from './alphabetManager.js';
 import { getEpsilonTransitionMap } from "./edgeManager.js";
@@ -7,6 +6,25 @@ import { getEpsilonTransitionMap } from "./edgeManager.js";
 let stateCounter = 0;
 let startingStateId = null;
 let startingStateConnection = null;
+
+/**
+ * Gets the next available state ID that doesn't conflict with existing states
+ * @returns {string} - The next available state ID
+ */
+function getNextAvailableStateId() {
+    let candidateId;
+    let counter = stateCounter;
+
+    do {
+        candidateId = createStateId(counter);
+        counter++;
+    } while (document.getElementById(candidateId));
+
+    // Update the state counter to be one past the ID we're using
+    stateCounter = counter;
+
+    return candidateId;
+}
 
 /**
  * Creates a state element on the canvas
@@ -18,7 +36,9 @@ let startingStateConnection = null;
  * @returns {HTMLElement} - The created state element
  */
 export function createState(jsPlumbInstance, x, y, isAccepting, callbacks) {
-    const stateId = createStateId(stateCounter++);
+    // Use the smart state ID generation
+    const stateId = getNextAvailableStateId();
+
     const state = document.createElement('div');
     state.id = stateId;
     state.className = isAccepting ? 'accepting-state' : 'state';
@@ -241,4 +261,25 @@ export function getStateCounter() {
  */
 export function resetStateCounter() {
     stateCounter = 0;
+}
+
+/**
+ * Validates that a proposed state name doesn't conflict with existing states
+ * @param {string} proposedName - The proposed state name
+ * @param {string} currentStateId - The current state ID (for renames, can be null for new states)
+ * @returns {boolean} - True if the name is valid
+ */
+export function validateStateName(proposedName, currentStateId = null) {
+    // Empty names are not allowed
+    if (!proposedName || !proposedName.trim()) {
+        return false;
+    }
+
+    // If this is a rename and the name hasn't changed, it's valid
+    if (currentStateId && proposedName === currentStateId) {
+        return true;
+    }
+
+    // Check if an element with this ID already exists
+    return !document.getElementById(proposedName);
 }
