@@ -634,14 +634,49 @@ class TestFsaSimulation(unittest.TestCase):
         self.assertFalse(summary[0]['accepted'])
 
 
-    def test_nfa_generator_with_epsilon_transitions(self):
+    def test_nfa_generator_with_epsilon_diverging_path(self):
         """Test generator with epsilon transitions"""
         nfa = {
-            'states': ['S0', 'S1', 'S2', 'S3'],
+            'states': ['S0', 'S1', 'S2'],
             'alphabet': ['a', 'b'],
             'transitions': {
+                'S0': {'': ['S1','S2'], 'a': ['S0']},
+                'S1': {'': ['S2']},
+                'S2': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        # Test string '' which should be accepted via epsilon transitions
+        results = list(simulate_nondeterministic_fsa_generator(nfa, ''))
+
+        accepting_paths = [r for r in results if r['type'] == 'accepting_path']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        self.assertTrue(len(accepting_paths) == 2)
+        self.assertEqual(len(summary), 1)
+        self.assertTrue(summary[0]['accepted'])
+
+        # Check for epsilon transitions in the path
+        found_epsilon = False
+        for path_result in accepting_paths:
+            for transition in path_result['path']:
+                if transition[1] == 'ε':
+                    found_epsilon = True
+                    break
+            if found_epsilon:
+                break
+        self.assertTrue(found_epsilon, "Expected epsilon transitions in the path")
+
+    def test_nfa_generator_with_epsilon_transitions(self):
+        """Test generator with epsilon paths that diverge but still reach acceptance"""
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a'],
+            'transitions': {
                 'S0': {'': ['S1'], 'a': ['S0']},  # Epsilon transition to S1
-                'S1': {'b': ['S2']},
+                'S1': {'': ['S2']},
                 'S2': {'': ['S3']},  # Epsilon transition to S3
                 'S3': {}
             },
@@ -649,8 +684,8 @@ class TestFsaSimulation(unittest.TestCase):
             'acceptingStates': ['S3']
         }
 
-        # Test string 'b' which should be accepted via epsilon transitions
-        results = list(simulate_nondeterministic_fsa_generator(nfa, 'b'))
+        # Test string 'a' which should be accepted via epsilon transitions
+        results = list(simulate_nondeterministic_fsa_generator(nfa, 'a'))
 
         accepting_paths = [r for r in results if r['type'] == 'accepting_path']
         summary = [r for r in results if r['type'] == 'summary']

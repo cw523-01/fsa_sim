@@ -110,6 +110,23 @@ def _is_deterministic(fsa: Dict) -> bool:
     return True
 
 
+def _has_epsilon_transitions(fsa: Dict) -> bool:
+    """
+    Check if the FSA has any epsilon transitions.
+
+    Args:
+        fsa: The FSA dictionary
+
+    Returns:
+        True if there are epsilon transitions, False otherwise
+    """
+    for state in fsa['states']:
+        if state in fsa['transitions'] and '' in fsa['transitions'][state]:
+            if fsa['transitions'][state]['']:  # Non-empty epsilon transitions
+                return True
+    return False
+
+
 def simulate_nondeterministic_fsa(fsa: Dict, input_string: str) -> Union[List[List[Tuple[str, str, str]]], Dict]:
     """
     Simulates a non-deterministic FSA with the given input string, finding all possible execution paths.
@@ -147,6 +164,9 @@ def simulate_nondeterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Li
             'partial_paths': []
         }
 
+    # Check if FSA has epsilon transitions
+    has_epsilon_transitions = _has_epsilon_transitions(fsa)
+
     # Get epsilon closure of starting state and build proper initial paths
     start_states_with_paths = _get_initial_states_with_paths(fsa, fsa['startingState'])
 
@@ -157,6 +177,10 @@ def simulate_nondeterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Li
 
     all_accepting_paths = []
     all_partial_paths = []
+
+    # Track configurations to prevent infinite loops
+    # Key insight: We can revisit (state, input_pos) as long as we've made progress
+    # Progress = either consumed input OR we're exploring a different epsilon path
     seen_configurations = set()
     paths_explored = 0
 
@@ -167,7 +191,7 @@ def simulate_nondeterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Li
         # Create configuration signature for cycle detection
         config_sig = (current_state, pos, tuple(path))
 
-        # Skip if we've seen this exact configuration before (prevents infinite loops)
+        # Only skip if we've seen this EXACT configuration before
         if config_sig in seen_configurations:
             continue
         seen_configurations.add(config_sig)
@@ -193,16 +217,21 @@ def simulate_nondeterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Li
         next_states = _get_transitions(fsa, current_state, next_symbol)
 
         for next_state in next_states:
-            # Get all states reachable via epsilon transitions and their paths
-            epsilon_states_with_paths = _get_epsilon_closure_with_paths(fsa, next_state)
+            if has_epsilon_transitions:
+                # Get all states reachable via epsilon transitions and their paths
+                epsilon_states_with_paths = _get_epsilon_closure_with_paths(fsa, next_state)
 
-            # Build path for this transition
-            transition_path = path + [(current_state, next_symbol, next_state)]
+                # Build path for this transition
+                transition_path = path + [(current_state, next_symbol, next_state)]
 
-            # Create separate configurations for each state in epsilon closure
-            for eps_state, eps_path_from_next in epsilon_states_with_paths:
-                final_path = transition_path + eps_path_from_next
-                queue.append((eps_state, pos + 1, final_path))
+                # Create separate configurations for each state in epsilon closure
+                for eps_state, eps_path_from_next in epsilon_states_with_paths:
+                    final_path = transition_path + eps_path_from_next
+                    queue.append((eps_state, pos + 1, final_path))
+            else:
+                # For NFAs without epsilon transitions, use simpler processing
+                transition_path = path + [(current_state, next_symbol, next_state)]
+                queue.append((next_state, pos + 1, transition_path))
 
     # Return results
     if all_accepting_paths:
@@ -219,6 +248,7 @@ def simulate_nondeterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Li
 def _get_initial_states_with_paths(fsa: Dict, start_state: str) -> List[Tuple[str, List[Tuple[str, str, str]]]]:
     """
     Get initial states and their corresponding epsilon paths from the starting state.
+    Uses simple cycle detection: don't revisit a state we've already seen in current epsilon-only path.
 
     Args:
         fsa: The FSA dictionary
@@ -229,15 +259,10 @@ def _get_initial_states_with_paths(fsa: Dict, start_state: str) -> List[Tuple[st
     """
     # Use BFS to find all reachable states via epsilon transitions
     result = []
-    visited = set()
-    queue = deque([(start_state, [])])  # (state, path_to_reach_state)
+    queue = deque([(start_state, [], set([start_state]))])  # (state, path, states_visited_in_this_path)
 
     while queue:
-        current_state, path_to_current = queue.popleft()
-
-        if current_state in visited:
-            continue
-        visited.add(current_state)
+        current_state, path_to_current, visited_in_path = queue.popleft()
 
         # Add this state and its path to results
         result.append((current_state, path_to_current))
@@ -246,9 +271,11 @@ def _get_initial_states_with_paths(fsa: Dict, start_state: str) -> List[Tuple[st
         epsilon_transitions = _get_transitions(fsa, current_state, '')
 
         for next_state in epsilon_transitions:
-            if next_state not in visited:
+            # Only follow epsilon transition if we haven't visited this state in current path
+            if next_state not in visited_in_path:
                 new_path = path_to_current + [(current_state, 'ε', next_state)]
-                queue.append((next_state, new_path))
+                new_visited = visited_in_path | {next_state}
+                queue.append((next_state, new_path, new_visited))
 
     return result
 
@@ -256,6 +283,7 @@ def _get_initial_states_with_paths(fsa: Dict, start_state: str) -> List[Tuple[st
 def _get_epsilon_closure_with_paths(fsa: Dict, start_state: str) -> List[Tuple[str, List[Tuple[str, str, str]]]]:
     """
     Get epsilon closure of a state along with the paths to reach each state.
+    Uses simple cycle detection: don't revisit a state we've already seen in current epsilon-only path.
 
     Args:
         fsa: The FSA dictionary
@@ -265,15 +293,10 @@ def _get_epsilon_closure_with_paths(fsa: Dict, start_state: str) -> List[Tuple[s
         List of tuples (state, path_from_start_state) where path contains epsilon transitions
     """
     result = []
-    visited = set()
-    queue = deque([(start_state, [])])  # (state, path_from_start_state)
+    queue = deque([(start_state, [], set([start_state]))])  # (state, path, states_visited_in_this_path)
 
     while queue:
-        current_state, path_to_current = queue.popleft()
-
-        if current_state in visited:
-            continue
-        visited.add(current_state)
+        current_state, path_to_current, visited_in_path = queue.popleft()
 
         # Add this state and its path to results
         result.append((current_state, path_to_current))
@@ -282,9 +305,11 @@ def _get_epsilon_closure_with_paths(fsa: Dict, start_state: str) -> List[Tuple[s
         epsilon_transitions = _get_transitions(fsa, current_state, '')
 
         for next_state in epsilon_transitions:
-            if next_state not in visited:
+            # Only follow epsilon transition if we haven't visited this state in current path
+            if next_state not in visited_in_path:
                 new_path = path_to_current + [(current_state, 'ε', next_state)]
-                queue.append((next_state, new_path))
+                new_visited = visited_in_path | {next_state}
+                queue.append((next_state, new_path, new_visited))
 
     return result
 
@@ -428,6 +453,9 @@ def simulate_nondeterministic_fsa_generator(fsa: Dict, input_string: str):
         }
         return
 
+    # Check if FSA has epsilon transitions
+    has_epsilon_transitions = _has_epsilon_transitions(fsa)
+
     # Get epsilon closure of starting state and build proper initial paths
     start_states_with_paths = _get_initial_states_with_paths(fsa, fsa['startingState'])
 
@@ -508,16 +536,21 @@ def simulate_nondeterministic_fsa_generator(fsa: Dict, input_string: str):
             continue
 
         for next_state in next_states:
-            # Get all states reachable via epsilon transitions and their paths
-            epsilon_states_with_paths = _get_epsilon_closure_with_paths(fsa, next_state)
+            if has_epsilon_transitions:
+                # Get all states reachable via epsilon transitions and their paths
+                epsilon_states_with_paths = _get_epsilon_closure_with_paths(fsa, next_state)
 
-            # Build path for this transition
-            transition_path = path + [(current_state, next_symbol, next_state)]
+                # Build path for this transition
+                transition_path = path + [(current_state, next_symbol, next_state)]
 
-            # Create separate configurations for each state in epsilon closure
-            for eps_state, eps_path_from_next in epsilon_states_with_paths:
-                final_path = transition_path + eps_path_from_next
-                queue.append((eps_state, pos + 1, final_path))
+                # Create separate configurations for each state in epsilon closure
+                for eps_state, eps_path_from_next in epsilon_states_with_paths:
+                    final_path = transition_path + eps_path_from_next
+                    queue.append((eps_state, pos + 1, final_path))
+            else:
+                # For NFAs without epsilon transitions, use simpler processing
+                transition_path = path + [(current_state, next_symbol, next_state)]
+                queue.append((next_state, pos + 1, transition_path))
 
     # Final summary
     yield {
