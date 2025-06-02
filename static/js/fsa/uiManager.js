@@ -14,8 +14,8 @@ import {
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 import {updateAlphabetDisplay} from "./alphabetManager.js";
 import { validateStateName } from './stateManager.js';
-
 import { notificationManager } from './notificationManager.js';
+import { nfaResultsManager } from './nfaResultsManager.js';
 
 // UI state
 let currentTool = null;
@@ -25,6 +25,16 @@ let pendingSourceId = null;
 let pendingTargetId = null;
 let sourceState = null;
 let editorJsPlumbInstance = null;
+
+/**
+ * Clear stored NFA results when FSA structure changes
+ */
+function clearNFAStoredResults() {
+    if (nfaResultsManager) {
+        nfaResultsManager.clearStoredPaths();
+        console.log('Cleared NFA stored results due to FSA structure change from uiManager');
+    }
+}
 
 /**
  * Select a tool
@@ -392,7 +402,7 @@ function setupLiveStateUpdates(jsPlumbInstance) {
     const startingCheckbox = document.getElementById('inline-starting-state-checkbox');
 
     labelInput.addEventListener('input', () => updateStateLabel(jsPlumbInstance));
-    acceptingCheckbox.addEventListener('change', updateStateType);
+    acceptingCheckbox.addEventListener('change', () => updateStateType(jsPlumbInstance));
     startingCheckbox.addEventListener('change', () => updateStartingState(jsPlumbInstance));
 }
 
@@ -421,7 +431,6 @@ function setupEdgeLiveUpdates() {
     curveStyleCheckbox.addEventListener('change', updateEdgeCurveStyleChange);
 }
 
-
 function updateEdgeCurveStyleChange() {
     if (!currentEditingEdge || !editorJsPlumbInstance) return;
 
@@ -435,6 +444,9 @@ function updateEdgeCurveStyleChange() {
     if (newConnection) {
         currentEditingEdge = newConnection;
     }
+
+    // Clear stored NFA results since FSA structure changed
+    clearNFAStoredResults();
 
     // Deselect both edge style buttons since we now have a mix of styles
     deselectEdgeStyleButtons();
@@ -599,13 +611,16 @@ function updateStateLabel(jsPlumbInstance) {
         createStartingStateIndicator(jsPlumbInstance, newLabel);
     }
 
+    // Clear stored NFA results since FSA structure changed
+    clearNFAStoredResults();
+
     // Ensure everything is properly repainted
     jsPlumbInstance.repaintEverything();
 
     console.log(`State renamed from ${oldId} to ${newLabel}, recreated ${connectionsToRecreate.length} connections`);
 }
 
-function updateStateType() {
+function updateStateType(jsPlumbInstance) {
     if (!currentEditingState) return;
     const isAccepting = document.getElementById('inline-accepting-state-checkbox').checked;
 
@@ -616,6 +631,9 @@ function updateStateType() {
         currentEditingState.classList.remove('accepting-state');
         currentEditingState.classList.add('state');
     }
+
+    // Clear stored NFA results since FSA structure changed
+    clearNFAStoredResults();
 }
 
 function updateStartingState(jsPlumbInstance) {
@@ -629,6 +647,9 @@ function updateStartingState(jsPlumbInstance) {
         // Remove starting state if this was the starting state
         createStartingStateIndicator(jsPlumbInstance, null);
     }
+
+    // Clear stored NFA results since FSA structure changed
+    clearNFAStoredResults();
 
     jsPlumbInstance.repaintEverything();
 
@@ -666,6 +687,10 @@ function updateCurrentEdgeLabel() {
 
     if (!hasDuplicates && (symbols.length > 0 || hasEpsilon)) {
         updateEdgeSymbols(currentEditingEdge, symbols, hasEpsilon, editorJsPlumbInstance);
+
+        // Clear stored NFA results since FSA structure changed
+        clearNFAStoredResults();
+
         editorJsPlumbInstance.repaintEverything();
     }
 }

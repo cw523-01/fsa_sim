@@ -1,5 +1,6 @@
 import { visualSimulationManager } from './visualSimulationManager.js';
 import { simulateNFAStreamOnBackend } from './backendIntegration.js';
+import { controlLockManager } from './controlLockManager.js';
 
 /**
  * NFA Results Manager class to handle streaming NFA simulation results
@@ -16,31 +17,209 @@ class NFAResultsManager {
         this.jsPlumbInstance = null;
         this.pathsExplored = 0;
         this.hasAcceptingPaths = false;
+        this.isComplete = false;
+        this.finalResult = null; // Store final result (accepted/rejected)
+        this.storedPaths = null; // Store complete simulation results to avoid re-streaming
     }
 
     /**
-     * Show NFA results popup with streaming data
+     * Show NFA results popup with streaming data or stored data
      * @param {Object} fsa - FSA in backend format
      * @param {string} inputString - Input string to simulate
      * @param {Object} jsPlumbInstance - JSPlumb instance for visual simulation
+     * @param {boolean} useStoredPaths - Whether to use stored paths instead of streaming
      */
-    async showNFAResultsPopup(fsa, inputString, jsPlumbInstance) {
+    async showNFAResultsPopup(fsa, inputString, jsPlumbInstance, useStoredPaths = false) {
         // Store references
         this.currentFSA = fsa;
         this.currentInputString = inputString;
         this.jsPlumbInstance = jsPlumbInstance;
 
-        // Reset state
+        // If we have stored paths for the same FSA and input, use them
+        if (useStoredPaths && this.storedPaths &&
+            this.storedPaths.inputString === inputString &&
+            JSON.stringify(this.storedPaths.fsa) === JSON.stringify(fsa)) {
+
+            console.log('Using stored simulation results');
+            this.loadStoredPaths();
+            this.createNFAResultsPopup();
+            this.updateUIWithStoredData();
+            return;
+        }
+
+        // Reset state for new simulation
         this.acceptingPaths = [];
         this.rejectedPaths = [];
         this.pathsExplored = 0;
         this.hasAcceptingPaths = false;
+        this.isComplete = false;
+        this.finalResult = null;
 
         // Create and show popup
         this.createNFAResultsPopup();
 
         // Start streaming
         await this.startStreaming();
+    }
+
+    /**
+     * Load stored paths into current state
+     */
+    loadStoredPaths() {
+        if (!this.storedPaths) return;
+
+        this.acceptingPaths = [...this.storedPaths.acceptingPaths];
+        this.rejectedPaths = [...this.storedPaths.rejectedPaths];
+        this.pathsExplored = this.storedPaths.pathsExplored;
+        this.hasAcceptingPaths = this.storedPaths.hasAcceptingPaths;
+        this.isComplete = this.storedPaths.isComplete;
+        this.finalResult = this.storedPaths.finalResult;
+    }
+
+    /**
+     * Store current simulation results for reuse
+     */
+    storeCurrentPaths() {
+        this.storedPaths = {
+            fsa: JSON.parse(JSON.stringify(this.currentFSA)), // Deep clone
+            inputString: this.currentInputString,
+            acceptingPaths: [...this.acceptingPaths], // Clone arrays
+            rejectedPaths: [...this.rejectedPaths],
+            pathsExplored: this.pathsExplored,
+            hasAcceptingPaths: this.hasAcceptingPaths,
+            isComplete: this.isComplete,
+            finalResult: this.finalResult
+        };
+        console.log('Stored simulation results for reuse');
+    }
+
+    /**
+     * Update UI with stored data (for when reloading popup)
+     */
+    updateUIWithStoredData() {
+        // Update counters
+        this.updateCounters();
+
+        // Update status
+        const statusText = document.getElementById('nfa-status-text');
+        if (statusText && this.finalResult !== null) {
+            if (this.finalResult) {
+                statusText.textContent = 'Input ACCEPTED';
+                statusText.className = 'nfa-status-value accepted';
+            } else {
+                statusText.textContent = 'Input REJECTED';
+                statusText.className = 'nfa-status-value rejected';
+            }
+        }
+
+        // Add all accepting paths to UI
+        const acceptingContainer = document.getElementById('accepting-paths-container');
+        if (acceptingContainer) {
+            acceptingContainer.innerHTML = '';
+            if (this.acceptingPaths.length === 0) {
+                acceptingContainer.innerHTML = '<div class="nfa-no-paths">No accepting paths found...</div>';
+            } else {
+                this.acceptingPaths.forEach((pathData, index) => {
+                    this.addStoredPathToUI(pathData, 'accepting', index);
+                });
+            }
+        }
+
+        // Add all rejected paths to UI
+        const rejectedContainer = document.getElementById('rejected-paths-container');
+        if (rejectedContainer) {
+            rejectedContainer.innerHTML = '';
+            if (this.rejectedPaths.length === 0) {
+                rejectedContainer.innerHTML = '<div class="nfa-no-paths">No rejected paths found...</div>';
+            } else {
+                this.rejectedPaths.forEach((pathData, index) => {
+                    this.addStoredPathToUI(pathData, 'rejected', index);
+                });
+            }
+        }
+
+        // Update buttons
+        const stopBtn = document.getElementById('nfa-stop-btn');
+        if (stopBtn) {
+            stopBtn.textContent = 'Close';
+            stopBtn.onclick = () => this.handlePopupClose();
+        }
+
+        const visualizeBtn = document.getElementById('nfa-visualize-btn');
+        if (visualizeBtn && this.acceptingPaths.length > 0) {
+            visualizeBtn.disabled = false;
+            visualizeBtn.classList.remove('disabled');
+            visualizeBtn.onclick = () => this.visualizeSelectedPath();
+        }
+
+        // Update progress bar
+        const progressBar = document.getElementById('nfa-progress-bar');
+        if (progressBar && this.finalResult !== null) {
+            progressBar.style.width = '100%';
+            progressBar.style.backgroundColor = this.finalResult ? '#4CAF50' : '#f44336';
+            progressBar.style.opacity = '1';
+        }
+    }
+
+    /**
+     * Add a stored path to the UI (similar to addPathToUI but for stored data)
+     */
+    addStoredPathToUI(pathData, type, index) {
+        const containerId = `${type}-paths-container`;
+        const container = document.getElementById(containerId);
+
+        if (!container) return;
+
+        // Create path element
+        const pathElement = document.createElement('div');
+        pathElement.className = `nfa-path-item ${type}`;
+        pathElement.setAttribute('data-path-index', index);
+
+        // Build path display
+        let pathDisplay = '';
+        if (pathData.path && pathData.path.length > 0) {
+            pathDisplay = pathData.path.map((step, stepIndex) => {
+                const [currentState, symbol, nextState] = step;
+                const displaySymbol = symbol === '' ? 'ε' : symbol;
+                return `<span class="nfa-path-step">${currentState} --${displaySymbol}--> ${nextState}</span>`;
+            }).join('<br>');
+
+            const finalState = pathData.final_state || pathData.path[pathData.path.length - 1][2];
+            const finalStateInfo = type === 'accepting' ?
+                `<div class="nfa-final-state accepting">Final state: ${finalState} (accepting)</div>` :
+                `<div class="nfa-final-state rejected">Final state: ${finalState} (non-accepting)</div>`;
+
+            pathDisplay += finalStateInfo;
+        } else {
+            const finalState = pathData.final_state || 'S0';
+            pathDisplay = `<span class="nfa-path-step">Empty string processed in starting state</span><br>`;
+            pathDisplay += type === 'accepting' ?
+                `<div class="nfa-final-state accepting">Final state: ${finalState} (accepting)</div>` :
+                `<div class="nfa-final-state rejected">Final state: ${finalState} (non-accepting)</div>`;
+        }
+
+        let reasonDisplay = '';
+        if (type === 'rejected' && pathData.reason) {
+            reasonDisplay = `<div class="nfa-rejection-reason">Reason: ${pathData.reason}</div>`;
+        }
+
+        // Remove individual visualize buttons - use only path number for all paths
+        pathElement.innerHTML = `
+            <div class="nfa-path-header">
+                <span class="nfa-path-number">Path ${index + 1}</span>
+            </div>
+            <div class="nfa-path-content">
+                ${pathDisplay}
+                ${reasonDisplay}
+            </div>
+        `;
+
+        // Add click handler for path selection
+        pathElement.addEventListener('click', (e) => {
+            this.selectPath(pathElement, type);
+        });
+
+        container.appendChild(pathElement);
     }
 
     /**
@@ -61,7 +240,7 @@ class NFAResultsManager {
                     <div class="nfa-popup-icon">🔀</div>
                     <span>NFA SIMULATION</span>
                 </div>
-                <button class="nfa-popup-close" onclick="nfaResultsManager.hideNFAResultsPopup()">×</button>
+                <button class="nfa-popup-close" onclick="nfaResultsManager.handlePopupClose()">×</button>
             </div>
             
             <div class="nfa-popup-input">
@@ -72,10 +251,6 @@ class NFAResultsManager {
                 <div class="nfa-status-item">
                     <span class="nfa-status-label">Status:</span>
                     <span class="nfa-status-value" id="nfa-status-text">Exploring paths...</span>
-                </div>
-                <div class="nfa-status-item">
-                    <span class="nfa-status-label">Paths explored:</span>
-                    <span class="nfa-status-value" id="nfa-paths-explored">0</span>
                 </div>
                 <div class="nfa-status-item">
                     <span class="nfa-status-label">Accepting paths:</span>
@@ -137,6 +312,29 @@ class NFAResultsManager {
                 popup.classList.add('show');
             }, 100);
         }
+    }
+
+    /**
+     * Handle popup close - automatically press stop button
+     */
+    handlePopupClose() {
+        console.log('NFA popup closed - auto-pressing stop button');
+
+        // Hide the popup first
+        this.hideNFAResultsPopup();
+
+        // Auto-press the stop button after a brief delay
+        setTimeout(() => {
+            const stopButton = document.getElementById('stop-btn');
+            if (stopButton && !stopButton.disabled) {
+                stopButton.click();
+                console.log('Stop button auto-clicked from NFA popup close');
+            } else {
+                // Fallback: unlock controls manually if stop button unavailable
+                controlLockManager.unlockControls();
+                console.log('Controls unlocked manually after NFA popup close');
+            }
+        }, 100);
     }
 
     /**
@@ -208,7 +406,6 @@ class NFAResultsManager {
                             }
                         } catch (parseError) {
                             console.error('Error parsing streaming data:', parseError, 'Raw line:', line);
-                            // Continue processing other lines instead of failing completely
                         }
                     }
                 }
@@ -293,12 +490,6 @@ class NFAResultsManager {
     handleProgress(data) {
         this.pathsExplored = data.paths_explored;
 
-        // Update progress display
-        const pathsExploredEl = document.getElementById('nfa-paths-explored');
-        if (pathsExploredEl) {
-            pathsExploredEl.textContent = this.pathsExplored;
-        }
-
         // Update progress bar (visual indicator)
         const progressBar = document.getElementById('nfa-progress-bar');
         if (progressBar) {
@@ -318,6 +509,11 @@ class NFAResultsManager {
      */
     handleSummary(data) {
         this.pathsExplored = data.total_paths_explored;
+        this.finalResult = data.accepted;
+        this.isComplete = true;
+
+        // Store paths for reuse
+        this.storeCurrentPaths();
 
         // Update final status
         const statusText = document.getElementById('nfa-status-text');
@@ -338,7 +534,7 @@ class NFAResultsManager {
         const stopBtn = document.getElementById('nfa-stop-btn');
         if (stopBtn) {
             stopBtn.textContent = 'Close';
-            stopBtn.onclick = () => this.hideNFAResultsPopup();
+            stopBtn.onclick = () => this.handlePopupClose();
         }
 
         // Show completion indicator
@@ -355,6 +551,10 @@ class NFAResultsManager {
      */
     handleStreamComplete() {
         this.isStreaming = false;
+        this.isComplete = true;
+
+        // Store paths for reuse
+        this.storeCurrentPaths();
 
         // If no summary was received but stream ended, update UI
         const statusText = document.getElementById('nfa-status-text');
@@ -362,9 +562,11 @@ class NFAResultsManager {
             if (this.hasAcceptingPaths) {
                 statusText.textContent = 'Input ACCEPTED';
                 statusText.className = 'nfa-status-value accepted';
+                this.finalResult = true;
             } else {
                 statusText.textContent = 'Input REJECTED';
                 statusText.className = 'nfa-status-value rejected';
+                this.finalResult = false;
             }
         }
 
@@ -372,7 +574,7 @@ class NFAResultsManager {
         const stopBtn = document.getElementById('nfa-stop-btn');
         if (stopBtn) {
             stopBtn.textContent = 'Close';
-            stopBtn.onclick = () => this.hideNFAResultsPopup();
+            stopBtn.onclick = () => this.handlePopupClose();
         }
 
         console.log('NFA simulation completed');
@@ -395,22 +597,18 @@ class NFAResultsManager {
     }
 
     /**
-     * Update path counters in the UI
+     * Update path counters in the UI (removed paths explored counter)
      */
     updateCounters() {
         // Update main status counters
         const acceptingCountEl = document.getElementById('nfa-accepting-count');
         const rejectedCountEl = document.getElementById('nfa-rejected-count');
-        const pathsExploredEl = document.getElementById('nfa-paths-explored');
 
         if (acceptingCountEl) {
             acceptingCountEl.textContent = this.acceptingPaths.length;
         }
         if (rejectedCountEl) {
             rejectedCountEl.textContent = this.rejectedPaths.length;
-        }
-        if (pathsExploredEl) {
-            pathsExploredEl.textContent = this.pathsExplored;
         }
 
         // Update tab counters
@@ -478,10 +676,10 @@ class NFAResultsManager {
             reasonDisplay = `<div class="nfa-rejection-reason">Reason: ${pathData.reason}</div>`;
         }
 
+        // Remove individual visualize buttons - use only path number for all paths
         pathElement.innerHTML = `
             <div class="nfa-path-header">
                 <span class="nfa-path-number">Path ${type === 'accepting' ? this.acceptingPaths.length : this.rejectedPaths.length}</span>
-                ${type === 'accepting' ? '<button class="nfa-visualize-path-btn" onclick="nfaResultsManager.visualizePath(' + (this.acceptingPaths.length - 1) + ', \'accepting\')">Visualize</button>' : ''}
             </div>
             <div class="nfa-path-content">
                 ${pathDisplay}
@@ -491,9 +689,7 @@ class NFAResultsManager {
 
         // Add click handler for path selection
         pathElement.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('nfa-visualize-path-btn')) {
-                this.selectPath(pathElement, type);
-            }
+            this.selectPath(pathElement, type);
         });
 
         container.appendChild(pathElement);
@@ -515,16 +711,14 @@ class NFAResultsManager {
         // Select this path
         pathElement.classList.add('selected');
 
-        // Update visualize button for accepting paths
-        if (type === 'accepting') {
-            const visualizeBtn = document.getElementById('nfa-visualize-btn');
-            if (visualizeBtn) {
-                visualizeBtn.disabled = false;
-                visualizeBtn.classList.remove('disabled');
+        // Update visualize button - enable for any selected path (accepting or rejected)
+        const visualizeBtn = document.getElementById('nfa-visualize-btn');
+        if (visualizeBtn) {
+            visualizeBtn.disabled = false;
+            visualizeBtn.classList.remove('disabled');
 
-                const pathIndex = parseInt(pathElement.getAttribute('data-path-index'));
-                visualizeBtn.onclick = () => this.visualizePath(pathIndex, 'accepting');
-            }
+            const pathIndex = parseInt(pathElement.getAttribute('data-path-index'));
+            visualizeBtn.onclick = () => this.visualizePath(pathIndex, type);
         }
     }
 
@@ -541,8 +735,50 @@ class NFAResultsManager {
             return;
         }
 
-        // Hide NFA results popup
-        this.hideNFAResultsPopup();
+        // Set up a callback to reopen the NFA popup after visualization ends
+        const originalStopSimulation = visualSimulationManager.stopSimulation.bind(visualSimulationManager);
+        const originalAutoClickStopButton = visualSimulationManager.autoClickStopButton.bind(visualSimulationManager);
+
+        // Override stop simulation to reopen popup
+        visualSimulationManager.stopSimulation = () => {
+            originalStopSimulation();
+            // Restore original methods
+            visualSimulationManager.stopSimulation = originalStopSimulation;
+            visualSimulationManager.autoClickStopButton = originalAutoClickStopButton;
+
+            // Reopen NFA popup with stored data after a brief delay
+            setTimeout(() => {
+                console.log('Reopening NFA popup after path visualization');
+                this.showNFAResultsPopup(this.currentFSA, this.currentInputString, this.jsPlumbInstance, true);
+            }, 500);
+        };
+
+        // Override auto-click stop button to prevent automatic stop button pressing
+        // Only reopen the popup, don't press stop button
+        visualSimulationManager.autoClickStopButton = () => {
+            console.log('Path visualization completed - reopening NFA popup instead of auto-clicking stop');
+
+            // Just call stopSimulation directly (which will reopen popup)
+            visualSimulationManager.stopSimulation();
+
+            // Show result popup after a brief delay
+            setTimeout(() => {
+                visualSimulationManager.showResultPopup();
+            }, 800); // Slightly longer delay to allow popup to open first
+        };
+
+        // Hide current NFA results popup temporarily
+        if (this.currentPopup) {
+            this.currentPopup.classList.add('hide');
+            this.currentPopup.classList.remove('show');
+
+            setTimeout(() => {
+                if (this.currentPopup && this.currentPopup.parentNode) {
+                    this.currentPopup.parentNode.removeChild(this.currentPopup);
+                }
+                this.currentPopup = null;
+            }, 400);
+        }
 
         // Initialize visual simulation manager
         visualSimulationManager.initialize(this.jsPlumbInstance);
@@ -597,7 +833,7 @@ class NFAResultsManager {
         const stopBtn = document.getElementById('nfa-stop-btn');
         if (stopBtn) {
             stopBtn.textContent = 'Close';
-            stopBtn.onclick = () => this.hideNFAResultsPopup();
+            stopBtn.onclick = () => this.handlePopupClose();
         }
 
         console.log('NFA streaming stopped');
@@ -625,11 +861,22 @@ class NFAResultsManager {
             }, 400);
         }
 
-        // Reset state
+        // Note: Don't reset stored paths here - keep them for reuse
+        // Only reset current popup state
+    }
+
+    /**
+     * Clear all stored data (call this when FSA structure changes)
+     */
+    clearStoredPaths() {
+        this.storedPaths = null;
         this.acceptingPaths = [];
         this.rejectedPaths = [];
         this.pathsExplored = 0;
         this.hasAcceptingPaths = false;
+        this.isComplete = false;
+        this.finalResult = null;
+        console.log('Cleared stored simulation results');
     }
 
     /**
@@ -638,6 +885,18 @@ class NFAResultsManager {
      */
     isStreamingActive() {
         return this.isStreaming;
+    }
+
+    /**
+     * Check if we have stored results for the given FSA and input
+     * @param {Object} fsa - FSA in backend format
+     * @param {string} inputString - Input string
+     * @returns {boolean} - Whether we have stored results
+     */
+    hasStoredResultsFor(fsa, inputString) {
+        return this.storedPaths &&
+               this.storedPaths.inputString === inputString &&
+               JSON.stringify(this.storedPaths.fsa) === JSON.stringify(fsa);
     }
 }
 
@@ -649,3 +908,4 @@ window.nfaResultsManager = nfaResultsManager;
 
 // Export class for potential multiple instances
 export { NFAResultsManager };
+        

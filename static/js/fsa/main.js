@@ -46,7 +46,7 @@ import {
     isVisualSimulationRunning
 } from './backendIntegration.js';
 
-// Import the NFA results manager to ensure it's loaded
+// Import the enhanced NFA results manager
 import { nfaResultsManager } from './nfaResultsManager.js';
 
 // Make NFA results manager globally available
@@ -96,6 +96,14 @@ export function initialiseSimulator() {
 }
 
 /**
+ * Clear stored NFA results when FSA structure changes
+ */
+function clearNFAStoredResults() {
+    nfaResultsManager.clearStoredPaths();
+    console.log('Cleared NFA stored results due to FSA structure change');
+}
+
+/**
  * Setup all event listeners
  */
 export function setupEventListeners() {
@@ -141,6 +149,9 @@ export function setupEventListeners() {
         // Apply straight edges to all connections with our improved function
         setAllEdgeStyles(jsPlumbInstance, false);
 
+        // Clear stored NFA results since FSA structure changed
+        clearNFAStoredResults();
+
         // Update FSA properties display
         updateFSAPropertiesDisplay(jsPlumbInstance);
 
@@ -160,6 +171,9 @@ export function setupEventListeners() {
         console.log("Setting all edges to curved");
         // Apply curved edges to all connections with our improved function
         setAllEdgeStyles(jsPlumbInstance, true);
+
+        // Clear stored NFA results since FSA structure changed
+        clearNFAStoredResults();
 
         // Update FSA properties display
         updateFSAPropertiesDisplay(jsPlumbInstance);
@@ -327,6 +341,9 @@ function setupConnectionEvents() {
             });
         }
 
+        // Clear stored NFA results since FSA structure changed
+        clearNFAStoredResults();
+
         // Update properties display
         updateFSAPropertiesDisplay(jsPlumbInstance);
     });
@@ -347,6 +364,9 @@ function handleStateCreation(x, y, isAccepting) {
     };
     createState(jsPlumbInstance, x, y, isAccepting, callbacks);
 
+    // Clear stored NFA results since FSA structure changed
+    clearNFAStoredResults();
+
     // Update properties display
     updateFSAPropertiesDisplay(jsPlumbInstance);
 }
@@ -364,6 +384,8 @@ function handleStateClick(stateElement, e) {
     if (currentTool === 'delete'){
         if (stateElement.classList.contains('state') || stateElement.classList.contains('accepting-state')) {
             deleteState(jsPlumbInstance, stateElement, getEdgeSymbolMap());
+            // Clear stored NFA results since FSA structure changed
+            clearNFAStoredResults();
             // Update properties display after deleting a state
             updateFSAPropertiesDisplay(jsPlumbInstance);
         }
@@ -380,6 +402,8 @@ function handleStateClick(stateElement, e) {
                     createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
                         onEdgeClick: handleEdgeClick
                     });
+                    // Clear stored NFA results since FSA structure changed
+                    clearNFAStoredResults();
                     // Update properties display after creating a connection
                     updateFSAPropertiesDisplay(jsPlumbInstance);
 
@@ -431,6 +455,7 @@ function handleEdgeClick(connection, e) {
     const currentTool = getCurrentTool();
     if (currentTool === 'delete') {
         deleteEdge(jsPlumbInstance, connection);
+        // Clear stored NFA results since FSA structure changed (deleteEdge already handles this)
         // Update properties display is called inside deleteEdge
     } else {
         openInlineEdgeEditor(connection, jsPlumbInstance);
