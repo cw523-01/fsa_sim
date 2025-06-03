@@ -908,4 +908,3 @@ window.nfaResultsManager = nfaResultsManager;
 
 // Export class for potential multiple instances
 export { NFAResultsManager };
-        
