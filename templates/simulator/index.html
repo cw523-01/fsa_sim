@@ -26,6 +26,37 @@
         </div>
     </header>
     
+    <nav class="menu-bar">
+        <div class="menu-container">
+            <!-- File Menu -->
+            <div class="menu-item" id="file-menu">
+                <button class="menu-button" id="file-menu-button">
+                    File
+                    <span class="menu-caret">▼</span>
+                </button>
+                <div class="menu-dropdown" id="file-dropdown">
+                    <div class="menu-option" id="menu-new">
+                        <span class="menu-label">New</span>
+                        <span class="menu-shortcut">Ctrl+N</span>
+                    </div>
+                    <div class="menu-divider"></div>
+                    <div class="menu-option" id="menu-open">
+                        <span class="menu-label">Open...</span>
+                        <span class="menu-shortcut">Ctrl+O</span>
+                    </div>
+                    <div class="menu-option" id="menu-save">
+                        <span class="menu-label">Save</span>
+                        <span class="menu-shortcut">Ctrl+S</span>
+                    </div>
+                </div>
+            </div>
+    
+            <!-- Auto-save status indicator -->
+        </div>
+    </nav>
+    
+    <!-- Hidden file input for importing -->
+    <input type="file" id="fsa-file-input" accept=".json" style="display: none;">
     <main>
         <div class="tools-panel">
             <!-- State Creation Tools Section -->

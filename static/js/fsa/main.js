@@ -45,9 +45,9 @@ import {
     stopVisualSimulation,
     isVisualSimulationRunning
 } from './backendIntegration.js';
-
-// Import the enhanced NFA results manager
 import { nfaResultsManager } from './nfaResultsManager.js';
+import { fsaSerializationManager } from './fsaSerializationManager.js';
+import { fsaFileUIManager } from './fsaFileUI.js';
 
 // Make NFA results manager globally available
 window.nfaResultsManager = nfaResultsManager;
@@ -81,6 +81,9 @@ export function initialiseSimulator() {
     // Initialise the control lock manager with the JSPlumb instance
     controlLockManager.initialize(jsPlumbInstance);
 
+    // Initialize FSA serialization system with menu bar
+    initializeFSASerialization();
+
     // Initial alphabet display
     updateAlphabetDisplay(getEdgeSymbolMap(), getEpsilonTransitionMap());
 
@@ -96,11 +99,326 @@ export function initialiseSimulator() {
 }
 
 /**
+ * Initialize FSA serialization system with menu bar
+ */
+function initializeFSASerialization() {
+    // Initialize file UI manager with JSPlumb instance
+    fsaFileUIManager.initialize(jsPlumbInstance);
+
+    // Setup simple menu debug for testing
+    setupSimpleMenuDebug();
+
+    // Setup auto-save (saves every 30 seconds)
+//     fsaFileUIManager.setupAutoSave(30000);
+
+    // Setup drag and drop for file import (minimal visual feedback)
+    setupFileDragAndDrop();
+
+    // Integrate with control lock manager
+    integrateWithControlLockManager();
+
+    // Setup auto-save triggers
+//     setupAutoSaveTriggers();
+
+    // Setup unsaved changes warning
+    setupUnsavedChangesWarning();
+
+    // Make serialization functions globally available
+    window.fsaSerializationManager = fsaSerializationManager;
+    window.fsaFileUIManager = fsaFileUIManager;
+
+    // Show auto-save restore prompt if available (delayed to ensure UI is ready)
+    setTimeout(() => {
+//         fsaFileUIManager.showAutoSavePrompt();
+    }, 1000);
+
+    console.log('FSA serialization system with menu bar initialized');
+}
+
+/**
+ * Simple debug menu setup to ensure dropdown works
+ */
+function setupSimpleMenuDebug() {
+    console.log('Setting up menu functionality...');
+
+    // File menu button
+    const fileMenuButton = document.getElementById('file-menu-button');
+    const fileDropdown = document.getElementById('file-dropdown');
+
+    if (!fileMenuButton || !fileDropdown) {
+        console.error('Menu elements not found:', {
+            button: !!fileMenuButton,
+            dropdown: !!fileDropdown
+        });
+        return;
+    }
+
+    // Remove any existing event listeners by cloning the button
+    const newFileMenuButton = fileMenuButton.cloneNode(true);
+    fileMenuButton.parentNode.replaceChild(newFileMenuButton, fileMenuButton);
+
+    newFileMenuButton.addEventListener('click', function(e) {
+        console.log('File menu clicked');
+        e.stopPropagation();
+
+        // Toggle dropdown
+        const isOpen = fileDropdown.classList.contains('show');
+
+        if (isOpen) {
+            fileDropdown.classList.remove('show');
+            newFileMenuButton.classList.remove('active');
+        } else {
+            fileDropdown.classList.add('show');
+            newFileMenuButton.classList.add('active');
+        }
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#file-menu')) {
+            fileDropdown.classList.remove('show');
+            newFileMenuButton.classList.remove('active');
+        }
+    });
+
+    // Menu option handlers - ensure only one handler per element
+    const menuNew = document.getElementById('menu-new');
+    const menuOpen = document.getElementById('menu-open');
+    const menuSave = document.getElementById('menu-save');
+
+    if (menuNew) {
+        // Clone to remove existing handlers
+        const newMenuNew = menuNew.cloneNode(true);
+        menuNew.parentNode.replaceChild(newMenuNew, menuNew);
+
+        newMenuNew.addEventListener('click', function(e) {
+            e.stopPropagation();
+            fileDropdown.classList.remove('show');
+            newFileMenuButton.classList.remove('active');
+            fsaFileUIManager.newFSA();
+        });
+    }
+
+    if (menuOpen) {
+        // Clone to remove existing handlers
+        const newMenuOpen = menuOpen.cloneNode(true);
+        menuOpen.parentNode.replaceChild(newMenuOpen, menuOpen);
+
+        newMenuOpen.addEventListener('click', function(e) {
+            e.stopPropagation();
+            fileDropdown.classList.remove('show');
+            newFileMenuButton.classList.remove('active');
+            fsaFileUIManager.importFSA();
+        });
+    }
+
+    if (menuSave) {
+        // Clone to remove existing handlers
+        const newMenuSave = menuSave.cloneNode(true);
+        menuSave.parentNode.replaceChild(newMenuSave, menuSave);
+
+        newMenuSave.addEventListener('click', function(e) {
+            e.stopPropagation();
+            fileDropdown.classList.remove('show');
+            newFileMenuButton.classList.remove('active');
+            console.log('Save menu clicked - calling exportFSA');
+            fsaFileUIManager.exportFSA();
+        });
+    }
+}
+
+/**
+ * Setup drag and drop functionality for file import
+ */
+function setupFileDragAndDrop() {
+    const canvas = document.getElementById('fsa-canvas');
+    if (!canvas) return;
+
+    // Create drop overlay
+    const dropOverlay = document.createElement('div');
+    dropOverlay.className = 'fsa-drop-overlay';
+    dropOverlay.innerHTML = '<div class="drop-message">Drop FSA JSON file here to import</div>';
+    canvas.appendChild(dropOverlay);
+
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        canvas.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    // Highlight drop area when item is dragged over it
+    ['dragenter', 'dragover'].forEach(eventName => {
+        canvas.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        canvas.addEventListener(eventName, unhighlight, false);
+    });
+
+    // Handle dropped files
+    canvas.addEventListener('drop', handleDrop, false);
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    function highlight(e) {
+        if (controlLockManager.isControlsLocked()) return;
+
+        // Only show overlay for JSON files
+        const items = e.dataTransfer.items;
+        let hasJsonFile = false;
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type === 'application/json' ||
+                (items[i].kind === 'file' && items[i].type === '')) {
+                hasJsonFile = true;
+                break;
+            }
+        }
+
+        if (hasJsonFile) {
+            dropOverlay.classList.add('active');
+        }
+    }
+
+    function unhighlight(e) {
+        dropOverlay.classList.remove('active');
+    }
+
+    async function handleDrop(e) {
+        if (controlLockManager.isControlsLocked()) {
+            if (window.notificationManager) {
+                window.notificationManager.showWarning('Cannot Import', 'Cannot import while simulation is running');
+            }
+            return;
+        }
+
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files.length > 0) {
+            const file = files[0];
+
+            // Validate file type
+            if (!file.name.toLowerCase().endsWith('.json')) {
+                if (window.notificationManager) {
+                    window.notificationManager.showError(
+                        'Invalid File Type',
+                        'Please drop a JSON file (.json)'
+                    );
+                }
+                return;
+            }
+
+            // Check if current FSA exists and warn user
+            const states = document.querySelectorAll('.state, .accepting-state');
+            if (states.length > 0) {
+                if (!confirm('Importing will replace the current FSA. Continue?')) {
+                    return;
+                }
+            }
+
+            // Import the file
+            try {
+                const success = await fsaSerializationManager.importFromFile(file, jsPlumbInstance);
+
+                if (success) {
+                    // Clear any existing NFA results since FSA changed
+                    clearNFAStoredResults();
+                }
+            } catch (error) {
+                console.error('Drop import error:', error);
+            }
+        }
+    }
+}
+
+/**
+ * Integrate with control lock manager for menu states
+ */
+function integrateWithControlLockManager() {
+    // Store original lock/unlock methods
+    const originalLockControls = controlLockManager.lockControls.bind(controlLockManager);
+    const originalUnlockControls = controlLockManager.unlockControls.bind(controlLockManager);
+
+    // Override to also handle menu option states
+    controlLockManager.lockControls = function() {
+        originalLockControls();
+        fsaFileUIManager.updateMenuStates(true);
+    };
+
+    controlLockManager.unlockControls = function() {
+        originalUnlockControls();
+        fsaFileUIManager.updateMenuStates(false);
+    };
+}
+
+/**
+ * Setup auto-save triggers when FSA changes
+ */
+// function setupAutoSaveTriggers() {
+//     // Auto-save will be triggered by the existing event system
+//     // The file UI manager's auto-save interval will handle saving periodically
+// 
+//     // We could add specific triggers here if needed, but the interval-based
+//     // auto-save is sufficient for most use cases
+// }
+
+/**
+ * Setup unsaved changes warning
+ */
+function setupUnsavedChangesWarning() {
+    let hasUnsavedChanges = false;
+
+    // Track changes through existing event system
+    function markAsChanged() {
+        hasUnsavedChanges = true;
+    }
+
+    // Reset when saved
+    function markAsSaved() {
+        hasUnsavedChanges = false;
+    }
+
+    // Override export functions to mark as saved
+    const originalExportFSA = fsaFileUIManager.exportFSA.bind(fsaFileUIManager);
+    fsaFileUIManager.exportFSA = function(...args) {
+        const result = originalExportFSA.apply(this, args);
+        markAsSaved();
+        return result;
+    };
+
+    // Warn before leaving page with unsaved changes
+    window.addEventListener('beforeunload', (e) => {
+        const states = document.querySelectorAll('.state, .accepting-state');
+        if (states.length > 0 && hasUnsavedChanges) {
+            const message = 'You have unsaved changes. Are you sure you want to leave?';
+            e.returnValue = message;
+            return message;
+        }
+    });
+
+    // Make functions available globally
+    window.markFSAAsChanged = markAsChanged;
+    window.markFSAAsSaved = markAsSaved;
+
+    // Connect to existing change events
+    if (jsPlumbInstance) {
+        jsPlumbInstance.bind('connection', markAsChanged);
+        jsPlumbInstance.bind('connectionDetached', markAsChanged);
+    }
+}
+
+/**
  * Clear stored NFA results when FSA structure changes
  */
 function clearNFAStoredResults() {
-    nfaResultsManager.clearStoredPaths();
-    console.log('Cleared NFA stored results due to FSA structure change');
+    if (window.nfaResultsManager) {
+        window.nfaResultsManager.clearStoredPaths();
+        console.log('Cleared NFA stored results due to FSA structure change');
+    }
 }
 
 /**
@@ -488,7 +806,9 @@ function setupFunctionalButtons() {
                 const inputValidation = validateInputString(inputString, tableData.alphabet);
                 if (!inputValidation.valid) {
                     // Show error popup instead of alert
-                    showSimulationErrorPopup(`INPUT ERROR!\n\n${inputValidation.message}`, inputString);
+                    if (window.showSimulationErrorPopup) {
+                        window.showSimulationErrorPopup(`INPUT ERROR!\n\n${inputValidation.message}`, inputString);
+                    }
                     controlLockManager.unlockControls();
                     return;
                 }
@@ -516,7 +836,9 @@ function setupFunctionalButtons() {
 
         } catch (error) {
             console.error('Unexpected error during simulation:', error);
-            showSimulationErrorPopup(`UNEXPECTED ERROR!\n\nAn unexpected error occurred during simulation:\n${error.message}`, inputString);
+            if (window.showSimulationErrorPopup) {
+                window.showSimulationErrorPopup(`UNEXPECTED ERROR!\n\nAn unexpected error occurred during simulation:\n${error.message}`, inputString);
+            }
             controlLockManager.unlockControls();
         }
     });
@@ -561,7 +883,9 @@ function setupFunctionalButtons() {
                 const inputValidation = validateInputString(inputString, tableData.alphabet);
                 if (!inputValidation.valid) {
                     // Show error popup instead of alert
-                    showSimulationErrorPopup(`INPUT ERROR!\n\n${inputValidation.message}`, inputString);
+                    if (window.showSimulationErrorPopup) {
+                        window.showSimulationErrorPopup(`INPUT ERROR!\n\n${inputValidation.message}`, inputString);
+                    }
                     controlLockManager.unlockControls();
                     return;
                 }
@@ -583,7 +907,9 @@ function setupFunctionalButtons() {
 
         } catch (error) {
             console.error('Unexpected error during fast-forward simulation:', error);
-            showSimulationErrorPopup(`UNEXPECTED ERROR!\n\nAn unexpected error occurred during simulation:\n${error.message}`, inputString);
+            if (window.showSimulationErrorPopup) {
+                window.showSimulationErrorPopup(`UNEXPECTED ERROR!\n\nAn unexpected error occurred during simulation:\n${error.message}`, inputString);
+            }
         } finally {
             // Always unlock controls after fast-forward simulation
             controlLockManager.unlockControls();
@@ -645,3 +971,7 @@ function setupDraggableTools() {
         }
     });
 }
+
+// Make functions available globally for the serialization system
+window.handleStateClick = handleStateClick;
+window.handleStateDrag = handleStateDrag;

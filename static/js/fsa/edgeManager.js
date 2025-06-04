@@ -515,3 +515,11 @@ export const toggleEdgeStyle = setAllEdgeStyles;
  * Make getEdgeSymbols available globally for visual simulation
  */
 window.getEdgeSymbols = getEdgeSymbols;
+
+/**
+ * Get the edge curve style map
+ * @returns {Map} - The edge curve style map
+ */
+export function getEdgeCurveStyleMap() {
+    return edgeCurveStyleMap;
+}

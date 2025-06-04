@@ -30,5 +30,25 @@
 /* 10. NFA Simulation Result Popup */
 @import url('nfa-popup.css');
 
-/* 11. Responsive Styles - Must be last */
+/* 11. Menu Bar */
+@import url('menu-bar.css');
+
+/* 12. Responsive Styles - Must be last */
 @import url('responsive.css');
+
+/* Hide drag‑and‑drop overlay unless actively dragging a file */
+.fsa-drop-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 1.25rem;
+    z-index: 1000;
+}
+
+.fsa-drop-overlay.active {
+    display: flex;
+}
