@@ -707,7 +707,10 @@ class VisualSimulationManager {
 
         // Build popup content
         const statusText = this.simulationResult.isAccepted ? 'ACCEPTED' : 'REJECTED';
-        const statusIcon = this.simulationResult.isAccepted ? '✓' : '✗';
+        const statusIcon = this.simulationResult.isAccepted ?
+            '<img src="static/img/success.png" alt="Accepted" style="width: 20px; height: 20px;">' :
+            '<img src="static/img/error.png" alt="Rejected" style="width: 20px; height: 20px;">';
+
         const statusClass = this.simulationResult.isAccepted ? 'accepted' : 'rejected';
 
         let pathDetails = '';
@@ -824,7 +827,10 @@ class VisualSimulationManager {
 
         // Build popup content
         const statusText = this.simulationResult.isAccepted ? 'ACCEPTED' : 'REJECTED';
-        const statusIcon = this.simulationResult.isAccepted ? '✓' : '✗';
+        const statusIcon = this.simulationResult.isAccepted ?
+            '<img src="static/img/success.png" alt="Accepted" style="width: 20px; height: 20px;">' :
+            '<img src="static/img/error.png" alt="Rejected" style="width: 20px; height: 20px;">';
+
         const statusClass = this.simulationResult.isAccepted ? 'accepted' : 'rejected';
 
         let pathDetails = '';

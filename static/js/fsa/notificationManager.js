@@ -127,19 +127,19 @@ class NotificationManager {
     getNotificationConfig(type) {
         const configs = {
             error: {
-                icon: '✗',
+                icon: '<img src="static/img/error.png" alt="Error" style="width: 16px; height: 16px;">',
                 className: 'error'
             },
             warning: {
-                icon: '⚠',
+                icon: '<img src="static/img/alert.png" alt="Warning" style="width: 16px; height: 16px;">',
                 className: 'warning'
             },
             success: {
-                icon: '✓',
+                icon: '<img src="static/img/success.png" alt="Success" style="width: 16px; height: 16px;">',
                 className: 'success'
             },
             info: {
-                icon: 'ℹ',
+                icon: '<img src="static/img/info.png" alt="Info" style="width: 16px; height: 16px;">',
                 className: 'info'
             }
         };

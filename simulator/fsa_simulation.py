@@ -179,7 +179,7 @@ def simulate_nondeterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Li
     all_partial_paths = []
 
     # Track configurations to prevent infinite loops
-    # Key insight: We can revisit (state, input_pos) as long as we've made progress
+    # We can revisit (state, input_pos) as long as we've made progress
     # Progress = either consumed input OR we're exploring a different epsilon path
     seen_configurations = set()
     paths_explored = 0
@@ -187,14 +187,6 @@ def simulate_nondeterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Li
     while queue:
         current_state, pos, path = queue.popleft()
         paths_explored += 1
-
-        # Create configuration signature for cycle detection
-        config_sig = (current_state, pos, tuple(path))
-
-        # Only skip if we've seen this EXACT configuration before
-        if config_sig in seen_configurations:
-            continue
-        seen_configurations.add(config_sig)
 
         # Store partial path for debugging
         all_partial_paths.append(path.copy())
@@ -482,14 +474,6 @@ def simulate_nondeterministic_fsa_generator(fsa: Dict, input_string: str):
                 'current_state': current_state,
                 'input_position': pos
             }
-
-        # Create configuration signature for cycle detection
-        config_sig = (current_state, pos, tuple(path))
-
-        # Skip if we've seen this exact configuration before
-        if config_sig in seen_configurations:
-            continue
-        seen_configurations.add(config_sig)
 
         # If we've consumed all input
         if pos >= len(input_string):

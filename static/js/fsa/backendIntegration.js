@@ -236,7 +236,7 @@ export function showSimulationErrorPopup(errorMessage, inputString = '') {
     popup.innerHTML = `
         <div class="popup-header">
             <div class="popup-status error">
-                <div class="popup-icon error">⚠</div>
+                <div class="popup-icon error"><img src="static/img/alert.png" alt="Error" style="width: 20px; height: 20px;"></div>
                 <span>SIMULATION ERROR</span>
             </div>
             <button class="popup-close" onclick="visualSimulationManager.hideResultPopup()">×</button>

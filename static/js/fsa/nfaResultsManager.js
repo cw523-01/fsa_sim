@@ -237,7 +237,7 @@ class NFAResultsManager {
         popup.innerHTML = `
             <div class="nfa-popup-header">
                 <div class="nfa-popup-title">
-                    <div class="nfa-popup-icon">🔀</div>
+                    <div class="nfa-popup-icon"><img src="static/img/shuffle.png" alt="NFA" style="width: 20px; height: 20px;"></div>
                     <span>NFA SIMULATION</span>
                 </div>
                 <button class="nfa-popup-close" onclick="nfaResultsManager.handlePopupClose()">×</button>
