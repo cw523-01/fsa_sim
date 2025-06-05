@@ -3,6 +3,7 @@ import { isDeterministic, isConnected } from './fsaPropertyChecker.js';
 import { getStartingStateId } from './stateManager.js';
 import { visualSimulationManager } from './visualSimulationManager.js';
 import { nfaResultsManager } from './nfaResultsManager.js';
+import { notificationManager } from './notificationManager.js';
 
 /**
  * Converts the frontend FSA representation to the backend expected format
@@ -172,23 +173,8 @@ export async function simulateNFAStreamOnBackend(fsa, inputString) {
  * @param {boolean} isFastForward - Whether this was a fast-forward simulation
  */
 export function showSimulationResultPopup(result, inputString, isFastForward = false) {
-    // Use the visual simulation manager's popup system
-    const simulationResult = {
-        isAccepted: result.accepted,
-        executionPath: result.path || [],
-        inputString: inputString,
-        isFastForward: isFastForward
-    };
-
-    // Store the result in the visual simulation manager
-    visualSimulationManager.simulationResult = simulationResult;
-
-    // Show the popup directly with custom content for fast-forward
-    if (isFastForward) {
-        visualSimulationManager.showFastForwardResultPopup();
-    } else {
-        visualSimulationManager.showResultPopup();
-    }
+    // Use the notification manager's simulation popup system
+    notificationManager.showSimulationResultPopup(result, inputString, isFastForward, result.path);
 }
 
 /**
@@ -197,75 +183,8 @@ export function showSimulationResultPopup(result, inputString, isFastForward = f
  * @param {string} inputString - The input string (if any)
  */
 export function showSimulationErrorPopup(errorMessage, inputString = '') {
-    // Remove any existing popup
-    const existingPopup = document.getElementById('simulation-result-popup');
-    if (existingPopup) {
-        existingPopup.remove();
-    }
-
-    // Create error popup element
-    const popup = document.createElement('div');
-    popup.id = 'simulation-result-popup';
-    popup.className = 'error';
-
-    // Create error-specific styles if they don't exist
-    if (!document.querySelector('style[data-error-popup]')) {
-        const style = document.createElement('style');
-        style.setAttribute('data-error-popup', 'true');
-        style.textContent = `
-            #simulation-result-popup.error {
-                border-left-color: #ff9800;
-                background: linear-gradient(135deg, #fff3e0 0%, #fafafa 100%);
-            }
-            .popup-status.error {
-                color: #ef6c00;
-            }
-            .popup-icon.error {
-                background-color: #ff9800;
-            }
-            .popup-result.error {
-                color: #ef6c00;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
-    const inputDisplay = inputString ?
-        `<div class="popup-input">Input: <span class="popup-input-string">"${inputString}"</span></div>` : '';
-
-    popup.innerHTML = `
-        <div class="popup-header">
-            <div class="popup-status error">
-                <div class="popup-icon error"><img src="static/img/alert.png" alt="Error" style="width: 20px; height: 20px;"></div>
-                <span>SIMULATION ERROR</span>
-            </div>
-            <button class="popup-close" onclick="visualSimulationManager.hideResultPopup()">×</button>
-        </div>
-        ${inputDisplay}
-        <div class="popup-result error">
-            Error: Simulation Failed
-        </div>
-        <div class="popup-details">
-            ${errorMessage.replace(/\n/g, '<br>')}
-        </div>
-        <div class="popup-progress">
-            <div class="popup-progress-bar" style="background-color: #ff9800;"></div>
-        </div>
-    `;
-
-    // Add popup to canvas
-    const canvas = document.getElementById('fsa-canvas');
-    if (canvas) {
-        canvas.appendChild(popup);
-
-        // Trigger show animation
-        setTimeout(() => {
-            popup.classList.add('show');
-        }, 100);
-
-        // Start auto-close timer (longer for error messages)
-        visualSimulationManager.startAutoCloseTimer(popup, 7000); // 7 seconds for errors
-    }
+    // Use the notification manager's error popup system
+    notificationManager.showSimulationErrorPopup(errorMessage, inputString);
 }
 
 /**
@@ -426,14 +345,11 @@ async function runNFASimulation(jsPlumbInstance, inputString, visualMode, fsa) {
 
                                 // Show result popup with the first accepting path
                                 const simulationResult = {
-                                    isAccepted: true,
-                                    executionPath: firstAcceptingPath,
-                                    inputString: inputString,
-                                    isFastForward: true
+                                    accepted: true,
+                                    path: firstAcceptingPath
                                 };
 
-                                visualSimulationManager.simulationResult = simulationResult;
-                                visualSimulationManager.showFastForwardResultPopup();
+                                showSimulationResultPopup(simulationResult, inputString, true);
 
                                 return {
                                     success: true,
@@ -448,14 +364,11 @@ async function runNFASimulation(jsPlumbInstance, inputString, visualMode, fsa) {
                                 if (data.total_accepting_paths === 0) {
                                     // Show rejection result
                                     const simulationResult = {
-                                        isAccepted: false,
-                                        executionPath: [],
-                                        inputString: inputString,
-                                        isFastForward: true
+                                        accepted: false,
+                                        path: []
                                     };
 
-                                    visualSimulationManager.simulationResult = simulationResult;
-                                    visualSimulationManager.showFastForwardResultPopup();
+                                    showSimulationResultPopup(simulationResult, inputString, true);
 
                                     return {
                                         success: true,
@@ -568,5 +481,5 @@ export function validateInputString(inputString, alphabet) {
     return { valid: true };
 }
 
-// Make error popup function globally available
+// Make error popup function globally available (now uses notification manager)
 window.showSimulationErrorPopup = showSimulationErrorPopup;

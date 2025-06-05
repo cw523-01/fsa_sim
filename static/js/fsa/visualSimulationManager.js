@@ -1,4 +1,5 @@
 import {hasEpsilonTransition} from "./edgeManager.js";
+import { notificationManager } from './notificationManager.js';
 
 /**
  * Visual simulation manager class to handle step-by-step animation of FSA execution
@@ -17,7 +18,6 @@ class VisualSimulationManager {
         this.inputField = null; // Reference to the input field for highlighting
         this.originalInputValue = ''; // Store original input value
         this.simulationResult = null; // Store simulation result for popup
-        this.autoCloseTimeout = null; // Track auto-close timeout
     }
 
     /**
@@ -208,25 +208,10 @@ class VisualSimulationManager {
     }
 
     /**
-     * Hide the result popup
+     * Hide the result popup (now uses notification manager)
      */
     hideResultPopup() {
-        const popup = document.getElementById('simulation-result-popup');
-        if (popup) {
-            popup.classList.add('hide');
-
-            setTimeout(() => {
-                if (popup.parentNode) {
-                    popup.parentNode.removeChild(popup);
-                }
-            }, 400);
-        }
-
-        // Clear auto-close timeout
-        if (this.autoCloseTimeout) {
-            clearTimeout(this.autoCloseTimeout);
-            this.autoCloseTimeout = null;
-        }
+        notificationManager.hideSimulationResultPopup();
     }
 
     /**
@@ -479,7 +464,6 @@ class VisualSimulationManager {
         return false;
     }
 
-
     /**
      * Show the final result of the simulation
      * @param {boolean} isAccepted - Whether the input was accepted
@@ -689,217 +673,45 @@ class VisualSimulationManager {
     }
 
     /**
-     * Show the simulation result popup
+     * Show the simulation result popup (now uses notification manager)
      */
     showResultPopup() {
         if (!this.simulationResult) return;
 
-        // Remove any existing popup
-        const existingPopup = document.getElementById('simulation-result-popup');
-        if (existingPopup) {
-            existingPopup.remove();
-        }
+        // Create result object for notification manager
+        const result = {
+            accepted: this.simulationResult.isAccepted,
+            path: this.simulationResult.executionPath || []
+        };
 
-        // Create popup element
-        const popup = document.createElement('div');
-        popup.id = 'simulation-result-popup';
-        popup.className = this.simulationResult.isAccepted ? 'accepted' : 'rejected';
-
-        // Build popup content
-        const statusText = this.simulationResult.isAccepted ? 'ACCEPTED' : 'REJECTED';
-        const statusIcon = this.simulationResult.isAccepted ?
-            '<img src="static/img/success.png" alt="Accepted" style="width: 20px; height: 20px;">' :
-            '<img src="static/img/error.png" alt="Rejected" style="width: 20px; height: 20px;">';
-
-        const statusClass = this.simulationResult.isAccepted ? 'accepted' : 'rejected';
-
-        let pathDetails = '';
-        if (this.simulationResult.executionPath && this.simulationResult.executionPath.length > 0) {
-            pathDetails = `
-                <div class="popup-path">
-                    ${this.simulationResult.executionPath.map((step, index) => {
-                        const [currentState, symbol, nextState] = step;
-                        return `<div class="popup-path-step">${index + 1}. ${currentState} --${symbol}--> ${nextState}</div>`;
-                    }).join('')}
-                </div>
-            `;
-
-            const finalState = this.simulationResult.executionPath[this.simulationResult.executionPath.length - 1][2];
-            const finalStateText = this.simulationResult.isAccepted ?
-                `Final state: ${finalState} (accepting)` :
-                `Final state: ${finalState} (non-accepting)`;
-
-            pathDetails += `<div class="popup-final-state ${statusClass}">${finalStateText}</div>`;
-        } else {
-            // Handle empty string case - show starting state info
-            const startingStateId = this.getStartingStateId();
-            if (startingStateId) {
-                const finalStateText = this.simulationResult.isAccepted ?
-                    `Final state: ${startingStateId} (accepting)` :
-                    `Final state: ${startingStateId} (non-accepting)`;
-
-                pathDetails = `
-                    <div class="popup-path">
-                        <div class="popup-path-step">Empty string processed in starting state</div>
-                    </div>
-                    <div class="popup-final-state ${statusClass}">${finalStateText}</div>
-                `;
-            }
-        }
-
-        popup.innerHTML = `
-            <div class="popup-header">
-                <div class="popup-status ${statusClass}">
-                    <div class="popup-icon ${statusClass}">${statusIcon}</div>
-                    <span>INPUT ${statusText}</span>
-                </div>
-                <button class="popup-close" onclick="visualSimulationManager.hideResultPopup()">×</button>
-            </div>
-            <div class="popup-input">
-                Input: <span class="popup-input-string">"${this.simulationResult.inputString}"</span>
-            </div>
-            <div class="popup-result ${statusClass}">
-                Result: ${statusText}
-            </div>
-            ${pathDetails}
-            <div class="popup-progress">
-                <div class="popup-progress-bar ${statusClass}"></div>
-            </div>
-        `;
-
-        // Add popup to canvas
-        const canvas = document.getElementById('fsa-canvas');
-        if (canvas) {
-            canvas.appendChild(popup);
-
-            // Trigger show animation
-            setTimeout(() => {
-                popup.classList.add('show');
-            }, 100);
-
-            // Start auto-close timer
-            this.startAutoCloseTimer(popup);
-        }
+        // Use notification manager to show popup
+        notificationManager.showSimulationResultPopup(
+            result,
+            this.simulationResult.inputString,
+            false, // not fast-forward
+            this.simulationResult.executionPath
+        );
     }
 
     /**
-     * Start the auto-close timer for the result popup
-     * @param {HTMLElement} popup - The popup element
-     * @param {number} customDelay - Custom delay in milliseconds (optional)
-     */
-    startAutoCloseTimer(popup, customDelay = null) {
-        const autoCloseDelay = customDelay || 5000; // Default 5 seconds, or custom delay
-
-        // Animate progress bar
-        const progressBar = popup.querySelector('.popup-progress-bar');
-        if (progressBar) {
-            progressBar.style.width = '100%';
-            progressBar.style.transition = `width ${autoCloseDelay}ms linear`;
-
-            // Start with 0 width, then animate to full
-            setTimeout(() => {
-                progressBar.style.width = '0%';
-            }, 100);
-        }
-
-        // Set auto-close timeout
-        this.autoCloseTimeout = setTimeout(() => {
-            this.hideResultPopup();
-        }, autoCloseDelay);
-    }
-
-    /**
-     * Show the simulation result popup with fast-forward indicator
+     * Show the simulation result popup with fast-forward indicator (now uses notification manager)
      */
     showFastForwardResultPopup() {
         if (!this.simulationResult) return;
 
-        // Remove any existing popup
-        const existingPopup = document.getElementById('simulation-result-popup');
-        if (existingPopup) {
-            existingPopup.remove();
-        }
+        // Create result object for notification manager
+        const result = {
+            accepted: this.simulationResult.isAccepted,
+            path: this.simulationResult.executionPath || []
+        };
 
-        // Create popup element
-        const popup = document.createElement('div');
-        popup.id = 'simulation-result-popup';
-        popup.className = this.simulationResult.isAccepted ? 'accepted' : 'rejected';
-
-        // Build popup content
-        const statusText = this.simulationResult.isAccepted ? 'ACCEPTED' : 'REJECTED';
-        const statusIcon = this.simulationResult.isAccepted ?
-            '<img src="static/img/success.png" alt="Accepted" style="width: 20px; height: 20px;">' :
-            '<img src="static/img/error.png" alt="Rejected" style="width: 20px; height: 20px;">';
-
-        const statusClass = this.simulationResult.isAccepted ? 'accepted' : 'rejected';
-
-        let pathDetails = '';
-        if (this.simulationResult.executionPath && this.simulationResult.executionPath.length > 0) {
-            pathDetails = `
-                <div class="popup-path">
-                    ${this.simulationResult.executionPath.map((step, index) => {
-                        const [currentState, symbol, nextState] = step;
-                        return `<div class="popup-path-step">${index + 1}. ${currentState} --${symbol}--> ${nextState}</div>`;
-                    }).join('')}
-                </div>
-            `;
-
-            const finalState = this.simulationResult.executionPath[this.simulationResult.executionPath.length - 1][2];
-            const finalStateText = this.simulationResult.isAccepted ?
-                `Final state: ${finalState} (accepting)` :
-                `Final state: ${finalState} (non-accepting)`;
-
-            pathDetails += `<div class="popup-final-state ${statusClass}">${finalStateText}</div>`;
-        } else {
-            // Handle empty string case for fast-forward too
-            const startingStateId = this.getStartingStateId();
-            if (startingStateId) {
-                const finalStateText = this.simulationResult.isAccepted ?
-                    `Final state: ${startingStateId} (accepting)` :
-                    `Final state: ${startingStateId} (non-accepting)`;
-
-                pathDetails = `
-                    <div class="popup-path">
-                        <div class="popup-path-step">Empty string processed in starting state</div>
-                    </div>
-                    <div class="popup-final-state ${statusClass}">${finalStateText}</div>
-                `;
-            }
-        }
-
-        popup.innerHTML = `
-            <div class="popup-header">
-                <div class="popup-status ${statusClass}">
-                    <div class="popup-icon ${statusClass}">${statusIcon}</div>
-                    <span>INPUT ${statusText}</span>
-                </div>
-                <button class="popup-close" onclick="visualSimulationManager.hideResultPopup()">×</button>
-            </div>
-            <div class="popup-input">
-                Input: <span class="popup-input-string">"${this.simulationResult.inputString}"</span>
-            </div>
-            <div class="popup-result ${statusClass}">
-                Result: ${statusText}
-            </div>
-            ${pathDetails}
-            <div class="popup-progress">
-                <div class="popup-progress-bar ${statusClass}"></div>
-            </div>
-        `;
-
-        // Add popup to canvas
-        const canvas = document.getElementById('fsa-canvas');
-        if (canvas) {
-            canvas.appendChild(popup);
-
-            // Trigger show animation
-            setTimeout(() => {
-                popup.classList.add('show');
-            }, 100);
-
-            // Start auto-close timer
-            this.startAutoCloseTimer(popup);
-        }
+        // Use notification manager to show popup
+        notificationManager.showSimulationResultPopup(
+            result,
+            this.simulationResult.inputString,
+            true, // is fast-forward
+            this.simulationResult.executionPath
+        );
     }
 
     /**
@@ -917,12 +729,6 @@ class VisualSimulationManager {
         if (this.currentTimeout) {
             clearTimeout(this.currentTimeout);
             this.currentTimeout = null;
-        }
-
-        // Clear auto-close timeout
-        if (this.autoCloseTimeout) {
-            clearTimeout(this.autoCloseTimeout);
-            this.autoCloseTimeout = null;
         }
 
         // Clear all visual highlights
