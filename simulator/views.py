@@ -7,7 +7,8 @@ from .fsa_simulation import (
     simulate_deterministic_fsa,
     simulate_nondeterministic_fsa,
     simulate_nondeterministic_fsa_generator,
-    is_nondeterministic
+    is_nondeterministic,
+    detect_epsilon_loops
 )
 
 
@@ -316,6 +317,85 @@ def check_fsa_type(request):
             'type': 'NFA' if is_nfa else 'DFA',
             'description': 'Non-deterministic Finite Automaton' if is_nfa else 'Deterministic Finite Automaton'
         })
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def detect_epsilon_loops(request):
+    """
+    Django view to detect epsilon loops in an FSA.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format
+
+    Returns a JSON response with epsilon loop detection results.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing FSA definition'}, status=400)
+
+        # Validate FSA structure
+        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
+        missing_keys = [key for key in required_keys if key not in fsa]
+
+        if missing_keys:
+            return JsonResponse({
+                'error': f'FSA definition is missing required keys: {", ".join(missing_keys)}'
+            }, status=400)
+
+        # Detect epsilon loops
+        result = detect_epsilon_loops(fsa)
+
+        # Enhance the response with additional analysis
+        response_data = {
+            'has_epsilon_loops': result['has_epsilon_loops'],
+            'total_loops_found': len(result['loop_details']),
+            'loops': []
+        }
+
+        # Process each loop for better client understanding
+        for i, loop in enumerate(result['loop_details']):
+            loop_info = {
+                'loop_id': i + 1,
+                'states_in_cycle': loop['cycle'][:-1] if len(loop['cycle']) > 1 else loop['cycle'],
+                # Remove duplicate end state
+                'cycle_length': len(loop['cycle']) - 1 if len(loop['cycle']) > 1 else 1,
+                'epsilon_transitions': loop['transitions'],
+                'reachable_from_start': loop['reachable_from_start'],
+                'loop_type': 'self_loop' if len(set(loop['cycle'])) <= 1 else 'multi_state_cycle',
+                'full_cycle_path': loop['cycle']  # Include full path for visualization
+            }
+            response_data['loops'].append(loop_info)
+
+        # Add summary information
+        reachable_loops = [loop for loop in result['loop_details'] if loop['reachable_from_start']]
+        unreachable_loops = [loop for loop in result['loop_details'] if not loop['reachable_from_start']]
+
+        response_data['summary'] = {
+            'reachable_loops_count': len(reachable_loops),
+            'unreachable_loops_count': len(unreachable_loops),
+            'has_reachable_loops': len(reachable_loops) > 0,
+            'potential_infinite_loops': len(reachable_loops) > 0,
+            'analysis': {
+                'epsilon_transitions_present': any(
+                    '' in fsa['transitions'].get(state, {}) and fsa['transitions'][state]['']
+                    for state in fsa['states']
+                ),
+                'warning': 'Reachable epsilon loops may cause infinite execution during simulation' if len(
+                    reachable_loops) > 0 else None
+            }
+        }
+
+        return JsonResponse(response_data)
 
     except ValueError as e:
         return JsonResponse({'error': str(e)}, status=400)

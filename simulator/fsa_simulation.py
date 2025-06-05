@@ -233,7 +233,7 @@ def simulate_nondeterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Li
             'accepted': False,
             'paths_explored': paths_explored,
             'rejection_reason': 'No accepting paths found',
-            'partial_paths': all_partial_paths[:10]  # Limit to first 10 for readability
+            'partial_paths': all_partial_paths
         }
 
 
@@ -543,3 +543,230 @@ def simulate_nondeterministic_fsa_generator(fsa: Dict, input_string: str):
         'total_paths_explored': paths_explored,
         'accepted': accepting_path_count > 0
     }
+
+
+def detect_epsilon_loops(fsa: Dict) -> Dict:
+    """
+    Detects if the FSA contains infinite epsilon loops.
+
+    An epsilon loop exists if there's a cycle of epsilon transitions that can be
+    traversed infinitely without consuming any input symbols.
+
+    Args:
+        fsa: The FSA dictionary
+
+    Returns:
+        Dictionary with:
+        {
+            'has_epsilon_loops': bool,
+            'loop_details': [
+                {
+                    'cycle': [state1, state2, ..., state1],  # States in the cycle
+                    'transitions': [(state1, 'ε', state2), ...],  # Epsilon transitions forming the cycle
+                    'reachable_from_start': bool  # Whether this loop is reachable from start state
+                }
+            ]
+        }
+    """
+    if not _has_epsilon_transitions(fsa):
+        return {
+            'has_epsilon_loops': False,
+            'loop_details': []
+        }
+
+    # Build epsilon-only transition graph
+    epsilon_graph = {}
+    for state in fsa['states']:
+        epsilon_graph[state] = []
+        if state in fsa['transitions'] and '' in fsa['transitions'][state]:
+            epsilon_graph[state] = fsa['transitions'][state][''][:]
+
+    # Find all strongly connected components using Tarjan's algorithm
+    # This will identify all cycles in the epsilon transition graph
+    index_counter = [0]
+    stack = []
+    lowlinks = {}
+    index = {}
+    on_stack = {}
+    sccs = []
+
+    def strongconnect(state):
+        index[state] = index_counter[0]
+        lowlinks[state] = index_counter[0]
+        index_counter[0] += 1
+        stack.append(state)
+        on_stack[state] = True
+
+        for successor in epsilon_graph.get(state, []):
+            if successor not in index:
+                strongconnect(successor)
+                lowlinks[state] = min(lowlinks[state], lowlinks[successor])
+            elif on_stack[successor]:
+                lowlinks[state] = min(lowlinks[state], index[successor])
+
+        if lowlinks[state] == index[state]:
+            component = []
+            while True:
+                w = stack.pop()
+                on_stack[w] = False
+                component.append(w)
+                if w == state:
+                    break
+            if len(component) > 1 or (len(component) == 1 and state in epsilon_graph.get(state, [])):
+                # This is a non-trivial SCC (cycle) or a self-loop
+                sccs.append(component)
+
+    for state in fsa['states']:
+        if state not in index:
+            strongconnect(state)
+
+    # Check if any epsilon loops are reachable from the start state
+    reachable_states = _get_all_reachable_states(fsa, fsa['startingState'])
+
+    # Build detailed information about each loop
+    loop_details = []
+    has_loops = False
+
+    for scc in sccs:
+        if len(scc) > 1:
+            # Multi-state cycle
+            has_loops = True
+            cycle_transitions = []
+
+            # Find the actual cycle path through the SCC
+            cycle_path = _find_cycle_path_in_scc(scc, epsilon_graph)
+
+            # Build transitions for this cycle
+            for i in range(len(cycle_path)):
+                current_state = cycle_path[i]
+                next_state = cycle_path[(i + 1) % len(cycle_path)]
+                cycle_transitions.append((current_state, 'ε', next_state))
+
+            # Check if any state in this cycle is reachable from start
+            reachable_from_start = any(state in reachable_states for state in scc)
+
+            loop_details.append({
+                'cycle': cycle_path + [cycle_path[0]],  # Close the cycle for display
+                'transitions': cycle_transitions,
+                'reachable_from_start': reachable_from_start
+            })
+
+        elif len(scc) == 1 and scc[0] in epsilon_graph.get(scc[0], []):
+            # Self-loop
+            has_loops = True
+            state = scc[0]
+            reachable_from_start = state in reachable_states
+
+            loop_details.append({
+                'cycle': [state, state],
+                'transitions': [(state, 'ε', state)],
+                'reachable_from_start': reachable_from_start
+            })
+
+    return {
+        'has_epsilon_loops': has_loops,
+        'loop_details': loop_details
+    }
+
+
+def _get_epsilon_reachable_states(fsa: Dict, start_state: str) -> Set[str]:
+    """
+    Get all states reachable from start_state via epsilon transitions only.
+
+    Args:
+        fsa: The FSA dictionary
+        start_state: Starting state
+
+    Returns:
+        Set of states reachable via epsilon transitions
+    """
+    reachable = set()
+    stack = [start_state]
+
+    while stack:
+        current = stack.pop()
+        if current in reachable:
+            continue
+
+        reachable.add(current)
+
+        # Add epsilon transitions
+        if current in fsa['transitions'] and '' in fsa['transitions'][current]:
+            for next_state in fsa['transitions'][current]['']:
+                if next_state not in reachable:
+                    stack.append(next_state)
+
+    return reachable
+
+
+def _get_all_reachable_states(fsa: Dict, start_state: str) -> Set[str]:
+    """
+    Get all states reachable from start_state via any transitions (regular and epsilon).
+
+    Args:
+        fsa: The FSA dictionary
+        start_state: Starting state
+
+    Returns:
+        Set of all reachable states
+    """
+    reachable = set()
+    stack = [start_state]
+
+    while stack:
+        current = stack.pop()
+        if current in reachable:
+            continue
+
+        reachable.add(current)
+
+        # Add all transitions (both regular and epsilon)
+        if current in fsa['transitions']:
+            for symbol, next_states in fsa['transitions'][current].items():
+                for next_state in next_states:
+                    if next_state not in reachable:
+                        stack.append(next_state)
+
+    return reachable
+
+
+def _find_cycle_path_in_scc(scc: List[str], epsilon_graph: Dict) -> List[str]:
+    """
+    Find a simple cycle path through the strongly connected component.
+
+    Args:
+        scc: List of states in the strongly connected component
+        epsilon_graph: Graph of epsilon transitions
+
+    Returns:
+        List of states forming a cycle
+    """
+    if len(scc) == 1:
+        return scc
+
+    # Use DFS to find a cycle through all states in the SCC
+    start_state = scc[0]
+    visited = set()
+    path = []
+
+    def dfs(state):
+        if state in visited:
+            # Found a cycle, extract it
+            cycle_start_idx = path.index(state)
+            return path[cycle_start_idx:]
+
+        visited.add(state)
+        path.append(state)
+
+        for next_state in epsilon_graph.get(state, []):
+            if next_state in scc:  # Only follow edges within the SCC
+                result = dfs(next_state)
+                if result:
+                    return result
+
+        path.pop()
+        visited.remove(state)
+        return None
+
+    cycle = dfs(start_state)
+    return cycle if cycle else scc  # Fallback to the SCC itself

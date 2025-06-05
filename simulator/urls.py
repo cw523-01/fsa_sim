@@ -15,4 +15,7 @@ urlpatterns = [
 
     # Utility endpoint to check FSA type
     path('api/check-fsa-type/', views.check_fsa_type, name='check_fsa_type'),
+
+    # Utility endpoint to check if NFA has epsilon loops
+    path('api/detect-epsilon-loops/', views.detect_epsilon_loops, name='detect_epsilon_loops'),
 ]

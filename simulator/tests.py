@@ -3,7 +3,7 @@ from simulator.fsa_simulation import (
     simulate_deterministic_fsa,
     _is_deterministic,
     simulate_nondeterministic_fsa,
-    is_nondeterministic, simulate_nondeterministic_fsa_generator
+    is_nondeterministic, simulate_nondeterministic_fsa_generator, detect_epsilon_loops
 )
 
 class TestFsaSimulation(TestCase):
@@ -890,3 +890,317 @@ class TestFsaSimulation(TestCase):
         else:  # Rejected
             self.assertFalse(summary['accepted'])
             self.assertEqual(len(accepting_paths), 0)
+
+
+    def test_detect_epsilon_loops_no_loops(self):
+        """Test epsilon loop detection on FSA without epsilon transitions"""
+        # Simple DFA with no epsilon transitions
+        fsa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1'], 'b': ['S0']},
+                'S1': {'a': ['S0'], 'b': ['S1']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        result = detect_epsilon_loops(fsa)
+        self.assertFalse(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 0)
+
+
+    def test_detect_epsilon_loops_no_cycles(self):
+        """Test epsilon loop detection on FSA with epsilon transitions but no cycles"""
+        # NFA with epsilon transitions but no loops
+        fsa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S0']},  # Epsilon to S1
+                'S1': {'': ['S2'], 'b': ['S1']},  # Epsilon to S2
+                'S2': {'': ['S3']},  # Epsilon to S3
+                'S3': {'a': ['S3']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        result = detect_epsilon_loops(fsa)
+        self.assertFalse(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 0)
+
+
+    def test_detect_epsilon_loops_simple_self_loop(self):
+        """Test detection of simple epsilon self-loop"""
+        # NFA with epsilon self-loop
+        fsa = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S0']} # Epsilon self-loop
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+
+        result = detect_epsilon_loops(fsa)
+        self.assertTrue(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 1)
+
+        loop = result['loop_details'][0]
+        self.assertEqual(loop['cycle'], ['S0', 'S0'])
+        self.assertEqual(loop['transitions'], [('S0', 'ε', 'S0')])
+        self.assertTrue(loop['reachable_from_start'])
+
+
+    def test_detect_epsilon_loops_unreachable_self_loop(self):
+        """Test detection of epsilon self-loop not reachable from start"""
+        # NFA with epsilon self-loop not reachable from start
+        fsa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1']},
+                'S1': {},
+                'S2': {'': ['S2']}  # Unreachable epsilon self-loop
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        result = detect_epsilon_loops(fsa)
+        self.assertTrue(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 1)
+
+        loop = result['loop_details'][0]
+        self.assertEqual(loop['cycle'], ['S2', 'S2'])
+        self.assertEqual(loop['transitions'], [('S2', 'ε', 'S2')])
+        self.assertFalse(loop['reachable_from_start'])
+
+
+    def test_detect_epsilon_loops_simple_cycle(self):
+        """Test detection of simple epsilon cycle between two states"""
+        # NFA with epsilon cycle between S1 and S2
+        fsa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S0']},  # Epsilon to S1
+                'S1': {'': ['S2']},  # Epsilon to S2
+                'S2': {'': ['S1']}  # Epsilon back to S1 (creates cycle)
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        result = detect_epsilon_loops(fsa)
+        self.assertTrue(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 1)
+
+        loop = result['loop_details'][0]
+        # Should detect the cycle between S1 and S2
+        self.assertTrue(len(loop['cycle']) >= 3)  # At least S1 -> S2 -> S1
+        self.assertTrue(len(loop['transitions']) >= 2)
+        self.assertTrue(loop['reachable_from_start'])
+
+
+    def test_detect_epsilon_loops_complex_cycle(self):
+        """Test detection of epsilon cycle among multiple states"""
+        # NFA with epsilon cycle among S1, S2, S3
+        fsa = {
+            'states': ['S0', 'S1', 'S2', 'S3', 'S4'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S0']},  # Epsilon to S1
+                'S1': {'': ['S2']},  # Epsilon to S2
+                'S2': {'': ['S3']},  # Epsilon to S3
+                'S3': {'': ['S1']},  # Epsilon back to S1 (creates cycle)
+                'S4': {}  # Isolated state
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        result = detect_epsilon_loops(fsa)
+        self.assertTrue(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 1)
+
+        loop = result['loop_details'][0]
+        self.assertTrue(len(loop['cycle']) >= 4)  # At least S1 -> S2 -> S3 -> S1
+        self.assertTrue(len(loop['transitions']) >= 3)
+        self.assertTrue(loop['reachable_from_start'])
+
+
+    def test_detect_epsilon_loops_multiple_cycles(self):
+        """Test detection of multiple separate epsilon cycles"""
+        # NFA with two separate epsilon cycles
+        fsa = {
+            'states': ['S0', 'S1', 'S2', 'S3', 'S4'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S3']},
+                'S1': {'': ['S2']},  # First cycle: S1 <-> S2
+                'S2': {'': ['S1']},
+                'S3': {'': ['S4']},  # Second cycle: S3 <-> S4
+                'S4': {'': ['S3']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2', 'S4']
+        }
+
+        result = detect_epsilon_loops(fsa)
+        self.assertTrue(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 2)
+
+        # Check that we found both cycles
+        reachable_cycles = [loop for loop in result['loop_details'] if loop['reachable_from_start']]
+        unreachable_cycles = [loop for loop in result['loop_details'] if not loop['reachable_from_start']]
+
+        self.assertEqual(len(reachable_cycles), 1)  # S3 <-> S4 is reachable
+        self.assertEqual(len(unreachable_cycles), 1)  # S1 <-> S2 is not reachable
+
+
+    def test_detect_epsilon_loops_mixed_with_regular_transitions(self):
+        """Test epsilon loop detection in FSA with both epsilon and regular transitions"""
+        # Complex NFA with epsilon loops and regular transitions
+        fsa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S2']},  # Epsilon to S1, regular transition on 'a'
+                'S1': {'': ['S2'], 'b': ['S3']},  # Epsilon to S2, regular transition on 'b'
+                'S2': {'': ['S1'], 'a': ['S3']},  # Epsilon back to S1 (cycle), regular on 'a'
+                'S3': {'b': ['S0']}  # Regular transition only
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        result = detect_epsilon_loops(fsa)
+        self.assertTrue(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 1)
+
+        loop = result['loop_details'][0]
+        self.assertTrue(loop['reachable_from_start'])
+        # Should detect cycle between S1 and S2
+        cycle_states = set()
+        for state in loop['cycle'][:-1]:  # Exclude the repeated state at the end
+            cycle_states.add(state)
+        self.assertTrue('S1' in cycle_states)
+        self.assertTrue('S2' in cycle_states)
+
+
+    def test_detect_epsilon_loops_from_start_state(self):
+        """Test epsilon loop detection when start state is part of a loop"""
+        # NFA where start state is part of epsilon loop
+        fsa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S0']},  # Epsilon to S1
+                'S1': {'': ['S0']}  # Epsilon back to S0
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        result = detect_epsilon_loops(fsa)
+        self.assertTrue(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 1)
+
+        loop = result['loop_details'][0]
+        self.assertTrue(loop['reachable_from_start'])
+        # Should detect cycle involving start state
+        cycle_states = set()
+        for state in loop['cycle'][:-1]:
+            cycle_states.add(state)
+        self.assertTrue('S0' in cycle_states)
+        self.assertTrue('S1' in cycle_states)
+
+
+    def test_detect_epsilon_loops_edge_cases(self):
+        """Test epsilon loop detection edge cases"""
+        # Empty FSA
+        empty_fsa = {
+            'states': [],
+            'alphabet': [],
+            'transitions': {},
+            'startingState': '',
+            'acceptingStates': []
+        }
+
+        result = detect_epsilon_loops(empty_fsa)
+        self.assertFalse(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 0)
+
+        # Single state with no transitions
+        single_state_fsa = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+
+        result = detect_epsilon_loops(single_state_fsa)
+        self.assertFalse(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 0)
+
+
+    def test_detect_epsilon_loops_start_state_self_loop(self):
+        """Test epsilon loop detection when start state has epsilon self-loop"""
+        # NFA where start state has epsilon self-loop
+        fsa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S0'], 'a': ['S1']},  # Epsilon self-loop on start state
+                'S1': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        result = detect_epsilon_loops(fsa)
+        self.assertTrue(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 1)
+
+        loop = result['loop_details'][0]
+        self.assertEqual(loop['cycle'], ['S0', 'S0'])
+        self.assertEqual(loop['transitions'], [('S0', 'ε', 'S0')])
+        self.assertTrue(loop['reachable_from_start'])
+
+    def test_detect_epsilon_loops_complex_reachability(self):
+        """Test epsilon loop detection with complex reachability scenarios"""
+        # Complex NFA with both reachable and unreachable epsilon loops
+        fsa = {
+            'states': ['S0', 'S1', 'S2', 'S3', 'S4', 'S5'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1']},  # Only 'a' transition, no path to S3
+                'S1': {'': ['S2']},  # Path to reachable loop
+                'S2': {'': ['S1']},  # Reachable loop: S1 <-> S2
+                'S3': {'': ['S4']},  # Path to unreachable loop (S3 not reachable from S0)
+                'S4': {'': ['S5']},
+                'S5': {'': ['S4']}  # Unreachable loop: S4 <-> S5
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2', 'S5']
+        }
+
+        result = detect_epsilon_loops(fsa)
+        self.assertTrue(result['has_epsilon_loops'])
+        self.assertEqual(len(result['loop_details']), 2)
+
+        # Check reachability:
+        # S0 --a--> S1 (S1 <-> S2 loop is reachable)
+        # S3, S4, S5 are not reachable from S0 (S4 <-> S5 loop is unreachable)
+        reachable_cycles = [loop for loop in result['loop_details'] if loop['reachable_from_start']]
+        unreachable_cycles = [loop for loop in result['loop_details'] if not loop['reachable_from_start']]
+
+        self.assertEqual(len(reachable_cycles), 1)  # Only S1<->S2 is reachable
+        self.assertEqual(len(unreachable_cycles), 1)  # S4<->S5 is not reachable
