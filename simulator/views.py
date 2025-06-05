@@ -230,7 +230,9 @@ def simulate_nfa_stream(request):
 
         if missing_keys:
             def error_generator():
-                yield f"data: {json.dumps({'error': f'FSA definition is missing required keys: {', '.join(missing_keys)}'})}\n\n"
+                missing_keys_str = ', '.join(missing_keys)
+                error_msg = f'FSA definition is missing required keys: {missing_keys_str}'
+                yield f"data: {json.dumps({'error': error_msg})}\n\n"
 
             return StreamingHttpResponse(
                 error_generator(),
