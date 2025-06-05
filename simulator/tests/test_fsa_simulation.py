@@ -1,4 +1,4 @@
-import unittest
+from django.test import TestCase
 from simulator.fsa_simulation import (
     simulate_deterministic_fsa,
     _is_deterministic,
@@ -6,7 +6,7 @@ from simulator.fsa_simulation import (
     is_nondeterministic, simulate_nondeterministic_fsa_generator
 )
 
-class TestFsaSimulation(unittest.TestCase):
+class TestFsaSimulation(TestCase):
     def test_basic_deterministic_fsa(self):
         # Simple FSA that accepts strings ending with 'b'
         fsa = {
@@ -890,7 +890,3 @@ class TestFsaSimulation(unittest.TestCase):
         else:  # Rejected
             self.assertFalse(summary['accepted'])
             self.assertEqual(len(accepting_paths), 0)
-
-
-if __name__ == '__main__':
-    unittest.main()
