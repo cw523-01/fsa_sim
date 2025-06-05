@@ -770,3 +770,367 @@ def _find_cycle_path_in_scc(scc: List[str], epsilon_graph: Dict) -> List[str]:
 
     cycle = dfs(start_state)
     return cycle if cycle else scc  # Fallback to the SCC itself
+
+
+def simulate_nondeterministic_fsa_with_depth_limit(fsa: Dict, input_string: str, max_depth: int) -> Union[
+    List[List[Tuple[str, str, str]]], Dict]:
+    """
+    Simulates a non-deterministic FSA with the given input string, with depth limiting to handle infinite epsilon loops.
+
+    Args:
+        fsa: A dictionary representing the FSA with the following keys:
+            - states: List of all states
+            - alphabet: List of symbols in the alphabet
+            - transitions: Dictionary of transitions (supports epsilon transitions with empty string '')
+            - startingState: The starting state
+            - acceptingStates: List of accepting states
+        input_string: The input string to simulate
+        max_depth: Maximum depth to traverse (positive integer) to prevent infinite epsilon loops
+
+    Returns:
+        If the input is accepted, returns a list of all accepting paths:
+        [
+            [(current_state, symbol, next_state), ...],  # Path 1
+            [(current_state, symbol, next_state), ...],  # Path 2
+            ...
+        ]
+        If the input is rejected, returns a dictionary with:
+        {
+            'accepted': False,
+            'paths_explored': int,  # Number of paths explored
+            'rejection_reason': str,  # Why rejected
+            'partial_paths': [...],  # Any partial paths that were explored
+            'depth_limit_reached': bool  # Whether depth limit was reached
+        }
+    """
+    # Validate input parameters
+    if max_depth <= 0:
+        return {
+            'accepted': False,
+            'paths_explored': 0,
+            'rejection_reason': 'max_depth must be a positive integer',
+            'partial_paths': [],
+            'depth_limit_reached': False
+        }
+
+    # Validate FSA structure
+    if not _is_valid_nfa_structure(fsa):
+        return {
+            'accepted': False,
+            'paths_explored': 0,
+            'rejection_reason': 'Invalid FSA structure',
+            'partial_paths': [],
+            'depth_limit_reached': False
+        }
+
+    # Check if FSA has epsilon transitions
+    has_epsilon_transitions = _has_epsilon_transitions(fsa)
+
+    # Get epsilon closure of starting state with depth limiting
+    start_states_with_paths = _get_initial_states_with_paths_depth_limited(fsa, fsa['startingState'], max_depth)
+
+    # Configuration: (current_state, input_position, path_so_far, current_depth)
+    queue = deque()
+    for state, path in start_states_with_paths:
+        queue.append((state, 0, path, len([t for t in path if t[1] == 'ε'])))
+
+    all_accepting_paths = []
+    all_partial_paths = []
+    paths_explored = 0
+    depth_limit_reached = False
+
+    while queue:
+        current_state, pos, path, current_depth = queue.popleft()
+        paths_explored += 1
+
+        # Store partial path for debugging
+        all_partial_paths.append(path.copy())
+
+        # If we've consumed all input
+        if pos >= len(input_string):
+            # Check if current state is accepting
+            if current_state in fsa['acceptingStates']:
+                all_accepting_paths.append(path.copy())
+            continue
+
+        # Process next input symbol
+        next_symbol = input_string[pos]
+
+        # Check if symbol is in alphabet
+        if next_symbol not in fsa['alphabet']:
+            continue
+
+        # Get transitions for this symbol from current state
+        next_states = _get_transitions(fsa, current_state, next_symbol)
+
+        for next_state in next_states:
+            if has_epsilon_transitions:
+                # Get all states reachable via epsilon transitions with depth limiting
+                epsilon_states_with_paths = _get_epsilon_closure_with_paths_depth_limited(
+                    fsa, next_state, max_depth - current_depth
+                )
+
+                # Build path for this transition
+                transition_path = path + [(current_state, next_symbol, next_state)]
+
+                # Create separate configurations for each state in epsilon closure
+                for eps_state, eps_path_from_next in epsilon_states_with_paths:
+                    final_path = transition_path + eps_path_from_next
+                    epsilon_depth = len([t for t in eps_path_from_next if t[1] == 'ε'])
+                    new_depth = current_depth + epsilon_depth
+
+                    # Check if we've reached depth limit
+                    if new_depth >= max_depth:
+                        depth_limit_reached = True
+                        continue
+
+                    queue.append((eps_state, pos + 1, final_path, new_depth))
+            else:
+                # For NFAs without epsilon transitions, use simpler processing
+                transition_path = path + [(current_state, next_symbol, next_state)]
+                queue.append((next_state, pos + 1, transition_path, current_depth))
+
+    # Return results
+    if all_accepting_paths:
+        return all_accepting_paths
+    else:
+        return {
+            'accepted': False,
+            'paths_explored': paths_explored,
+            'rejection_reason': 'No accepting paths found' + (' (depth limit reached)' if depth_limit_reached else ''),
+            'partial_paths': all_partial_paths,
+            'depth_limit_reached': depth_limit_reached
+        }
+
+
+def simulate_nondeterministic_fsa_generator_with_depth_limit(fsa: Dict, input_string: str, max_depth: int):
+    """
+    Generator version of simulate_nondeterministic_fsa with depth limiting that yields results as they are found.
+
+    Args:
+        fsa: A dictionary representing the FSA
+        input_string: The input string to simulate
+        max_depth: Maximum depth to traverse (positive integer) to prevent infinite epsilon loops
+
+    Yields:
+        Dictionary with information about each result:
+        - For accepting paths: {'type': 'accepting_path', 'path': [...], 'path_number': int, 'final_state': str}
+        - For rejected paths: {'type': 'rejected_path', 'path': [...], 'reason': str}
+        - For depth limit reached: {'type': 'depth_limit_reached', 'path': [...], 'current_depth': int}
+        - For progress updates: {'type': 'progress', 'paths_explored': int, 'queue_size': int, 'depth_limit_reached': bool}
+        - For final summary: {'type': 'summary', 'total_accepting_paths': int, 'total_paths_explored': int, 'accepted': bool, 'depth_limit_reached': bool}
+    """
+    # Validate input parameters
+    if max_depth <= 0:
+        yield {
+            'type': 'error',
+            'message': 'max_depth must be a positive integer',
+            'accepted': False
+        }
+        return
+
+    # Validate FSA structure
+    if not _is_valid_nfa_structure(fsa):
+        yield {
+            'type': 'error',
+            'message': 'Invalid FSA structure',
+            'accepted': False
+        }
+        return
+
+    # Check if FSA has epsilon transitions
+    has_epsilon_transitions = _has_epsilon_transitions(fsa)
+
+    # Get epsilon closure of starting state with depth limiting
+    start_states_with_paths = _get_initial_states_with_paths_depth_limited(fsa, fsa['startingState'], max_depth)
+
+    # Configuration: (current_state, input_position, path_so_far, current_depth)
+    queue = deque()
+    for state, path in start_states_with_paths:
+        queue.append((state, 0, path, len([t for t in path if t[1] == 'ε'])))
+
+    accepting_path_count = 0
+    paths_explored = 0
+    progress_interval = 25  # Yield progress every 25 paths
+    depth_limit_reached = False
+
+    while queue:
+        current_state, pos, path, current_depth = queue.popleft()
+        paths_explored += 1
+
+        # Yield progress updates periodically
+        if paths_explored % progress_interval == 0:
+            yield {
+                'type': 'progress',
+                'paths_explored': paths_explored,
+                'queue_size': len(queue),
+                'current_state': current_state,
+                'input_position': pos,
+                'current_depth': current_depth,
+                'depth_limit_reached': depth_limit_reached
+            }
+
+        # If we've consumed all input
+        if pos >= len(input_string):
+            if current_state in fsa['acceptingStates']:
+                accepting_path_count += 1
+                yield {
+                    'type': 'accepting_path',
+                    'path': path.copy(),
+                    'path_number': accepting_path_count,
+                    'final_state': current_state,
+                    'depth_used': current_depth
+                }
+            else:
+                yield {
+                    'type': 'rejected_path',
+                    'path': path.copy(),
+                    'reason': f"Final state '{current_state}' is not an accepting state",
+                    'final_state': current_state,
+                    'depth_used': current_depth
+                }
+            continue
+
+        # Process next input symbol
+        next_symbol = input_string[pos]
+
+        # Check if symbol is in alphabet
+        if next_symbol not in fsa['alphabet']:
+            yield {
+                'type': 'rejected_path',
+                'path': path.copy(),
+                'reason': f"Symbol '{next_symbol}' not in alphabet",
+                'rejection_position': pos,
+                'depth_used': current_depth
+            }
+            continue
+
+        # Get transitions for this symbol from current state
+        next_states = _get_transitions(fsa, current_state, next_symbol)
+
+        if not next_states:
+            yield {
+                'type': 'rejected_path',
+                'path': path.copy(),
+                'reason': f"No transition for symbol '{next_symbol}' from state '{current_state}'",
+                'rejection_position': pos,
+                'depth_used': current_depth
+            }
+            continue
+
+        for next_state in next_states:
+            if has_epsilon_transitions:
+                # Get all states reachable via epsilon transitions with depth limiting
+                epsilon_states_with_paths = _get_epsilon_closure_with_paths_depth_limited(
+                    fsa, next_state, max_depth - current_depth
+                )
+
+                # Build path for this transition
+                transition_path = path + [(current_state, next_symbol, next_state)]
+
+                # Create separate configurations for each state in epsilon closure
+                for eps_state, eps_path_from_next in epsilon_states_with_paths:
+                    final_path = transition_path + eps_path_from_next
+                    epsilon_depth = len([t for t in eps_path_from_next if t[1] == 'ε'])
+                    new_depth = current_depth + epsilon_depth
+
+                    # Check if we've reached depth limit
+                    if new_depth >= max_depth:
+                        depth_limit_reached = True
+                        yield {
+                            'type': 'depth_limit_reached',
+                            'path': final_path,
+                            'current_depth': new_depth,
+                            'max_depth': max_depth,
+                            'state': eps_state,
+                            'input_position': pos + 1
+                        }
+                        continue
+
+                    queue.append((eps_state, pos + 1, final_path, new_depth))
+            else:
+                # For NFAs without epsilon transitions, use simpler processing
+                transition_path = path + [(current_state, next_symbol, next_state)]
+                queue.append((next_state, pos + 1, transition_path, current_depth))
+
+    # Final summary
+    yield {
+        'type': 'summary',
+        'total_accepting_paths': accepting_path_count,
+        'total_paths_explored': paths_explored,
+        'accepted': accepting_path_count > 0,
+        'depth_limit_reached': depth_limit_reached,
+        'max_depth_used': max_depth
+    }
+
+
+def _get_initial_states_with_paths_depth_limited(fsa: Dict, start_state: str, max_depth: int) -> List[
+    Tuple[str, List[Tuple[str, str, str]]]]:
+    """
+    Get initial states and their corresponding epsilon paths from the starting state with depth limiting.
+
+    Args:
+        fsa: The FSA dictionary
+        start_state: The starting state
+        max_depth: Maximum epsilon transition depth to explore
+
+    Returns:
+        List of tuples (state, path_to_state) where path_to_state contains epsilon transitions
+    """
+    result = []
+    queue = deque([(start_state, [], 0)])  # (state, path, depth)
+
+    while queue:
+        current_state, path_to_current, depth = queue.popleft()
+
+        # Add this state and its path to results
+        result.append((current_state, path_to_current))
+
+        # Check depth limit for epsilon transitions
+        if depth >= max_depth:
+            continue
+
+        # Get epsilon transitions from current state
+        epsilon_transitions = _get_transitions(fsa, current_state, '')
+
+        for next_state in epsilon_transitions:
+            new_path = path_to_current + [(current_state, 'ε', next_state)]
+            queue.append((next_state, new_path, depth + 1))
+
+    return result
+
+
+def _get_epsilon_closure_with_paths_depth_limited(fsa: Dict, start_state: str, max_depth: int) -> List[
+    Tuple[str, List[Tuple[str, str, str]]]]:
+    """
+    Get epsilon closure of a state along with the paths to reach each state, with depth limiting.
+
+    Args:
+        fsa: The FSA dictionary
+        start_state: The state to compute closure for
+        max_depth: Maximum epsilon transition depth to explore
+
+    Returns:
+        List of tuples (state, path_from_start_state) where path contains epsilon transitions
+    """
+    result = []
+    queue = deque([(start_state, [], 0)])  # (state, path, depth)
+
+    while queue:
+        current_state, path_to_current, depth = queue.popleft()
+
+        # Add this state and its path to results
+        result.append((current_state, path_to_current))
+
+        # Check depth limit for epsilon transitions
+        if depth >= max_depth:
+            continue
+
+        # Get epsilon transitions from current state
+        epsilon_transitions = _get_transitions(fsa, current_state, '')
+
+        for next_state in epsilon_transitions:
+            new_path = path_to_current + [(current_state, 'ε', next_state)]
+            queue.append((next_state, new_path, depth + 1))
+
+    return result

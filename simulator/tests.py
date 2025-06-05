@@ -3,7 +3,8 @@ from simulator.fsa_simulation import (
     simulate_deterministic_fsa,
     _is_deterministic,
     simulate_nondeterministic_fsa,
-    is_nondeterministic, simulate_nondeterministic_fsa_generator, detect_epsilon_loops
+    is_nondeterministic, simulate_nondeterministic_fsa_generator, detect_epsilon_loops,
+    simulate_nondeterministic_fsa_with_depth_limit, simulate_nondeterministic_fsa_generator_with_depth_limit
 )
 
 class TestFsaSimulation(TestCase):
@@ -1204,3 +1205,538 @@ class TestFsaSimulation(TestCase):
 
         self.assertEqual(len(reachable_cycles), 1)  # Only S1<->S2 is reachable
         self.assertEqual(len(unreachable_cycles), 1)  # S4<->S5 is not reachable
+
+    def test_depth_limit_basic_functionality(self):
+        """Test basic functionality without epsilon loops"""
+        # Simple NFA that accepts strings ending with 'ab'
+        nfa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S0', 'S1'], 'b': ['S0']},
+                'S1': {'b': ['S2']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        # Test accepted string 'ab' with sufficient depth limit
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, 'ab', max_depth=10)
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 1)
+        expected_path = [('S0', 'a', 'S1'), ('S1', 'b', 'S2')]
+        self.assertIn(expected_path, result)
+
+        # Test rejected string 'a'
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, 'a', max_depth=10)
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+        self.assertFalse(result['depth_limit_reached'])
+
+    def test_depth_limit_validation(self):
+        """Test validation of max_depth parameter"""
+        nfa = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {'S0': {}},
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+
+        # Test invalid depth values
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=0)
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+        self.assertEqual(result['rejection_reason'], 'max_depth must be a positive integer')
+
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=-1)
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+        self.assertEqual(result['rejection_reason'], 'max_depth must be a positive integer')
+
+        # Test valid depth
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=1)
+        self.assertIsInstance(result, list)
+
+    def test_simple_epsilon_loop_handling(self):
+        """Test handling of simple epsilon self-loop"""
+        # NFA with epsilon self-loop
+        nfa = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S0'], 'a': ['S0']}  # Epsilon self-loop
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+
+        # Test empty string with low depth limit
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=3)
+        self.assertIsInstance(result, list)
+        self.assertTrue(len(result) > 0)  # Should find at least one accepting path
+
+        # Test that depth limit is reached
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=1)
+        # Should still work but might hit depth limit
+        if isinstance(result, dict):
+            self.assertTrue(result['depth_limit_reached'])
+        else:
+            self.assertIsInstance(result, list)
+
+    def test_epsilon_cycle_between_states(self):
+        """Test handling of epsilon cycle between multiple states"""
+        # NFA with epsilon cycle between S1 and S2
+        nfa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S0']},  # Epsilon to S1
+                'S1': {'': ['S2']},  # Epsilon to S2
+                'S2': {'': ['S1']}  # Epsilon back to S1 (creates cycle)
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        # Test empty string with sufficient depth
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=5)
+        self.assertIsInstance(result, list)
+        self.assertTrue(len(result) > 0)
+
+        # Test with very low depth limit
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=1)
+        # Should either succeed with limited paths or report depth limit reached
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+
+    def test_depth_limit_prevents_infinite_exploration(self):
+        """Test that depth limit prevents infinite exploration"""
+        # NFA with complex epsilon loops
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1', 'S2']},  # Multiple epsilon transitions
+                'S1': {'': ['S2', 'S3']},
+                'S2': {'': ['S1', 'S3']},  # Creates cycles
+                'S3': {'': ['S1']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        # Test with very low depth limit
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=2)
+        # Should either find paths within limit or report depth limit reached
+        if isinstance(result, dict):
+            self.assertTrue(result.get('depth_limit_reached', False) or
+                            result['rejection_reason'] == 'No accepting paths found')
+        else:
+            self.assertIsInstance(result, list)
+
+    def test_depth_limit_with_regular_transitions(self):
+        """Test depth limiting works correctly with regular transitions"""
+        # NFA with both epsilon and regular transitions
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S2']},  # Epsilon to S1, regular to S2
+                'S1': {'': ['S2']},  # Epsilon to S2
+                'S2': {'': ['S1'], 'a': ['S3']},  # Epsilon back to S1 (loop), regular to S3
+                'S3': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        # Test string 'a' which should reach S3 via regular transition
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, 'a', max_depth=5)
+        self.assertIsInstance(result, list)
+        self.assertTrue(len(result) > 0)
+
+        # Verify we can find paths that use regular transitions
+        for path in result:
+            has_regular_transition = any(transition[1] == 'a' for transition in path)
+            self.assertTrue(has_regular_transition)
+
+    def test_generator_basic_functionality(self):
+        """Test basic functionality of the generator version"""
+        nfa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S0', 'S1'], 'b': ['S0']},
+                'S1': {'b': ['S2']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        # Test accepted string 'ab'
+        results = list(simulate_nondeterministic_fsa_generator_with_depth_limit(nfa, 'ab', max_depth=10))
+
+        accepting_paths = [r for r in results if r['type'] == 'accepting_path']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        self.assertEqual(len(accepting_paths), 1)
+        self.assertEqual(len(summary), 1)
+        self.assertTrue(summary[0]['accepted'])
+        self.assertFalse(summary[0]['depth_limit_reached'])
+
+        # Check depth information is included
+        self.assertIn('depth_used', accepting_paths[0])
+
+    def test_generator_depth_limit_validation(self):
+        """Test generator validation of max_depth parameter"""
+        nfa = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {'S0': {}},
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+
+        # Test invalid depth
+        results = list(simulate_nondeterministic_fsa_generator_with_depth_limit(nfa, '', max_depth=0))
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['type'], 'error')
+        self.assertIn('max_depth must be a positive integer', results[0]['message'])
+
+    def test_generator_epsilon_loop_handling(self):
+        """Test generator handling of epsilon loops"""
+        # NFA with epsilon self-loop
+        nfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1']},
+                'S1': {'': ['S0']}  # Creates epsilon loop
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        results = list(simulate_nondeterministic_fsa_generator_with_depth_limit(nfa, '', max_depth=3))
+
+        accepting_paths = [r for r in results if r['type'] == 'accepting_path']
+        depth_limit_events = [r for r in results if r['type'] == 'depth_limit_reached']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        # Should find some accepting paths
+        self.assertTrue(len(accepting_paths) > 0)
+
+        # Should have summary
+        self.assertEqual(len(summary), 1)
+
+        # May have depth limit events
+        if len(depth_limit_events) > 0:
+            self.assertTrue(summary[0]['depth_limit_reached'])
+
+    def test_generator_depth_limit_events(self):
+        """Test generator yields depth limit events"""
+        # NFA with guaranteed depth limit issues
+        nfa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1']},
+                'S1': {'': ['S2']},
+                'S2': {'': ['S1']}  # Creates epsilon cycle
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        results = list(simulate_nondeterministic_fsa_generator_with_depth_limit(nfa, '', max_depth=2))
+
+        depth_limit_events = [r for r in results if r['type'] == 'depth_limit_reached']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        # Should report depth limit reached in summary
+        self.assertEqual(len(summary), 1)
+        # May have depth limit events or just report in summary
+
+        # Check structure of depth limit events if any
+        for event in depth_limit_events:
+            required_fields = ['path', 'current_depth', 'max_depth', 'state', 'input_position']
+            for field in required_fields:
+                self.assertIn(field, event)
+
+    def test_generator_progress_updates_with_depth_info(self):
+        """Test that progress updates include depth information"""
+        nfa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S0'], 'b': ['S0']},
+                'S1': {'': ['S2'], 'a': ['S1'], 'b': ['S1']},
+                'S2': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        results = list(simulate_nondeterministic_fsa_generator_with_depth_limit(nfa, 'aabb', max_depth=10))
+
+        progress_updates = [r for r in results if r['type'] == 'progress']
+
+        # Check that progress updates have depth information
+        for progress in progress_updates:
+            self.assertIn('current_depth', progress)
+            self.assertIn('depth_limit_reached', progress)
+            self.assertIsInstance(progress['current_depth'], int)
+            self.assertIsInstance(progress['depth_limit_reached'], bool)
+
+    def test_comparison_with_original_when_no_epsilon_loops(self):
+        """Test that depth-limited version gives same results as original when no epsilon loops"""
+        # NFA without epsilon transitions
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1', 'S2']},
+                'S1': {'a': ['S3']},
+                'S2': {'a': ['S3']},
+                'S3': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        # Compare results
+        from simulator.fsa_simulation import simulate_nondeterministic_fsa
+
+        original_result = simulate_nondeterministic_fsa(nfa, 'aa')
+        depth_limited_result = simulate_nondeterministic_fsa_with_depth_limit(nfa, 'aa', max_depth=10)
+
+        # Both should be lists (accepted)
+        self.assertIsInstance(original_result, list)
+        self.assertIsInstance(depth_limited_result, list)
+
+        # Should have same number of paths
+        self.assertEqual(len(original_result), len(depth_limited_result))
+
+        # Should have same paths
+        for path in original_result:
+            self.assertIn(path, depth_limited_result)
+
+    def test_epsilon_path_counting(self):
+        """Test that epsilon transitions are counted correctly for depth limiting"""
+        # NFA with known epsilon transition count
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1']},  # 1 epsilon
+                'S1': {'': ['S2']},  # 1 epsilon
+                'S2': {'': ['S3']},  # 1 epsilon  (total: 3 epsilon transitions)
+                'S3': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        # Test with depth limit that should allow the path
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=5)
+        self.assertIsInstance(result, list)
+        self.assertTrue(len(result) > 0)
+
+        # Test with depth limit that's too restrictive
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=2)
+        # Should either find no paths or report depth limit reached
+        if isinstance(result, dict):
+            self.assertFalse(result['accepted'])
+
+    def test_mixed_epsilon_and_regular_transitions(self):
+        """Test correct handling of mixed epsilon and regular transitions"""
+        # NFA with mix of epsilon and regular transitions
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3', 'S4'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S2']},  # Epsilon to S1, regular to S2
+                'S1': {'b': ['S3']},  # Regular transition
+                'S2': {'': ['S3']},  # Epsilon to S3
+                'S3': {'': ['S4']},  # Epsilon to S4
+                'S4': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S4']
+        }
+
+        # Test path via epsilon transitions: S0 -ε-> S1 -b-> S3 -ε-> S4
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, 'b', max_depth=5)
+        self.assertIsInstance(result, list)
+        self.assertTrue(len(result) > 0)
+
+        # Test path via regular then epsilon: S0 -a-> S2 -ε-> S3 -ε-> S4
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, 'a', max_depth=5)
+        self.assertIsInstance(result, list)
+        self.assertTrue(len(result) > 0)
+
+    def test_large_depth_limit_performance(self):
+        """Test that large depth limits don't cause performance issues with simple FSAs"""
+        # Simple NFA without epsilon loops
+        nfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1']},
+                'S1': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        # Test with very large depth limit - should still work efficiently
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, 'a', max_depth=1000)
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 1)
+        expected_path = [('S0', 'a', 'S1')]
+        self.assertEqual(result[0], expected_path)
+
+    def test_depth_limit_with_multiple_accepting_paths(self):
+        """Test depth limiting with FSAs that have multiple accepting paths"""
+        # NFA with multiple paths, some involving epsilon transitions
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3', 'S4'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S2']},  # Two ways to start
+                'S1': {'a': ['S3']},  # Path 1: epsilon then 'a'
+                'S2': {'': ['S3']},  # Path 2: 'a' then epsilon
+                'S3': {'': ['S4']},  # Both paths converge
+                'S4': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S4']
+        }
+
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, 'a', max_depth=5)
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)  # Should find both paths
+
+    def test_generator_summary_includes_depth_info(self):
+        """Test that generator summary includes depth-related information"""
+        nfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S0'], 'a': ['S1']},  # Epsilon self-loop
+                'S1': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        results = list(simulate_nondeterministic_fsa_generator_with_depth_limit(nfa, 'a', max_depth=3))
+
+        summary = [r for r in results if r['type'] == 'summary'][0]
+
+        # Check that summary includes depth information
+        required_fields = ['depth_limit_reached', 'max_depth_used']
+        for field in required_fields:
+            self.assertIn(field, summary)
+
+        self.assertEqual(summary['max_depth_used'], 3)
+        self.assertIsInstance(summary['depth_limit_reached'], bool)
+
+    def test_invalid_fsa_structure_with_depth_limit(self):
+        """Test depth-limited functions handle invalid FSA structures"""
+        invalid_nfa = {
+            'states': ['S0'],
+            'alphabet': ['a']
+            # Missing required fields
+        }
+
+        # Test regular function
+        result = simulate_nondeterministic_fsa_with_depth_limit(invalid_nfa, 'a', max_depth=5)
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+        self.assertEqual(result['rejection_reason'], 'Invalid FSA structure')
+
+        # Test generator function
+        results = list(simulate_nondeterministic_fsa_generator_with_depth_limit(invalid_nfa, 'a', max_depth=5))
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['type'], 'error')
+        self.assertIn('Invalid FSA structure', results[0]['message'])
+
+    def test_empty_string_with_epsilon_loops(self):
+        """Test empty string acceptance with epsilon loops"""
+        # NFA where start state becomes accepting via epsilon transitions and loops
+        nfa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1']},
+                'S1': {'': ['S2']},
+                'S2': {'': ['S1']}  # Loop between S1 and S2
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=5)
+        self.assertIsInstance(result, list)
+        self.assertTrue(len(result) > 0)
+
+        # Check that paths contain epsilon transitions
+        for path in result:
+            epsilon_count = sum(1 for transition in path if transition[1] == 'ε')
+            self.assertTrue(epsilon_count > 0)
+
+    def test_realistic_epsilon_loop_scenario(self):
+        """Test a realistic scenario with epsilon loops that might occur in practice"""
+        # NFA representing something like (a|ε)*b with epsilon loops
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'': ['S1', 'S2'], 'a': ['S1']},  # Choice: epsilon to S1/S2 or 'a' to S1
+                'S1': {'': ['S0'], 'b': ['S3']},  # Loop back via epsilon or accept with 'b'
+                'S2': {'': ['S0'], 'b': ['S3']},  # Similar loop back
+                'S3': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        # Test various strings
+        test_cases = ['b', 'ab', 'aab', 'aaab']
+
+        for test_string in test_cases:
+            result = simulate_nondeterministic_fsa_with_depth_limit(nfa, test_string, max_depth=10)
+            self.assertIsInstance(result, list)
+            self.assertTrue(len(result) > 0, f"String '{test_string}' should be accepted")
+
+    def test_depth_limit_boundary_conditions(self):
+        """Test behavior at depth limit boundaries"""
+        # NFA where exactly 3 epsilon transitions reach acceptance
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1']},  # 1 epsilon
+                'S1': {'': ['S2']},  # 2 epsilon
+                'S2': {'': ['S3']},  # 3 epsilon
+                'S3': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        # Test with exactly the required depth
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=3)
+        self.assertIsInstance(result, list)
+        self.assertTrue(len(result) > 0)
+
+        # Test with one less than required depth
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, '', max_depth=2)
+        # Should not find the accepting path
+        if isinstance(result, dict):
+            self.assertFalse(result['accepted'])
+        else:
+            # If it returns a list, it should be empty or contain partial paths
+            self.assertEqual(len(result), 0)

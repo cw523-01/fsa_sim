@@ -18,4 +18,8 @@ urlpatterns = [
 
     # Utility endpoint to check if NFA has epsilon loops
     path('api/detect-epsilon-loops/', views.detect_epsilon_loops, name='detect_epsilon_loops'),
+
+    # Depth-limited NFA simulators
+    path('api/simulate-nfa-depth-limit/', views.simulate_nfa_with_depth_limit, name='simulate_nfa_depth_limit'),
+    path('api/simulate-nfa-stream-depth-limit/', views.simulate_nfa_stream_with_depth_limit, name='simulate_nfa_stream_depth_limit'),
 ]

@@ -8,7 +8,9 @@ from .fsa_simulation import (
     simulate_nondeterministic_fsa,
     simulate_nondeterministic_fsa_generator,
     is_nondeterministic,
-    detect_epsilon_loops
+    detect_epsilon_loops,
+    simulate_nondeterministic_fsa_with_depth_limit,
+    simulate_nondeterministic_fsa_generator_with_depth_limit
 )
 
 
@@ -401,3 +403,194 @@ def detect_epsilon_loops(request):
         return JsonResponse({'error': str(e)}, status=400)
     except Exception as e:
         return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def simulate_nfa_with_depth_limit(request):
+    """
+    Django view to handle non-deterministic FSA simulation with depth limiting.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format
+    - input: The input string to simulate
+    - max_depth: Maximum epsilon transition depth (positive integer)
+
+    Returns a JSON response with simulation results.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+        input_string = data.get('input', '')
+        max_depth = data.get('max_depth')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing FSA definition'}, status=400)
+
+        if max_depth is None:
+            return JsonResponse({'error': 'Missing max_depth parameter'}, status=400)
+
+        # Validate max_depth
+        try:
+            max_depth = int(max_depth)
+            if max_depth <= 0:
+                return JsonResponse({'error': 'max_depth must be a positive integer'}, status=400)
+        except (ValueError, TypeError):
+            return JsonResponse({'error': 'max_depth must be a positive integer'}, status=400)
+
+        # Validate FSA structure
+        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
+        missing_keys = [key for key in required_keys if key not in fsa]
+
+        if missing_keys:
+            return JsonResponse({
+                'error': f'FSA definition is missing required keys: {", ".join(missing_keys)}'
+            }, status=400)
+
+        # Simulate the NFA with depth limit
+        result = simulate_nondeterministic_fsa_with_depth_limit(fsa, input_string, max_depth)
+
+        if isinstance(result, list):
+            # Input was accepted - result is list of accepting paths
+            return JsonResponse({
+                'accepted': True,
+                'accepting_paths': result,
+                'num_paths': len(result),
+                'max_depth_used': max_depth,
+                'depth_limit_reached': False
+            })
+        else:
+            # Input was rejected
+            return JsonResponse({
+                'accepted': False,
+                'paths_explored': result.get('paths_explored', 0),
+                'rejection_reason': result.get('rejection_reason', 'Unknown rejection reason'),
+                'partial_paths': result.get('partial_paths', []),
+                'depth_limit_reached': result.get('depth_limit_reached', False),
+                'max_depth_used': max_depth
+            })
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def simulate_nfa_stream_with_depth_limit(request):
+    """
+    Django view to handle streaming non-deterministic FSA simulation with depth limiting.
+    Returns results as they are generated using Server-Sent Events format.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format
+    - input: The input string to simulate
+    - max_depth: Maximum epsilon transition depth (positive integer)
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+        input_string = data.get('input', '')
+        max_depth = data.get('max_depth')
+
+        if not fsa:
+            def error_generator():
+                yield f"data: {json.dumps({'error': 'Missing FSA definition'})}\n\n"
+
+            return StreamingHttpResponse(
+                error_generator(),
+                content_type='text/event-stream',
+                status=400
+            )
+
+        if max_depth is None:
+            def error_generator():
+                yield f"data: {json.dumps({'error': 'Missing max_depth parameter'})}\n\n"
+
+            return StreamingHttpResponse(
+                error_generator(),
+                content_type='text/event-stream',
+                status=400
+            )
+
+        # Validate max_depth
+        try:
+            max_depth = int(max_depth)
+            if max_depth <= 0:
+                def error_generator():
+                    yield f"data: {json.dumps({'error': 'max_depth must be a positive integer'})}\n\n"
+
+                return StreamingHttpResponse(
+                    error_generator(),
+                    content_type='text/event-stream',
+                    status=400
+                )
+        except (ValueError, TypeError):
+            def error_generator():
+                yield f"data: {json.dumps({'error': 'max_depth must be a positive integer'})}\n\n"
+
+            return StreamingHttpResponse(
+                error_generator(),
+                content_type='text/event-stream',
+                status=400
+            )
+
+        # Validate FSA structure
+        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
+        missing_keys = [key for key in required_keys if key not in fsa]
+
+        if missing_keys:
+            def error_generator():
+                missing_keys_str = ', '.join(missing_keys)
+                error_msg = f'FSA definition is missing required keys: {missing_keys_str}'
+                yield f"data: {json.dumps({'error': error_msg})}\n\n"
+
+            return StreamingHttpResponse(
+                error_generator(),
+                content_type='text/event-stream',
+                status=400
+            )
+
+        def result_generator():
+            """Generator to stream depth-limited NFA simulation results as Server-Sent Events"""
+            try:
+                for result in simulate_nondeterministic_fsa_generator_with_depth_limit(fsa, input_string, max_depth):
+                    # Format as Server-Sent Event
+                    yield f"data: {json.dumps(result)}\n\n"
+
+                # Send end-of-stream marker
+                yield f"data: {json.dumps({'type': 'end'})}\n\n"
+
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        # Create the streaming response
+        response = StreamingHttpResponse(result_generator(), content_type='text/event-stream')
+
+        # Set headers for streaming
+        response['Cache-Control'] = 'no-cache'
+        response['X-Accel-Buffering'] = 'no'  # Disable nginx buffering
+
+        return response
+
+    except ValueError as e:
+        def error_generator():
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+        return StreamingHttpResponse(
+            error_generator(),
+            content_type='text/event-stream',
+            status=400
+        )
+    except Exception as e:
+        def error_generator():
+            yield f"data: {json.dumps({'error': f'Server error: {str(e)}'})}\n\n"
+
+        return StreamingHttpResponse(
+            error_generator(),
+            content_type='text/event-stream',
+            status=500
+        )
