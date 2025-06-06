@@ -17,7 +17,7 @@ urlpatterns = [
     path('api/check-fsa-type/', views.check_fsa_type, name='check_fsa_type'),
 
     # Utility endpoint to check if NFA has epsilon loops
-    path('api/detect-epsilon-loops/', views.detect_epsilon_loops, name='detect_epsilon_loops'),
+    path('api/check-epsilon-loops/', views.check_epsilon_loops, name='check_epsilon_loops'),
 
     # Depth-limited NFA simulators
     path('api/simulate-nfa-depth-limit/', views.simulate_nfa_with_depth_limit, name='simulate_nfa_depth_limit'),

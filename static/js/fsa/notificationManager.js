@@ -1,6 +1,6 @@
 /**
  * Notification system for showing non-blocking error and success messages
- * Also handles simulation popups, error popups, and other popup types
+ * Also handles simulation popups, error popups, and epsilon loops detection popups
  * Reuses existing popup CSS from simulation-popup.css
  */
 class NotificationManager {
@@ -8,6 +8,7 @@ class NotificationManager {
         this.notifications = new Set();
         this.notificationCounter = 0;
         this.autoCloseTimeouts = new Map();
+        this.epsilonLoopsResolver = null; // For handling epsilon loops popup promises
     }
 
     /**
@@ -119,6 +120,231 @@ class NotificationManager {
         }
 
         return notificationId;
+    }
+
+    /**
+     * Show epsilon loops detection popup with options
+     * @param {Object} epsilonLoopsResult - Result from epsilon loops detection
+     * @param {Object} fsa - FSA object
+     * @param {string} inputString - Input string
+     * @returns {Promise<Object>} - Promise resolving to user decision
+     */
+    async showEpsilonLoopsPopup(epsilonLoopsResult, fsa, inputString) {
+        return new Promise((resolve) => {
+            // Store resolver for button handlers
+            this.epsilonLoopsResolver = resolve;
+
+            // Remove any existing epsilon loops popup
+            const existingPopup = document.getElementById('epsilon-loops-popup');
+            if (existingPopup) {
+                existingPopup.remove();
+            }
+
+            // Create popup element
+            const popup = document.createElement('div');
+            popup.id = 'epsilon-loops-popup';
+            popup.className = 'epsilon-loops-popup';
+
+            // Build loop details
+            let loopDetails = '';
+            if (epsilonLoopsResult.loops && epsilonLoopsResult.loops.length > 0) {
+                const reachableLoops = epsilonLoopsResult.loops.filter(loop => loop.reachable_from_start);
+
+                loopDetails = `
+                    <div class="epsilon-loops-details">
+                        <div class="loops-summary">
+                            <strong>⚠️ ${reachableLoops.length} reachable epsilon loop(s) detected!</strong>
+                        </div>
+                        <div class="loops-explanation">
+                            Epsilon loops can cause infinite execution paths during simulation, 
+                            potentially making the simulation run forever or consume excessive resources.
+                        </div>
+                `;
+
+                if (reachableLoops.length > 0) {
+                    loopDetails += '<div class="loops-list">';
+                    reachableLoops.forEach((loop, index) => {
+                        const loopType = loop.loop_type === 'self_loop' ? 'Self-loop' : 'Multi-state cycle';
+                        const states = loop.states_in_cycle.join(' → ');
+                        loopDetails += `
+                            <div class="loop-item">
+                                <div class="loop-header">${loopType} ${index + 1}:</div>
+                                <div class="loop-states">${states}</div>
+                            </div>
+                        `;
+                    });
+                    loopDetails += '</div>';
+                }
+
+                loopDetails += '</div>';
+            }
+
+            popup.innerHTML = `
+                <div class="popup-header">
+                    <div class="popup-status warning">
+                        <div class="popup-icon warning">
+                            <img src="static/img/alert.png" alt="Warning" style="width: 20px; height: 20px;">
+                        </div>
+                        <span>EPSILON LOOPS DETECTED</span>
+                    </div>
+                    <button class="popup-close" onclick="notificationManager.handleEpsilonLoopsCancel()">×</button>
+                </div>
+                <div class="popup-input">
+                    Input: <span class="popup-input-string">"${inputString}"</span>
+                </div>
+                ${loopDetails}
+                <div class="epsilon-loops-options">
+                    <div class="option-section">
+                        <h4>Choose how to proceed:</h4>
+                        
+                        <div class="option-item">
+                            <input type="radio" id="ignore-loops" name="loop-option" value="ignore" checked>
+                            <label for="ignore-loops">
+                                <strong>Ignore epsilon loops</strong>
+                                <span class="option-description">Proceed with normal simulation but skip over epsilon loops</span>
+                            </label>
+                        </div>
+                        
+                        <div class="option-item">
+                            <input type="radio" id="set-depth-limit" name="loop-option" value="depth_limit">
+                            <label for="set-depth-limit">
+                                <strong>Set depth limit</strong>
+                                <span class="option-description">Limit epsilon transition depth to prevent infinite loops</span>
+                            </label>
+                        </div>
+                        
+                        <div class="depth-limit-section" id="depth-limit-section" style="display: none;">
+                            <label for="depth-limit-input">Maximum epsilon transition depth:</label>
+                            <input type="number" id="depth-limit-input" min="1" max="1000" value="15" step="1">
+                            <span class="depth-limit-help">Recommended: lenght of input + number of ε-transitions</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="popup-actions">
+                    <button class="popup-action-btn cancel" onclick="notificationManager.handleEpsilonLoopsCancel()">
+                        Cancel
+                    </button>
+                    <button class="popup-action-btn proceed" onclick="notificationManager.handleEpsilonLoopsProceed()">
+                        Proceed with Simulation
+                    </button>
+                </div>
+                <div class="popup-progress">
+                    <div class="popup-progress-bar warning"></div>
+                </div>
+            `;
+
+            // Add popup to canvas
+            const canvas = document.getElementById('fsa-canvas');
+            if (canvas) {
+                canvas.appendChild(popup);
+
+                // Setup event handlers for radio buttons
+                this.setupEpsilonLoopsEventHandlers();
+
+                // Trigger show animation
+                setTimeout(() => {
+                    popup.classList.add('show');
+                }, 100);
+            }
+        });
+    }
+
+    /**
+     * Setup event handlers for epsilon loops popup
+     */
+    setupEpsilonLoopsEventHandlers() {
+        const radioButtons = document.querySelectorAll('input[name="loop-option"]');
+        const depthLimitSection = document.getElementById('depth-limit-section');
+
+        radioButtons.forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.value === 'depth_limit' && radio.checked) {
+                    depthLimitSection.style.display = 'block';
+                    // Focus on the input field
+                    const depthInput = document.getElementById('depth-limit-input');
+                    if (depthInput) {
+                        setTimeout(() => depthInput.focus(), 100);
+                    }
+                } else {
+                    depthLimitSection.style.display = 'none';
+                }
+            });
+        });
+
+        // Validate depth limit input
+        const depthInput = document.getElementById('depth-limit-input');
+        if (depthInput) {
+            depthInput.addEventListener('input', () => {
+                const value = parseInt(depthInput.value);
+                if (isNaN(value) || value < 1) {
+                    depthInput.value = 1;
+                } else if (value > 1000) {
+                    depthInput.value = 1000;
+                }
+            });
+        }
+    }
+
+    /**
+     * Handle epsilon loops popup cancel
+     */
+    handleEpsilonLoopsCancel() {
+        this.hideEpsilonLoopsPopup();
+        if (this.epsilonLoopsResolver) {
+            this.epsilonLoopsResolver({ action: 'cancel' });
+            this.epsilonLoopsResolver = null;
+        }
+    }
+
+    /**
+     * Handle epsilon loops popup proceed
+     */
+    handleEpsilonLoopsProceed() {
+        const selectedOption = document.querySelector('input[name="loop-option"]:checked');
+
+        if (!selectedOption) {
+            this.showError('Selection Required', 'Please select an option to proceed.');
+            return;
+        }
+
+        let result = { action: selectedOption.value };
+
+        if (selectedOption.value === 'depth_limit') {
+            const depthInput = document.getElementById('depth-limit-input');
+            if (depthInput) {
+                const maxDepth = parseInt(depthInput.value);
+                if (isNaN(maxDepth) || maxDepth < 1) {
+                    this.showError('Invalid Depth', 'Please enter a valid depth limit (1 or greater).');
+                    return;
+                }
+                result.maxDepth = maxDepth;
+            } else {
+                result.maxDepth = 100; // fallback default
+            }
+        }
+
+        this.hideEpsilonLoopsPopup();
+
+        if (this.epsilonLoopsResolver) {
+            this.epsilonLoopsResolver(result);
+            this.epsilonLoopsResolver = null;
+        }
+    }
+
+    /**
+     * Hide epsilon loops popup
+     */
+    hideEpsilonLoopsPopup() {
+        const popup = document.getElementById('epsilon-loops-popup');
+        if (popup) {
+            popup.classList.add('hide');
+
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 400);
+        }
     }
 
     /**
@@ -512,6 +738,9 @@ class NotificationManager {
 
         // Also hide simulation result popup
         this.hideSimulationResultPopup();
+
+        // Also hide epsilon loops popup
+        this.hideEpsilonLoopsPopup();
     }
 
     /**
@@ -521,7 +750,8 @@ class NotificationManager {
     hasActiveNotifications() {
         const hasRegularNotifications = this.notifications.size > 0;
         const hasSimulationPopup = document.getElementById('simulation-result-popup') !== null;
-        return hasRegularNotifications || hasSimulationPopup;
+        const hasEpsilonLoopsPopup = document.getElementById('epsilon-loops-popup') !== null;
+        return hasRegularNotifications || hasSimulationPopup || hasEpsilonLoopsPopup;
     }
 
     /**
@@ -531,7 +761,8 @@ class NotificationManager {
     getActiveNotificationCount() {
         const regularCount = this.notifications.size;
         const simulationCount = document.getElementById('simulation-result-popup') ? 1 : 0;
-        return regularCount + simulationCount;
+        const epsilonLoopsCount = document.getElementById('epsilon-loops-popup') ? 1 : 0;
+        return regularCount + simulationCount + epsilonLoopsCount;
     }
 
     /**
@@ -552,9 +783,21 @@ class NotificationManager {
             simulationPopup.parentNode.removeChild(simulationPopup);
         }
 
+        // Clear epsilon loops popup
+        const epsilonLoopsPopup = document.getElementById('epsilon-loops-popup');
+        if (epsilonLoopsPopup && epsilonLoopsPopup.parentNode) {
+            epsilonLoopsPopup.parentNode.removeChild(epsilonLoopsPopup);
+        }
+
         // Clear all timeouts
         this.autoCloseTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
         this.autoCloseTimeouts.clear();
+
+        // Clear epsilon loops resolver
+        if (this.epsilonLoopsResolver) {
+            this.epsilonLoopsResolver({ action: 'cancel' });
+            this.epsilonLoopsResolver = null;
+        }
     }
 }
 

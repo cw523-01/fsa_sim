@@ -93,6 +93,41 @@ export function validateFSAForSimulation(jsPlumbInstance) {
 }
 
 /**
+ * Check for epsilon loops in an FSA
+ * @param {Object} fsa - FSA in backend format
+ * @returns {Promise<Object>} - Promise resolving to epsilon loop detection result
+ */
+export async function checkEpsilonLoops(fsa) {
+    const requestData = { fsa: fsa };
+
+    try {
+        console.log('Checking for epsilon loops:', requestData);
+
+        const response = await fetch('/api/check-epsilon-loops/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('Epsilon loops detection result:', result);
+
+        return result;
+
+    } catch (error) {
+        console.error('Error during epsilon loops detection:', error);
+        throw error;
+    }
+}
+
+/**
  * Sends FSA and input string to backend for simulation
  * @param {Object} fsa - FSA in backend format
  * @param {string} inputString - Input string to simulate
@@ -154,14 +189,45 @@ export async function simulateNFAStreamOnBackend(fsa, inputString) {
             body: JSON.stringify(requestData)
         });
 
-        // Don't throw for HTTP errors here, let the streaming handler deal with them
-        // The response might have error data in the stream even if status is not 200
-
         console.log('Received NFA streaming response:', response.status, response.statusText);
         return response; // Return the streaming response
 
     } catch (error) {
         console.error('Error during NFA streaming simulation:', error);
+        throw error;
+    }
+}
+
+/**
+ * Sends FSA and input string to backend for streaming NFA simulation with depth limit
+ * @param {Object} fsa - FSA in backend format
+ * @param {string} inputString - Input string to simulate
+ * @param {number} maxDepth - Maximum epsilon transition depth
+ * @returns {Promise<Object>} - Promise resolving to streaming response
+ */
+export async function simulateNFAStreamWithDepthLimitOnBackend(fsa, inputString, maxDepth) {
+    const requestData = {
+        fsa: fsa,
+        input: inputString,
+        max_depth: maxDepth
+    };
+
+    try {
+        console.log('Sending NFA depth-limited streaming simulation request:', requestData);
+
+        const response = await fetch('/api/simulate-nfa-stream-depth-limit/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        console.log('Received NFA depth-limited streaming response:', response.status, response.statusText);
+        return response; // Return the streaming response
+
+    } catch (error) {
+        console.error('Error during NFA depth-limited streaming simulation:', error);
         throw error;
     }
 }
@@ -225,7 +291,7 @@ export async function runFSASimulation(jsPlumbInstance, inputString, visualMode 
             // Handle DFA simulation (existing logic)
             return await runDFASimulation(jsPlumbInstance, inputString, visualMode, validation.fsa);
         } else {
-            // Handle NFA simulation
+            // Handle NFA simulation with epsilon loop detection
             return await runNFASimulation(jsPlumbInstance, inputString, visualMode, validation.fsa);
         }
 
@@ -296,7 +362,7 @@ async function runDFASimulation(jsPlumbInstance, inputString, visualMode, fsa) {
 }
 
 /**
- * Run NFA simulation
+ * Run NFA simulation with epsilon loop detection
  * @param {Object} jsPlumbInstance - The JSPlumb instance
  * @param {string} inputString - Input string to simulate
  * @param {boolean} visualMode - Whether to show visual animation
@@ -304,9 +370,94 @@ async function runDFASimulation(jsPlumbInstance, inputString, visualMode, fsa) {
  * @returns {Promise<Object>} - Promise resolving to simulation result
  */
 async function runNFASimulation(jsPlumbInstance, inputString, visualMode, fsa) {
+    try {
+        // For fast-forward mode, always skip epsilon loops detection
+        if (!visualMode) {
+            console.log('Fast-forward mode: skipping epsilon loops detection');
+            return await executeNFASimulationWithOptions(
+                jsPlumbInstance,
+                inputString,
+                visualMode,
+                fsa,
+                { action: 'ignore' }
+            );
+        }
+
+        // For visual mode, perform epsilon loops detection as usual
+        const epsilonLoopsResult = await checkEpsilonLoops(fsa);
+
+        if (epsilonLoopsResult.has_epsilon_loops && epsilonLoopsResult.summary.has_reachable_loops) {
+            console.log('Detected reachable epsilon loops, showing options popup');
+
+            // Show epsilon loops popup and wait for user decision
+            const userDecision = await notificationManager.showEpsilonLoopsPopup(epsilonLoopsResult, fsa, inputString);
+
+            if (userDecision.action === 'cancel') {
+                return {
+                    success: false,
+                    message: 'Simulation cancelled by user',
+                    type: 'user_cancelled',
+                    isVisual: true
+                };
+            }
+
+            // Proceed with simulation based on user choice
+            return await executeNFASimulationWithOptions(
+                jsPlumbInstance,
+                inputString,
+                visualMode,
+                fsa,
+                userDecision
+            );
+        } else {
+            // No problematic epsilon loops, proceed normally
+            console.log('No reachable epsilon loops detected, proceeding with normal NFA simulation');
+            return await executeNFASimulationWithOptions(
+                jsPlumbInstance,
+                inputString,
+                visualMode,
+                fsa,
+                { action: 'ignore' }
+            );
+        }
+
+    } catch (error) {
+        console.error('Error during epsilon loops detection:', error);
+
+        // If epsilon loop detection fails, proceed with normal simulation but warn user
+        console.warn('Epsilon loop detection failed, proceeding with normal simulation');
+        return await executeNFASimulationWithOptions(
+            jsPlumbInstance,
+            inputString,
+            visualMode,
+            fsa,
+            { action: 'ignore' }
+        );
+    }
+}
+
+/**
+ * Execute NFA simulation with the given options (depth limit or ignore loops)
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @param {string} inputString - Input string to simulate
+ * @param {boolean} visualMode - Whether to show visual animation
+ * @param {Object} fsa - FSA in backend format
+ * @param {Object} options - User decision options
+ * @returns {Promise<Object>} - Promise resolving to simulation result
+ */
+async function executeNFASimulationWithOptions(jsPlumbInstance, inputString, visualMode, fsa, options) {
     if (visualMode) {
         // For visual mode, show NFA results popup with streaming data
-        await nfaResultsManager.showNFAResultsPopup(fsa, inputString, jsPlumbInstance);
+        if (options.action === 'depth_limit') {
+            await nfaResultsManager.showNFAResultsPopupWithDepthLimit(
+                fsa,
+                inputString,
+                jsPlumbInstance,
+                options.maxDepth
+            );
+        } else {
+            await nfaResultsManager.showNFAResultsPopup(fsa, inputString, jsPlumbInstance);
+        }
 
         return {
             success: true,
@@ -315,9 +466,16 @@ async function runNFASimulation(jsPlumbInstance, inputString, visualMode, fsa) {
             isVisual: true
         };
     } else {
-        // For fast-forward mode, try to get first accepting path quickly
+        // For fast-forward mode, get first accepting path quickly
         try {
-            const streamResponse = await simulateNFAStreamOnBackend(fsa, inputString);
+            let streamResponse;
+
+            if (options.action === 'depth_limit') {
+                streamResponse = await simulateNFAStreamWithDepthLimitOnBackend(fsa, inputString, options.maxDepth);
+            } else {
+                streamResponse = await simulateNFAStreamOnBackend(fsa, inputString);
+            }
+
             const reader = streamResponse.body.getReader();
             const decoder = new TextDecoder();
 

@@ -1740,3 +1740,22 @@ class TestFsaSimulation(TestCase):
         else:
             # If it returns a list, it should be empty or contain partial paths
             self.assertEqual(len(result), 0)
+
+    def test_depth_limit_with_multiple_self_loops(self):
+        """Test behavior at depth limit boundaries"""
+        # NFA where exactly 3 epsilon transitions reach acceptance
+        nfa = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S0'],'a':['S0']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+
+        # Test a self loop with a large depth
+        result = simulate_nondeterministic_fsa_with_depth_limit(nfa, 'a', max_depth=50)
+        self.assertIsInstance(result, list)
+        self.assertTrue(len(result) > 0)
+        print(result)

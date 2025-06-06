@@ -328,7 +328,7 @@ def check_fsa_type(request):
 
 @csrf_exempt
 @require_POST
-def detect_epsilon_loops(request):
+def check_epsilon_loops(request):
     """
     Django view to detect epsilon loops in an FSA.
 

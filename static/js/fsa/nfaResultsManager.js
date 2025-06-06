@@ -1,5 +1,5 @@
 import { visualSimulationManager } from './visualSimulationManager.js';
-import { simulateNFAStreamOnBackend } from './backendIntegration.js';
+import { simulateNFAStreamOnBackend, simulateNFAStreamWithDepthLimitOnBackend } from './backendIntegration.js';
 import { controlLockManager } from './controlLockManager.js';
 
 /**
@@ -20,6 +20,9 @@ class NFAResultsManager {
         this.isComplete = false;
         this.finalResult = null; // Store final result (accepted/rejected)
         this.storedPaths = null; // Store complete simulation results to avoid re-streaming
+        this.isDepthLimited = false; // Track if using depth limit
+        this.maxDepth = null; // Store depth limit
+        this.depthLimitReached = false; // Track if depth limit was reached
     }
 
     /**
@@ -34,11 +37,14 @@ class NFAResultsManager {
         this.currentFSA = fsa;
         this.currentInputString = inputString;
         this.jsPlumbInstance = jsPlumbInstance;
+        this.isDepthLimited = false;
+        this.maxDepth = null;
 
         // If we have stored paths for the same FSA and input, use them
         if (useStoredPaths && this.storedPaths &&
             this.storedPaths.inputString === inputString &&
-            JSON.stringify(this.storedPaths.fsa) === JSON.stringify(fsa)) {
+            JSON.stringify(this.storedPaths.fsa) === JSON.stringify(fsa) &&
+            !this.storedPaths.isDepthLimited) {
 
             console.log('Using stored simulation results');
             this.loadStoredPaths();
@@ -48,18 +54,66 @@ class NFAResultsManager {
         }
 
         // Reset state for new simulation
+        this.resetSimulationState();
+
+        // Create and show popup IMMEDIATELY - don't wait for any results
+        this.createNFAResultsPopup();
+
+        // Start streaming AFTER popup is visible
+        await this.startStreaming();
+    }
+
+    /**
+     * Show NFA results popup with depth limit
+     * @param {Object} fsa - FSA in backend format
+     * @param {string} inputString - Input string to simulate
+     * @param {Object} jsPlumbInstance - JSPlumb instance for visual simulation
+     * @param {number} maxDepth - Maximum epsilon transition depth
+     * @param {boolean} useStoredPaths - Whether to use stored paths instead of streaming
+     */
+    async showNFAResultsPopupWithDepthLimit(fsa, inputString, jsPlumbInstance, maxDepth, useStoredPaths = false) {
+        // Store references
+        this.currentFSA = fsa;
+        this.currentInputString = inputString;
+        this.jsPlumbInstance = jsPlumbInstance;
+        this.isDepthLimited = true;
+        this.maxDepth = maxDepth;
+
+        // If we have stored paths for the same FSA, input, and depth limit, use them
+        if (useStoredPaths && this.storedPaths &&
+            this.storedPaths.inputString === inputString &&
+            JSON.stringify(this.storedPaths.fsa) === JSON.stringify(fsa) &&
+            this.storedPaths.isDepthLimited &&
+            this.storedPaths.maxDepth === maxDepth) {
+
+            console.log('Using stored depth-limited simulation results');
+            this.loadStoredPaths();
+            this.createNFAResultsPopup();
+            this.updateUIWithStoredData();
+            return;
+        }
+
+        // Reset state for new simulation
+        this.resetSimulationState();
+
+        // Create and show popup IMMEDIATELY - don't wait for any results
+        this.createNFAResultsPopup();
+
+        // Start streaming with depth limit AFTER popup is visible
+        await this.startStreamingWithDepthLimit();
+    }
+
+    /**
+     * Reset simulation state
+     */
+    resetSimulationState() {
         this.acceptingPaths = [];
         this.rejectedPaths = [];
         this.pathsExplored = 0;
         this.hasAcceptingPaths = false;
         this.isComplete = false;
         this.finalResult = null;
-
-        // Create and show popup
-        this.createNFAResultsPopup();
-
-        // Start streaming
-        await this.startStreaming();
+        this.depthLimitReached = false;
     }
 
     /**
@@ -74,6 +128,9 @@ class NFAResultsManager {
         this.hasAcceptingPaths = this.storedPaths.hasAcceptingPaths;
         this.isComplete = this.storedPaths.isComplete;
         this.finalResult = this.storedPaths.finalResult;
+        this.isDepthLimited = this.storedPaths.isDepthLimited || false;
+        this.maxDepth = this.storedPaths.maxDepth || null;
+        this.depthLimitReached = this.storedPaths.depthLimitReached || false;
     }
 
     /**
@@ -88,7 +145,10 @@ class NFAResultsManager {
             pathsExplored: this.pathsExplored,
             hasAcceptingPaths: this.hasAcceptingPaths,
             isComplete: this.isComplete,
-            finalResult: this.finalResult
+            finalResult: this.finalResult,
+            isDepthLimited: this.isDepthLimited,
+            maxDepth: this.maxDepth,
+            depthLimitReached: this.depthLimitReached
         };
         console.log('Stored simulation results for reuse');
     }
@@ -103,13 +163,12 @@ class NFAResultsManager {
         // Update status
         const statusText = document.getElementById('nfa-status-text');
         if (statusText && this.finalResult !== null) {
-            if (this.finalResult) {
-                statusText.textContent = 'Input ACCEPTED';
-                statusText.className = 'nfa-status-value accepted';
-            } else {
-                statusText.textContent = 'Input REJECTED';
-                statusText.className = 'nfa-status-value rejected';
+            let statusMessage = this.finalResult ? 'Input ACCEPTED' : 'Input REJECTED';
+            if (this.isDepthLimited && this.depthLimitReached) {
+                statusMessage += ' (depth limit reached)';
             }
+            statusText.textContent = statusMessage;
+            statusText.className = `nfa-status-value ${this.finalResult ? 'accepted' : 'rejected'}`;
         }
 
         // Add all accepting paths to UI
@@ -203,6 +262,12 @@ class NFAResultsManager {
             reasonDisplay = `<div class="nfa-rejection-reason">Reason: ${pathData.reason}</div>`;
         }
 
+        // Add depth information if applicable
+        let depthDisplay = '';
+        if (pathData.depth_used !== undefined) {
+            depthDisplay = `<div class="nfa-path-depth">Epsilon depth used: ${pathData.depth_used}</div>`;
+        }
+
         // Remove individual visualize buttons - use only path number for all paths
         pathElement.innerHTML = `
             <div class="nfa-path-header">
@@ -211,6 +276,7 @@ class NFAResultsManager {
             <div class="nfa-path-content">
                 ${pathDisplay}
                 ${reasonDisplay}
+                ${depthDisplay}
             </div>
         `;
 
@@ -234,11 +300,17 @@ class NFAResultsManager {
         popup.id = 'nfa-results-popup';
         popup.className = 'nfa-results-popup';
 
+        // Build title with depth limit indicator
+        let titleText = 'NFA SIMULATION';
+        if (this.isDepthLimited) {
+            titleText += ` (Depth Limit: ${this.maxDepth})`;
+        }
+
         popup.innerHTML = `
             <div class="nfa-popup-header">
                 <div class="nfa-popup-title">
                     <div class="nfa-popup-icon"><img src="static/img/shuffle.png" alt="NFA" style="width: 20px; height: 20px;"></div>
-                    <span>NFA SIMULATION</span>
+                    <span>${titleText}</span>
                 </div>
                 <button class="nfa-popup-close" onclick="nfaResultsManager.handlePopupClose()">×</button>
             </div>
@@ -274,12 +346,12 @@ class NFAResultsManager {
             <div class="nfa-popup-content">
                 <div class="nfa-tab-content active" id="accepting-tab">
                     <div class="nfa-paths-container" id="accepting-paths-container">
-                        <div class="nfa-no-paths">No accepting paths found yet...</div>
+                        <div class="nfa-no-paths">Searching for accepting paths...</div>
                     </div>
                 </div>
                 <div class="nfa-tab-content" id="rejected-tab">
                     <div class="nfa-paths-container" id="rejected-paths-container">
-                        <div class="nfa-no-paths">No rejected paths found yet...</div>
+                        <div class="nfa-no-paths">Searching for rejected paths...</div>
                     </div>
                 </div>
             </div>
@@ -307,10 +379,10 @@ class NFAResultsManager {
             // Setup tab switching
             this.setupTabSwitching();
 
-            // Trigger show animation
+            // Trigger show animation immediately
             setTimeout(() => {
                 popup.classList.add('show');
-            }, 100);
+            }, 10); // Much shorter delay for immediate display
         }
     }
 
@@ -385,7 +457,59 @@ class NFAResultsManager {
 
             this.currentReader = reader;
 
-            while (this.isStreaming) {
+            // Process streaming data in real-time without blocking
+            this.processStreamingData(reader, decoder);
+
+        } catch (error) {
+            console.error('Error during NFA streaming:', error);
+            this.handleStreamError(error);
+        }
+    }
+
+    /**
+     * Start streaming NFA simulation results with depth limit
+     */
+    async startStreamingWithDepthLimit() {
+        if (this.isStreaming) {
+            this.stopStreaming();
+        }
+
+        this.isStreaming = true;
+
+        try {
+            const streamResponse = await simulateNFAStreamWithDepthLimitOnBackend(
+                this.currentFSA,
+                this.currentInputString,
+                this.maxDepth
+            );
+
+            // Check if response is ok
+            if (!streamResponse.ok) {
+                throw new Error(`HTTP ${streamResponse.status}: ${streamResponse.statusText}`);
+            }
+
+            const reader = streamResponse.body.getReader();
+            const decoder = new TextDecoder();
+
+            this.currentReader = reader;
+
+            // Process streaming data in real-time without blocking
+            this.processStreamingData(reader, decoder);
+
+        } catch (error) {
+            console.error('Error during NFA depth-limited streaming:', error);
+            this.handleStreamError(error);
+        }
+    }
+
+    /**
+     * Process streaming data asynchronously and non-blocking
+     * @param {ReadableStreamDefaultReader} reader - Stream reader
+     * @param {TextDecoder} decoder - Text decoder
+     */
+    async processStreamingData(reader, decoder) {
+        while (this.isStreaming) {
+            try {
                 const { done, value } = await reader.read();
 
                 if (done) {
@@ -396,24 +520,35 @@ class NFAResultsManager {
                 const chunk = decoder.decode(value, { stream: true });
                 const lines = chunk.split('\n');
 
+                // Process each line immediately and asynchronously
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
                         try {
                             const jsonStr = line.slice(6).trim();
                             if (jsonStr) {
                                 const data = JSON.parse(jsonStr);
-                                this.handleStreamData(data);
+
+                                // Use setTimeout to make this truly non-blocking
+                                setTimeout(() => {
+                                    if (this.isStreaming) {
+                                        this.handleStreamData(data);
+                                    }
+                                }, 0);
                             }
                         } catch (parseError) {
                             console.error('Error parsing streaming data:', parseError, 'Raw line:', line);
                         }
                     }
                 }
-            }
 
-        } catch (error) {
-            console.error('Error during NFA streaming:', error);
-            this.handleStreamError(error);
+                // Allow UI to update between chunks
+                await new Promise(resolve => setTimeout(resolve, 1));
+
+            } catch (error) {
+                console.error('Error reading stream:', error);
+                this.handleStreamError(error);
+                break;
+            }
         }
     }
 
@@ -428,6 +563,9 @@ class NFAResultsManager {
                 break;
             case 'rejected_path':
                 this.handleRejectedPath(data);
+                break;
+            case 'depth_limit_reached':
+                this.handleDepthLimitReached(data);
                 break;
             case 'progress':
                 this.handleProgress(data);
@@ -452,10 +590,10 @@ class NFAResultsManager {
         this.acceptingPaths.push(data);
         this.hasAcceptingPaths = true;
 
-        // Update counters
+        // Update counters immediately
         this.updateCounters();
 
-        // Add path to UI
+        // Add path to UI immediately with smooth animation
         this.addPathToUI(data, 'accepting');
 
         // Enable visualize button if this is the first accepting path
@@ -476,11 +614,27 @@ class NFAResultsManager {
     handleRejectedPath(data) {
         this.rejectedPaths.push(data);
 
-        // Update counters
+        // Update counters immediately
         this.updateCounters();
 
-        // Add path to UI
+        // Add path to UI immediately with smooth animation
         this.addPathToUI(data, 'rejected');
+    }
+
+    /**
+     * Handle depth limit reached event
+     * @param {Object} data - Depth limit data
+     */
+    handleDepthLimitReached(data) {
+        this.depthLimitReached = true;
+        console.log('Depth limit reached:', data);
+
+        // Show depth limit warning in status if needed
+        const statusText = document.getElementById('nfa-status-text');
+        if (statusText && statusText.textContent === 'Exploring paths...') {
+            statusText.textContent = 'Exploring paths... (depth limit reached)';
+            statusText.className = 'nfa-status-value warning';
+        }
     }
 
     /**
@@ -490,16 +644,23 @@ class NFAResultsManager {
     handleProgress(data) {
         this.pathsExplored = data.paths_explored;
 
-        // Update progress bar (visual indicator)
+        // Track depth limit reached from progress updates
+        if (data.depth_limit_reached) {
+            this.depthLimitReached = true;
+        }
+
+        // Update progress bar (visual indicator) - smooth animation
         const progressBar = document.getElementById('nfa-progress-bar');
         if (progressBar) {
-            // Animate progress bar to show activity
-            progressBar.style.width = '100%';
-            progressBar.style.opacity = '0.8';
-            setTimeout(() => {
-                progressBar.style.width = '0%';
-                progressBar.style.opacity = '0.3';
-            }, 300);
+            // Animate progress bar to show activity without blocking
+            requestAnimationFrame(() => {
+                progressBar.style.width = '100%';
+                progressBar.style.opacity = '0.8';
+                setTimeout(() => {
+                    progressBar.style.width = '0%';
+                    progressBar.style.opacity = '0.3';
+                }, 300);
+            });
         }
     }
 
@@ -512,19 +673,30 @@ class NFAResultsManager {
         this.finalResult = data.accepted;
         this.isComplete = true;
 
+        // Track depth limit reached from summary
+        if (data.depth_limit_reached) {
+            this.depthLimitReached = true;
+        }
+
         // Store paths for reuse
         this.storeCurrentPaths();
 
         // Update final status
         const statusText = document.getElementById('nfa-status-text');
         if (statusText) {
+            let statusMessage;
             if (data.accepted) {
-                statusText.textContent = 'Input ACCEPTED';
-                statusText.className = 'nfa-status-value accepted';
+                statusMessage = 'Input ACCEPTED';
             } else {
-                statusText.textContent = 'Input REJECTED';
-                statusText.className = 'nfa-status-value rejected';
+                statusMessage = 'Input REJECTED';
             }
+
+            if (this.depthLimitReached) {
+                statusMessage += ' (depth limit reached)';
+            }
+
+            statusText.textContent = statusMessage;
+            statusText.className = `nfa-status-value ${data.accepted ? 'accepted' : 'rejected'}`;
         }
 
         // Update final counters
@@ -558,16 +730,22 @@ class NFAResultsManager {
 
         // If no summary was received but stream ended, update UI
         const statusText = document.getElementById('nfa-status-text');
-        if (statusText && statusText.textContent === 'Exploring paths...') {
+        if (statusText && statusText.textContent.startsWith('Exploring paths...')) {
+            let statusMessage;
             if (this.hasAcceptingPaths) {
-                statusText.textContent = 'Input ACCEPTED';
-                statusText.className = 'nfa-status-value accepted';
+                statusMessage = 'Input ACCEPTED';
                 this.finalResult = true;
             } else {
-                statusText.textContent = 'Input REJECTED';
-                statusText.className = 'nfa-status-value rejected';
+                statusMessage = 'Input REJECTED';
                 this.finalResult = false;
             }
+
+            if (this.depthLimitReached) {
+                statusMessage += ' (depth limit reached)';
+            }
+
+            statusText.textContent = statusMessage;
+            statusText.className = `nfa-status-value ${this.finalResult ? 'accepted' : 'rejected'}`;
         }
 
         // Change stop button to close button
@@ -600,102 +778,127 @@ class NFAResultsManager {
      * Update path counters in the UI (removed paths explored counter)
      */
     updateCounters() {
-        // Update main status counters
-        const acceptingCountEl = document.getElementById('nfa-accepting-count');
-        const rejectedCountEl = document.getElementById('nfa-rejected-count');
+        // Use requestAnimationFrame for smooth UI updates
+        requestAnimationFrame(() => {
+            // Update main status counters
+            const acceptingCountEl = document.getElementById('nfa-accepting-count');
+            const rejectedCountEl = document.getElementById('nfa-rejected-count');
 
-        if (acceptingCountEl) {
-            acceptingCountEl.textContent = this.acceptingPaths.length;
-        }
-        if (rejectedCountEl) {
-            rejectedCountEl.textContent = this.rejectedPaths.length;
-        }
+            if (acceptingCountEl) {
+                acceptingCountEl.textContent = this.acceptingPaths.length;
+            }
+            if (rejectedCountEl) {
+                rejectedCountEl.textContent = this.rejectedPaths.length;
+            }
 
-        // Update tab counters
-        const acceptingTabCount = document.getElementById('accepting-tab-count');
-        const rejectedTabCount = document.getElementById('rejected-tab-count');
+            // Update tab counters
+            const acceptingTabCount = document.getElementById('accepting-tab-count');
+            const rejectedTabCount = document.getElementById('rejected-tab-count');
 
-        if (acceptingTabCount) {
-            acceptingTabCount.textContent = this.acceptingPaths.length;
-        }
-        if (rejectedTabCount) {
-            rejectedTabCount.textContent = this.rejectedPaths.length;
-        }
+            if (acceptingTabCount) {
+                acceptingTabCount.textContent = this.acceptingPaths.length;
+            }
+            if (rejectedTabCount) {
+                rejectedTabCount.textContent = this.rejectedPaths.length;
+            }
+        });
     }
 
     /**
-     * Add a path to the UI
+     * Add a path to the UI with smooth animation
      * @param {Object} pathData - Path data from stream
      * @param {string} type - 'accepting' or 'rejected'
      */
     addPathToUI(pathData, type) {
-        const containerId = `${type}-paths-container`;
-        const container = document.getElementById(containerId);
+        // Use requestAnimationFrame for smooth UI updates
+        requestAnimationFrame(() => {
+            const containerId = `${type}-paths-container`;
+            const container = document.getElementById(containerId);
 
-        if (!container) return;
+            if (!container) return;
 
-        // Remove "no paths" message if it exists
-        const noPathsMsg = container.querySelector('.nfa-no-paths');
-        if (noPathsMsg) {
-            noPathsMsg.remove();
-        }
+            // Remove "no paths" message if it exists
+            const noPathsMsg = container.querySelector('.nfa-no-paths');
+            if (noPathsMsg) {
+                noPathsMsg.remove();
+            }
 
-        // Create path element
-        const pathElement = document.createElement('div');
-        pathElement.className = `nfa-path-item ${type}`;
-        pathElement.setAttribute('data-path-index', type === 'accepting' ? this.acceptingPaths.length - 1 : this.rejectedPaths.length - 1);
+            // Create path element
+            const pathElement = document.createElement('div');
+            pathElement.className = `nfa-path-item ${type}`;
+            pathElement.setAttribute('data-path-index', type === 'accepting' ? this.acceptingPaths.length - 1 : this.rejectedPaths.length - 1);
 
-        // Build path display
-        let pathDisplay = '';
-        if (pathData.path && pathData.path.length > 0) {
-            pathDisplay = pathData.path.map((step, index) => {
-                const [currentState, symbol, nextState] = step;
-                const displaySymbol = symbol === '' ? 'ε' : symbol;
-                return `<span class="nfa-path-step">${currentState} --${displaySymbol}--> ${nextState}</span>`;
-            }).join('<br>');
+            // Build path display
+            let pathDisplay = '';
+            if (pathData.path && pathData.path.length > 0) {
+                pathDisplay = pathData.path.map((step, index) => {
+                    const [currentState, symbol, nextState] = step;
+                    const displaySymbol = symbol === '' ? 'ε' : symbol;
+                    return `<span class="nfa-path-step">${currentState} --${displaySymbol}--> ${nextState}</span>`;
+                }).join('<br>');
 
-            // Add final state info
-            const finalState = pathData.final_state || pathData.path[pathData.path.length - 1][2];
-            const finalStateInfo = type === 'accepting' ?
-                `<div class="nfa-final-state accepting">Final state: ${finalState} (accepting)</div>` :
-                `<div class="nfa-final-state rejected">Final state: ${finalState} (non-accepting)</div>`;
+                // Add final state info
+                const finalState = pathData.final_state || pathData.path[pathData.path.length - 1][2];
+                const finalStateInfo = type === 'accepting' ?
+                    `<div class="nfa-final-state accepting">Final state: ${finalState} (accepting)</div>` :
+                    `<div class="nfa-final-state rejected">Final state: ${finalState} (non-accepting)</div>`;
 
-            pathDisplay += finalStateInfo;
-        } else {
-            // Handle empty path (empty string case)
-            const finalState = pathData.final_state || 'S0'; // fallback
-            pathDisplay = `<span class="nfa-path-step">Empty string processed in starting state</span><br>`;
-            pathDisplay += type === 'accepting' ?
-                `<div class="nfa-final-state accepting">Final state: ${finalState} (accepting)</div>` :
-                `<div class="nfa-final-state rejected">Final state: ${finalState} (non-accepting)</div>`;
-        }
+                pathDisplay += finalStateInfo;
+            } else {
+                // Handle empty path (empty string case)
+                const finalState = pathData.final_state || 'S0'; // fallback
+                pathDisplay = `<span class="nfa-path-step">Empty string processed in starting state</span><br>`;
+                pathDisplay += type === 'accepting' ?
+                    `<div class="nfa-final-state accepting">Final state: ${finalState} (accepting)</div>` :
+                    `<div class="nfa-final-state rejected">Final state: ${finalState} (non-accepting)</div>`;
+            }
 
-        // Add reason for rejected paths
-        let reasonDisplay = '';
-        if (type === 'rejected' && pathData.reason) {
-            reasonDisplay = `<div class="nfa-rejection-reason">Reason: ${pathData.reason}</div>`;
-        }
+            // Add reason for rejected paths
+            let reasonDisplay = '';
+            if (type === 'rejected' && pathData.reason) {
+                reasonDisplay = `<div class="nfa-rejection-reason">Reason: ${pathData.reason}</div>`;
+            }
 
-        // Remove individual visualize buttons - use only path number for all paths
-        pathElement.innerHTML = `
-            <div class="nfa-path-header">
-                <span class="nfa-path-number">Path ${type === 'accepting' ? this.acceptingPaths.length : this.rejectedPaths.length}</span>
-            </div>
-            <div class="nfa-path-content">
-                ${pathDisplay}
-                ${reasonDisplay}
-            </div>
-        `;
+            // Add depth information if applicable
+            let depthDisplay = '';
+            if (pathData.depth_used !== undefined) {
+                depthDisplay = `<div class="nfa-path-depth">Epsilon depth used: ${pathData.depth_used}</div>`;
+            }
 
-        // Add click handler for path selection
-        pathElement.addEventListener('click', (e) => {
-            this.selectPath(pathElement, type);
+            // Remove individual visualize buttons - use only path number for all paths
+            pathElement.innerHTML = `
+                <div class="nfa-path-header">
+                    <span class="nfa-path-number">Path ${type === 'accepting' ? this.acceptingPaths.length : this.rejectedPaths.length}</span>
+                </div>
+                <div class="nfa-path-content">
+                    ${pathDisplay}
+                    ${reasonDisplay}
+                    ${depthDisplay}
+                </div>
+            `;
+
+            // Add click handler for path selection
+            pathElement.addEventListener('click', (e) => {
+                this.selectPath(pathElement, type);
+            });
+
+            // Add with smooth fade-in animation
+            pathElement.style.opacity = '0';
+            pathElement.style.transform = 'translateY(10px)';
+            container.appendChild(pathElement);
+
+            // Trigger fade-in animation
+            setTimeout(() => {
+                pathElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                pathElement.style.opacity = '1';
+                pathElement.style.transform = 'translateY(0)';
+            }, 10);
+
+            // Auto-scroll to show new path smoothly
+            setTimeout(() => {
+                pathElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
         });
-
-        container.appendChild(pathElement);
-
-        // Auto-scroll to show new path
-        pathElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     /**
@@ -749,7 +952,17 @@ class NFAResultsManager {
             // Reopen NFA popup with stored data after a brief delay
             setTimeout(() => {
                 console.log('Reopening NFA popup after path visualization');
-                this.showNFAResultsPopup(this.currentFSA, this.currentInputString, this.jsPlumbInstance, true);
+                if (this.isDepthLimited) {
+                    this.showNFAResultsPopupWithDepthLimit(
+                        this.currentFSA,
+                        this.currentInputString,
+                        this.jsPlumbInstance,
+                        this.maxDepth,
+                        true
+                    );
+                } else {
+                    this.showNFAResultsPopup(this.currentFSA, this.currentInputString, this.jsPlumbInstance, true);
+                }
             }, 500);
         };
 
@@ -824,7 +1037,7 @@ class NFAResultsManager {
 
         // Update UI to show stopped state
         const statusText = document.getElementById('nfa-status-text');
-        if (statusText && statusText.textContent === 'Exploring paths...') {
+        if (statusText && statusText.textContent.startsWith('Exploring paths...')) {
             statusText.textContent = 'Simulation stopped';
             statusText.className = 'nfa-status-value';
         }
@@ -876,6 +1089,9 @@ class NFAResultsManager {
         this.hasAcceptingPaths = false;
         this.isComplete = false;
         this.finalResult = null;
+        this.isDepthLimited = false;
+        this.maxDepth = null;
+        this.depthLimitReached = false;
         console.log('Cleared stored simulation results');
     }
 
@@ -891,12 +1107,27 @@ class NFAResultsManager {
      * Check if we have stored results for the given FSA and input
      * @param {Object} fsa - FSA in backend format
      * @param {string} inputString - Input string
+     * @param {boolean} isDepthLimited - Whether this is a depth-limited query
+     * @param {number} maxDepth - Maximum depth (for depth-limited queries)
      * @returns {boolean} - Whether we have stored results
      */
-    hasStoredResultsFor(fsa, inputString) {
-        return this.storedPaths &&
-               this.storedPaths.inputString === inputString &&
-               JSON.stringify(this.storedPaths.fsa) === JSON.stringify(fsa);
+    hasStoredResultsFor(fsa, inputString, isDepthLimited = false, maxDepth = null) {
+        if (!this.storedPaths) {
+            return false;
+        }
+
+        const sameInputAndFSA = this.storedPaths.inputString === inputString &&
+                               JSON.stringify(this.storedPaths.fsa) === JSON.stringify(fsa);
+
+        if (!isDepthLimited) {
+            // For non-depth-limited queries, we need stored results that are also non-depth-limited
+            return sameInputAndFSA && !this.storedPaths.isDepthLimited;
+        } else {
+            // For depth-limited queries, we need stored results with the same depth limit
+            return sameInputAndFSA &&
+                   this.storedPaths.isDepthLimited &&
+                   this.storedPaths.maxDepth === maxDepth;
+        }
     }
 }
 

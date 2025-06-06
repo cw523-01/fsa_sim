@@ -1,0 +1,337 @@
+/* Epsilon Loops Detection Popup Styles */
+.epsilon-loops-popup {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -60%);
+    width: 500px;
+    max-width: 90vw;
+    max-height: 80vh;
+    background: linear-gradient(135deg, var(--white) 0%, var(--light-gray) 100%);
+    border: 2px solid var(--warning-color);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-modals);
+    overflow: hidden;
+    opacity: 0;
+    transition: var(--transition-slow);
+    font-family: var(--font-family-ui);
+}
+
+.epsilon-loops-popup.show {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+}
+
+.epsilon-loops-popup.hide {
+    opacity: 0;
+    transform: translate(-50%, -60%);
+}
+
+/* Reuse existing popup header styles */
+.epsilon-loops-popup .popup-header {
+    background: linear-gradient(135deg, var(--warning-color) 0%, #ef6c00 100%);
+    color: var(--white);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    border-bottom: 2px solid var(--warning-color);
+}
+
+.epsilon-loops-popup .popup-status.warning {
+    color: var(--white);
+}
+
+.epsilon-loops-popup .popup-icon.warning {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.epsilon-loops-popup .popup-close {
+    color: var(--white);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.epsilon-loops-popup .popup-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Epsilon Loops Content */
+.epsilon-loops-details {
+    margin: var(--spacing-lg) 0;
+    padding: 0 var(--spacing-xl);
+}
+
+.loops-summary {
+    background: rgba(255, 152, 0, 0.1);
+    border: 1px solid var(--warning-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    color: #e65100;
+    font-size: var(--font-size-md);
+}
+
+.loops-explanation {
+    color: var(--text-gray);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height);
+    margin-bottom: var(--spacing-lg);
+}
+
+.loops-list {
+    background: var(--medium-gray);
+    border: 1px solid var(--border-gray);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.loop-item {
+    margin-bottom: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: var(--white);
+    border: 1px solid #eee;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+}
+
+.loop-item:last-child {
+    margin-bottom: 0;
+}
+
+.loop-header {
+    font-weight: var(--font-weight-bold);
+    color: #d84315;
+    margin-bottom: 2px;
+}
+
+.loop-states {
+    color: var(--dark-gray);
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-xs);
+}
+
+/* Epsilon Loops Options */
+.epsilon-loops-options {
+    padding: 0 var(--spacing-xl) var(--spacing-lg) var(--spacing-xl);
+    border-bottom: 1px solid var(--border-gray);
+}
+
+.option-section h4 {
+    margin: 0 0 var(--spacing-lg) 0;
+    color: var(--text-color);
+    font-size: var(--font-size-md);
+}
+
+.option-item {
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-gray);
+    border-radius: var(--radius-md);
+    transition: var(--transition-fast);
+}
+
+.option-item:hover {
+    background-color: var(--light-gray);
+}
+
+.option-item input[type="radio"] {
+    margin-right: var(--spacing-sm);
+}
+
+.option-item label {
+    cursor: pointer;
+    display: block;
+    font-size: var(--font-size-sm);
+}
+
+.option-item label strong {
+    display: block;
+    color: var(--text-color);
+    margin-bottom: 2px;
+}
+
+.option-description {
+    color: var(--text-gray);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-normal);
+}
+
+.depth-limit-section {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: rgba(33, 150, 243, 0.05);
+    border: 1px solid var(--secondary-color);
+    border-radius: var(--radius-md);
+    animation: fadeIn var(--animation-fast) ease;
+}
+
+.depth-limit-section label {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    color: var(--secondary-hover);
+}
+
+.depth-limit-section input[type="number"] {
+    width: 80px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--secondary-color);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+}
+
+.depth-limit-help {
+    display: block;
+    font-size: var(--font-size-xs);
+    color: var(--text-gray);
+    margin-top: var(--spacing-xs);
+    font-style: italic;
+}
+
+/* Popup Actions for Epsilon Loops */
+.epsilon-loops-popup .popup-actions {
+    padding: var(--spacing-lg) var(--spacing-xl);
+    background: var(--light-gray);
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: flex-end;
+}
+
+.popup-action-btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.popup-action-btn.cancel {
+    background: var(--error-color);
+    color: var(--white);
+}
+
+.popup-action-btn.cancel:hover {
+    background: var(--error-hover);
+}
+
+.popup-action-btn.proceed {
+    background: var(--success-color);
+    color: var(--white);
+}
+
+.popup-action-btn.proceed:hover {
+    background: var(--primary-hover);
+}
+
+.popup-action-btn:disabled {
+    background: #ccc;
+    color: #999;
+    cursor: not-allowed;
+}
+
+/* Animation for fade in */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .epsilon-loops-popup {
+        width: 95vw;
+        max-height: 90vh;
+        top: 45%;
+    }
+
+    .epsilon-loops-popup.show {
+        transform: translate(-50%, -45%);
+    }
+
+    .epsilon-loops-details {
+        padding: 0 var(--spacing-lg);
+    }
+
+    .epsilon-loops-options {
+        padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
+    }
+
+    .epsilon-loops-popup .popup-actions {
+        padding: var(--spacing-lg);
+        flex-direction: column;
+    }
+
+    .popup-action-btn {
+        width: 100%;
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .popup-action-btn:last-child {
+        margin-bottom: 0;
+    }
+}
+
+/* Enhanced NFA popup styles for depth limit indicator */
+.nfa-popup-title span {
+    font-size: var(--font-size-lg);
+}
+
+/* Style for depth limit indicator in NFA popup title */
+.nfa-results-popup .nfa-popup-title span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Path depth information */
+.nfa-path-depth {
+    font-size: var(--font-size-xs);
+    color: var(--secondary-color);
+    font-style: italic;
+    margin-top: var(--spacing-xs);
+    padding: 2px var(--spacing-sm);
+    background: rgba(33, 150, 243, 0.1);
+    border-radius: var(--radius-sm);
+    display: inline-block;
+}
+
+/* Warning status for depth limit reached */
+.nfa-status-value.warning {
+    color: var(--warning-color);
+    font-weight: var(--font-weight-bold);
+}
+
+/* Enhanced progress indication for depth-limited simulations */
+.nfa-results-popup .nfa-progress-bar {
+    transition: var(--transition-normal);
+}
+
+.nfa-results-popup .nfa-progress-bar.warning {
+    background-color: var(--warning-color);
+}
+
+/* Scrollbar styling for loops list */
+.loops-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.loops-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.loops-list::-webkit-scrollbar-thumb {
+    background: rgba(108, 117, 125, 0.5);
+    border-radius: var(--radius-sm);
+}
+
+.loops-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(108, 117, 125, 0.7);
+}
