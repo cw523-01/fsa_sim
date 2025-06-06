@@ -23,6 +23,10 @@ class NFAResultsManager {
         this.isDepthLimited = false; // Track if using depth limit
         this.maxDepth = null; // Store depth limit
         this.depthLimitReached = false; // Track if depth limit was reached
+
+        // ADD: Path numbering counters to ensure proper sequential numbering
+        this.acceptingPathCounter = 0;
+        this.rejectedPathCounter = 0;
     }
 
     /**
@@ -114,6 +118,10 @@ class NFAResultsManager {
         this.isComplete = false;
         this.finalResult = null;
         this.depthLimitReached = false;
+
+        // RESET: Path counters for new simulation
+        this.acceptingPathCounter = 0;
+        this.rejectedPathCounter = 0;
     }
 
     /**
@@ -131,6 +139,10 @@ class NFAResultsManager {
         this.isDepthLimited = this.storedPaths.isDepthLimited || false;
         this.maxDepth = this.storedPaths.maxDepth || null;
         this.depthLimitReached = this.storedPaths.depthLimitReached || false;
+
+        // RESTORE: Path counters from stored data
+        this.acceptingPathCounter = this.storedPaths.acceptingPathCounter || this.acceptingPaths.length;
+        this.rejectedPathCounter = this.storedPaths.rejectedPathCounter || this.rejectedPaths.length;
     }
 
     /**
@@ -148,7 +160,11 @@ class NFAResultsManager {
             finalResult: this.finalResult,
             isDepthLimited: this.isDepthLimited,
             maxDepth: this.maxDepth,
-            depthLimitReached: this.depthLimitReached
+            depthLimitReached: this.depthLimitReached,
+
+            // STORE: Path counters for accurate restoration
+            acceptingPathCounter: this.acceptingPathCounter,
+            rejectedPathCounter: this.rejectedPathCounter
         };
         console.log('Stored simulation results for reuse');
     }
@@ -179,7 +195,8 @@ class NFAResultsManager {
                 acceptingContainer.innerHTML = '<div class="nfa-no-paths">No accepting paths found...</div>';
             } else {
                 this.acceptingPaths.forEach((pathData, index) => {
-                    this.addStoredPathToUI(pathData, 'accepting', index);
+                    // FIXED: Use index + 1 for proper numbering when loading stored data
+                    this.addStoredPathToUI(pathData, 'accepting', index + 1);
                 });
             }
         }
@@ -192,7 +209,8 @@ class NFAResultsManager {
                 rejectedContainer.innerHTML = '<div class="nfa-no-paths">No rejected paths found...</div>';
             } else {
                 this.rejectedPaths.forEach((pathData, index) => {
-                    this.addStoredPathToUI(pathData, 'rejected', index);
+                    // FIXED: Use index + 1 for proper numbering when loading stored data
+                    this.addStoredPathToUI(pathData, 'rejected', index + 1);
                 });
             }
         }
@@ -222,8 +240,11 @@ class NFAResultsManager {
 
     /**
      * Add a stored path to the UI (similar to addPathToUI but for stored data)
+     * @param {Object} pathData - Path data
+     * @param {string} type - 'accepting' or 'rejected'
+     * @param {number} pathNumber - The path number to display
      */
-    addStoredPathToUI(pathData, type, index) {
+    addStoredPathToUI(pathData, type, pathNumber) {
         const containerId = `${type}-paths-container`;
         const container = document.getElementById(containerId);
 
@@ -232,7 +253,8 @@ class NFAResultsManager {
         // Create path element
         const pathElement = document.createElement('div');
         pathElement.className = `nfa-path-item ${type}`;
-        pathElement.setAttribute('data-path-index', index);
+        // FIXED: Use pathNumber - 1 for zero-based array indexing
+        pathElement.setAttribute('data-path-index', pathNumber - 1);
 
         // Build path display
         let pathDisplay = '';
@@ -268,10 +290,10 @@ class NFAResultsManager {
             depthDisplay = `<div class="nfa-path-depth">Epsilon depth used: ${pathData.depth_used}</div>`;
         }
 
-        // Remove individual visualize buttons - use only path number for all paths
+        // FIXED: Use the provided pathNumber instead of calculating it
         pathElement.innerHTML = `
             <div class="nfa-path-header">
-                <span class="nfa-path-number">Path ${index + 1}</span>
+                <span class="nfa-path-number">Path ${pathNumber}</span>
             </div>
             <div class="nfa-path-content">
                 ${pathDisplay}
@@ -587,14 +609,18 @@ class NFAResultsManager {
      * @param {Object} data - Accepting path data
      */
     handleAcceptingPath(data) {
+        // INCREMENT: Counter first to get the correct path number
+        this.acceptingPathCounter++;
+        const pathNumber = this.acceptingPathCounter;
+
         this.acceptingPaths.push(data);
         this.hasAcceptingPaths = true;
 
         // Update counters immediately
         this.updateCounters();
 
-        // Add path to UI immediately with smooth animation
-        this.addPathToUI(data, 'accepting');
+        // FIXED: Pass the correct path number to addPathToUI
+        this.addPathToUI(data, 'accepting', pathNumber);
 
         // Enable visualize button if this is the first accepting path
         if (this.acceptingPaths.length === 1) {
@@ -612,13 +638,17 @@ class NFAResultsManager {
      * @param {Object} data - Rejected path data
      */
     handleRejectedPath(data) {
+        // INCREMENT: Counter first to get the correct path number
+        this.rejectedPathCounter++;
+        const pathNumber = this.rejectedPathCounter;
+
         this.rejectedPaths.push(data);
 
         // Update counters immediately
         this.updateCounters();
 
-        // Add path to UI immediately with smooth animation
-        this.addPathToUI(data, 'rejected');
+        // FIXED: Pass the correct path number to addPathToUI
+        this.addPathToUI(data, 'rejected', pathNumber);
     }
 
     /**
@@ -808,8 +838,9 @@ class NFAResultsManager {
      * Add a path to the UI with smooth animation
      * @param {Object} pathData - Path data from stream
      * @param {string} type - 'accepting' or 'rejected'
+     * @param {number} pathNumber - The path number to display
      */
-    addPathToUI(pathData, type) {
+    addPathToUI(pathData, type, pathNumber) {
         // Use requestAnimationFrame for smooth UI updates
         requestAnimationFrame(() => {
             const containerId = `${type}-paths-container`;
@@ -826,7 +857,8 @@ class NFAResultsManager {
             // Create path element
             const pathElement = document.createElement('div');
             pathElement.className = `nfa-path-item ${type}`;
-            pathElement.setAttribute('data-path-index', type === 'accepting' ? this.acceptingPaths.length - 1 : this.rejectedPaths.length - 1);
+            // FIXED: Use pathNumber - 1 for zero-based array indexing
+            pathElement.setAttribute('data-path-index', pathNumber - 1);
 
             // Build path display
             let pathDisplay = '';
@@ -865,10 +897,10 @@ class NFAResultsManager {
                 depthDisplay = `<div class="nfa-path-depth">Epsilon depth used: ${pathData.depth_used}</div>`;
             }
 
-            // Remove individual visualize buttons - use only path number for all paths
+            // FIXED: Use the provided pathNumber instead of calculating from array length
             pathElement.innerHTML = `
                 <div class="nfa-path-header">
-                    <span class="nfa-path-number">Path ${type === 'accepting' ? this.acceptingPaths.length : this.rejectedPaths.length}</span>
+                    <span class="nfa-path-number">Path ${pathNumber}</span>
                 </div>
                 <div class="nfa-path-content">
                     ${pathDisplay}
@@ -1092,6 +1124,11 @@ class NFAResultsManager {
         this.isDepthLimited = false;
         this.maxDepth = null;
         this.depthLimitReached = false;
+
+        // CLEAR: Path counters when clearing stored data
+        this.acceptingPathCounter = 0;
+        this.rejectedPathCounter = 0;
+
         console.log('Cleared stored simulation results');
     }
 

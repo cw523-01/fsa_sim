@@ -209,7 +209,7 @@ class NotificationManager {
                             <input type="radio" id="set-depth-limit" name="loop-option" value="depth_limit">
                             <label for="set-depth-limit">
                                 <strong>Set depth limit</strong>
-                                <span class="option-description">Limit epsilon transition depth to prevent infinite loops</span>
+                                <span class="option-description">Limit transition depth to prevent infinite loops</span>
                             </label>
                         </div>
                         
