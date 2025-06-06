@@ -1386,7 +1386,8 @@ class TestFsaSimulation(TestCase):
         self.assertFalse(summary[0]['depth_limit_reached'])
 
         # Check depth information is included
-        self.assertIn('depth_used', accepting_paths[0])
+        self.assertIn('total_depth', accepting_paths[0])
+        self.assertEqual(accepting_paths[0]['total_depth'], 2)
 
     def test_generator_depth_limit_validation(self):
         """Test generator validation of max_depth parameter"""
