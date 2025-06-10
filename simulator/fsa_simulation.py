@@ -1102,10 +1102,11 @@ def _get_initial_states_with_paths_total_depth_limited(fsa: Dict, start_state: s
         current_state, path_to_current, depth = queue.popleft()
 
         # Add this state and its path to results
-        result.append((current_state, path_to_current))
+        if len(path_to_current) <= max_depth:
+            result.append((current_state, path_to_current))
 
         # Check total depth limit
-        if depth > max_depth:
+        if depth >= max_depth:
             continue
 
         # Get epsilon transitions from current state
@@ -1138,10 +1139,11 @@ def _get_epsilon_closure_with_paths_total_depth_limited(fsa: Dict, start_state: 
         current_state, path_to_current, depth = queue.popleft()
 
         # Add this state and its path to results
-        result.append((current_state, path_to_current))
+        if len(path_to_current) <= max_depth:
+            result.append((current_state, path_to_current))
 
         # Check total depth limit
-        if depth > max_depth:
+        if depth >= max_depth:
             continue
 
         # Get epsilon transitions from current state
