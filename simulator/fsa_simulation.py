@@ -870,7 +870,7 @@ def simulate_nondeterministic_fsa_with_depth_limit(fsa: Dict, input_string: str,
             new_depth = current_depth + 1  # Count this regular transition
 
             # Check if we've reached depth limit
-            if new_depth >= max_depth:
+            if new_depth > max_depth:
                 depth_limit_reached = True
                 continue
 
@@ -886,7 +886,7 @@ def simulate_nondeterministic_fsa_with_depth_limit(fsa: Dict, input_string: str,
                     final_depth = new_depth + len(eps_path_from_next)
 
                     # Check if we've reached depth limit with epsilon transitions
-                    if final_depth >= max_depth:
+                    if final_depth > max_depth:
                         depth_limit_reached = True
                         continue
 
@@ -1030,7 +1030,7 @@ def simulate_nondeterministic_fsa_generator_with_depth_limit(fsa: Dict, input_st
             new_depth = current_depth + 1  # Count this regular transition
 
             # Check if we've reached depth limit
-            if new_depth >= max_depth:
+            if new_depth > max_depth:
                 depth_limit_reached = True
                 yield {
                     'type': 'depth_limit_reached',
@@ -1054,7 +1054,7 @@ def simulate_nondeterministic_fsa_generator_with_depth_limit(fsa: Dict, input_st
                     final_depth = new_depth + len(eps_path_from_next)
 
                     # Check if we've reached depth limit with epsilon transitions
-                    if final_depth >= max_depth:
+                    if final_depth > max_depth:
                         depth_limit_reached = True
                         yield {
                             'type': 'depth_limit_reached',
@@ -1105,7 +1105,7 @@ def _get_initial_states_with_paths_total_depth_limited(fsa: Dict, start_state: s
         result.append((current_state, path_to_current))
 
         # Check total depth limit
-        if depth >= max_depth:
+        if depth > max_depth:
             continue
 
         # Get epsilon transitions from current state
@@ -1141,7 +1141,7 @@ def _get_epsilon_closure_with_paths_total_depth_limited(fsa: Dict, start_state: 
         result.append((current_state, path_to_current))
 
         # Check total depth limit
-        if depth >= max_depth:
+        if depth > max_depth:
             continue
 
         # Get epsilon transitions from current state
