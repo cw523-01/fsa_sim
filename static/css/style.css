@@ -36,7 +36,10 @@
 /* 12. Epsilon Loops Detection Popup */
 @import url('epsilon-loops-popup.css');
 
-/* 13. Responsive Styles - Must be last */
+/* 13. File Operations Popup */
+@import url('file-operations-popup.css');
+
+/* 14. Responsive Styles - Must be last */
 @import url('responsive.css');
 
 /* Hide drag‑and‑drop overlay unless actively dragging a file */

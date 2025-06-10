@@ -93,6 +93,10 @@ class FSAFileUIManager {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 this.closeAllMenus();
+                // Also close file operation popups
+                this.hideSavePopup();
+                this.hideNewFilePopup();
+                this.hideImportConfirmPopup();
             }
         });
     }
@@ -222,13 +226,8 @@ class FSAFileUIManager {
             return;
         }
 
-        try {
-            const filename = customFilename || this.generateDefaultFilename();
-            fsaSerializationManager.exportToFile(this.jsPlumbInstance, filename);
-        } catch (error) {
-            console.error('Export error:', error);
-            notificationManager.showError('Export Failed', error.message);
-        }
+        // Show custom save popup instead of direct export
+        this.showSavePopup(customFilename);
     }
 
     /**
@@ -245,18 +244,13 @@ class FSAFileUIManager {
             return;
         }
 
-        // Check if current FSA exists and warn user
+        // Check if current FSA exists and show custom popup
         const states = document.querySelectorAll('.state, .accepting-state');
         if (states.length > 0) {
-            if (!confirm('Importing will replace the current FSA. Continue?')) {
-                return;
-            }
-        }
-
-        // Trigger file input
-        const fileInput = document.getElementById('fsa-file-input');
-        if (fileInput) {
-            fileInput.click();
+            this.showImportConfirmPopup();
+        } else {
+            // If no states exist, proceed directly to file selection
+            this.triggerFileInput();
         }
     }
 
@@ -274,14 +268,391 @@ class FSAFileUIManager {
             return;
         }
 
-        // Check if current FSA exists and warn user
+        // Check if current FSA exists and show custom popup
         const states = document.querySelectorAll('.state, .accepting-state');
         if (states.length > 0) {
-            if (!confirm('This will clear the current FSA. Continue?')) {
-                return;
-            }
+            this.showNewFilePopup();
+        } else {
+            // If no states exist, just clear directly
+            this.performNewFSA();
+        }
+    }
+
+    /**
+     * Show custom save popup
+     * @param {string} suggestedFilename - Optional suggested filename
+     */
+    showSavePopup(suggestedFilename = null) {
+        // Remove any existing popup
+        const existingPopup = document.getElementById('file-operation-popup');
+        if (existingPopup) {
+            existingPopup.remove();
         }
 
+        // Create popup element
+        const popup = document.createElement('div');
+        popup.id = 'file-operation-popup';
+        popup.className = 'file-operation-popup save';
+
+        const defaultFilename = suggestedFilename || this.generateDefaultFilename();
+        const statesCount = document.querySelectorAll('.state, .accepting-state').length;
+        const edgesCount = this.jsPlumbInstance ? this.jsPlumbInstance.getAllConnections().filter(conn =>
+            !conn.canvas || !conn.canvas.classList.contains('starting-connection')
+        ).length : 0;
+
+        popup.innerHTML = `
+            <div class="popup-header">
+                <div class="popup-title">
+                    <div class="popup-icon">
+                        <img src="static/img/success.png" alt="Save" style="width: 20px; height: 20px;">
+                    </div>
+                    <span>Export FSA</span>
+                </div>
+                <button class="popup-close" onclick="fsaFileUIManager.hideSavePopup()">×</button>
+            </div>
+            <div class="file-operation-content">
+                <div class="file-operation-description">
+                    Save your finite state automaton as a JSON file that can be imported later.
+                </div>
+                
+                <div class="states-info">
+                    Current FSA: <span class="states-count">${statesCount} states</span> and <span class="states-count">${edgesCount} transitions</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="save-filename-input">Filename:</label>
+                    <input type="text" id="save-filename-input" value="${defaultFilename}" maxlength="100">
+                    <div class="input-help">Enter a name for your FSA file (without .json extension)</div>
+                    <div class="input-error" id="save-filename-error">Filename cannot be empty</div>
+                    <div class="auto-filename-note">Leave empty for auto-generated timestamp filename</div>
+                </div>
+
+
+                <div class="filename-preview">
+                    <div class="filename-preview-label">File will be saved as:</div>
+                    <div class="filename-preview-value" id="save-filename-preview">${defaultFilename}<span class="filename-extension">.json</span></div>
+                </div>
+            </div>
+            <div class="file-operation-actions">
+                <button class="file-action-btn cancel" onclick="fsaFileUIManager.hideSavePopup()">
+                    Cancel
+                </button>
+                <button class="file-action-btn primary" id="save-confirm-btn" onclick="fsaFileUIManager.confirmSave()">
+                    Export File
+                </button>
+            </div>
+        `;
+
+        // Add popup to canvas
+        const canvas = document.getElementById('fsa-canvas');
+        if (canvas) {
+            canvas.appendChild(popup);
+
+            // Setup event handlers
+            this.setupSavePopupHandlers();
+
+            // Trigger show animation
+            setTimeout(() => {
+                popup.classList.add('show');
+                // Focus on filename input and select text
+                const filenameInput = document.getElementById('save-filename-input');
+                if (filenameInput) {
+                    filenameInput.focus();
+                    filenameInput.select();
+                }
+            }, 100);
+        }
+    }
+
+    /**
+     * Setup event handlers for save popup
+     */
+    setupSavePopupHandlers() {
+        const filenameInput = document.getElementById('save-filename-input');
+        const filenamePreview = document.getElementById('save-filename-preview');
+        const filenameError = document.getElementById('save-filename-error');
+        const saveBtn = document.getElementById('save-confirm-btn');
+
+        if (filenameInput && filenamePreview) {
+            filenameInput.addEventListener('input', () => {
+                const value = filenameInput.value.trim();
+                const cleanValue = this.sanitizeFilename(value);
+
+                if (cleanValue !== value) {
+                    filenameInput.value = cleanValue;
+                }
+
+                const displayName = cleanValue || this.generateDefaultFilename();
+                filenamePreview.innerHTML = `${displayName}<span class="filename-extension">.json</span>`;
+
+                // Validation
+                const formGroup = filenameInput.closest('.form-group');
+                if (cleanValue.length === 0) {
+                    formGroup.classList.remove('valid');
+                    formGroup.classList.add('invalid');
+                    filenameError.classList.add('show');
+                    saveBtn.classList.add('disabled');
+                } else {
+                    formGroup.classList.remove('invalid');
+                    formGroup.classList.add('valid');
+                    filenameError.classList.remove('show');
+                    saveBtn.classList.remove('disabled');
+                }
+            });
+
+            // Enter key to save
+            filenameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !saveBtn.classList.contains('disabled')) {
+                    this.confirmSave();
+                }
+            });
+        }
+    }
+
+    /**
+     * Hide save popup
+     */
+    hideSavePopup() {
+        const popup = document.getElementById('file-operation-popup');
+        if (popup) {
+            popup.classList.add('hide');
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 300);
+        }
+    }
+
+    /**
+     * Confirm save operation
+     */
+    confirmSave() {
+        const saveBtn = document.getElementById('save-confirm-btn');
+        if (saveBtn.classList.contains('disabled')) {
+            return;
+        }
+
+        const filenameInput = document.getElementById('save-filename-input');
+        const filename = filenameInput ? filenameInput.value.trim() : '';
+        const finalFilename = filename || this.generateDefaultFilename();
+
+        // Show saving state
+        saveBtn.classList.add('saving');
+        saveBtn.disabled = true;
+
+        try {
+            fsaSerializationManager.exportToFile(this.jsPlumbInstance, finalFilename);
+
+            // Hide popup after successful save
+            setTimeout(() => {
+                this.hideSavePopup();
+            }, 500);
+
+        } catch (error) {
+            console.error('Export error:', error);
+            notificationManager.showError('Export Failed', error.message);
+
+            // Reset button state
+            saveBtn.classList.remove('saving');
+            saveBtn.disabled = false;
+        }
+    }
+
+    /**
+     * Show custom new file popup
+     */
+    showNewFilePopup() {
+        // Remove any existing popup
+        const existingPopup = document.getElementById('file-operation-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+
+        // Create popup element
+        const popup = document.createElement('div');
+        popup.id = 'file-operation-popup';
+        popup.className = 'file-operation-popup new';
+
+        const statesCount = document.querySelectorAll('.state, .accepting-state').length;
+        const edgesCount = this.jsPlumbInstance ? this.jsPlumbInstance.getAllConnections().filter(conn =>
+            !conn.canvas || !conn.canvas.classList.contains('starting-connection')
+        ).length : 0;
+
+        popup.innerHTML = `
+            <div class="popup-header">
+                <div class="popup-title">
+                    <div class="popup-icon">
+                        <img src="static/img/alert.png" alt="Warning" style="width: 20px; height: 20px;">
+                    </div>
+                    <span>New FSA</span>
+                </div>
+                <button class="popup-close" onclick="fsaFileUIManager.hideNewFilePopup()">×</button>
+            </div>
+            <div class="file-operation-content">
+                <div class="file-operation-description">
+                    Creating a new FSA will permanently clear the current automaton.
+                </div>
+                
+                <div class="states-info">
+                    Current FSA: <span class="states-count">${statesCount} states</span> and <span class="states-count">${edgesCount} transitions</span>
+                </div>
+
+                <div class="warning-section">
+                    <span class="warning-icon">⚠️</span>
+                    <div class="warning-text">
+                        <strong>Warning:</strong> This action cannot be undone. All states and transitions will be permanently deleted. 
+                        Consider exporting your current FSA first if you want to save it.
+                    </div>
+                </div>
+            </div>
+            <div class="file-operation-actions">
+                <button class="file-action-btn cancel" onclick="fsaFileUIManager.hideNewFilePopup()">
+                    Cancel
+                </button>
+                <button class="file-action-btn primary" onclick="fsaFileUIManager.confirmNewFile()">
+                    Clear and Create New
+                </button>
+            </div>
+        `;
+
+        // Add popup to canvas
+        const canvas = document.getElementById('fsa-canvas');
+        if (canvas) {
+            canvas.appendChild(popup);
+
+            // Trigger show animation
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 100);
+        }
+    }
+
+    /**
+     * Hide new file popup
+     */
+    hideNewFilePopup() {
+        const popup = document.getElementById('file-operation-popup');
+        if (popup) {
+            popup.classList.add('hide');
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 300);
+        }
+    }
+
+    /**
+     * Confirm new file operation
+     */
+    confirmNewFile() {
+        this.hideNewFilePopup();
+        this.performNewFSA();
+    }
+
+    /**
+     * Show custom import confirmation popup
+     */
+    showImportConfirmPopup() {
+        // Remove any existing popup
+        const existingPopup = document.getElementById('file-operation-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+
+        // Create popup element
+        const popup = document.createElement('div');
+        popup.id = 'file-operation-popup';
+        popup.className = 'file-operation-popup import';
+
+        const statesCount = document.querySelectorAll('.state, .accepting-state').length;
+        const edgesCount = this.jsPlumbInstance ? this.jsPlumbInstance.getAllConnections().filter(conn =>
+            !conn.canvas || !conn.canvas.classList.contains('starting-connection')
+        ).length : 0;
+
+        popup.innerHTML = `
+            <div class="popup-header">
+                <div class="popup-title">
+                    <div class="popup-icon">
+                        <img src="static/img/alert.png" alt="Warning" style="width: 20px; height: 20px;">
+                    </div>
+                    <span>Import FSA</span>
+                </div>
+                <button class="popup-close" onclick="fsaFileUIManager.hideImportConfirmPopup()">×</button>
+            </div>
+            <div class="file-operation-content">
+                <div class="file-operation-description">
+                    Importing a new FSA will permanently replace the current automaton.
+                </div>
+
+                <div class="warning-section">
+                    <span class="warning-icon">⚠️</span>
+                    <div class="warning-text">
+                        <strong>Warning:</strong> All current states and transitions labels will be permanently replaced with the imported FSA. 
+                        Consider exporting your current FSA first if you want to save it.
+                    </div>
+                </div>
+            </div>
+            <div class="file-operation-actions">
+                <button class="file-action-btn cancel" onclick="fsaFileUIManager.hideImportConfirmPopup()">
+                    Cancel
+                </button>
+                <button class="file-action-btn primary" onclick="fsaFileUIManager.confirmImport()">
+                    Select File to Import
+                </button>
+            </div>
+        `;
+
+        // Add popup to canvas
+        const canvas = document.getElementById('fsa-canvas');
+        if (canvas) {
+            canvas.appendChild(popup);
+
+            // Trigger show animation
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 100);
+        }
+    }
+
+    /**
+     * Hide import confirmation popup
+     */
+    hideImportConfirmPopup() {
+        const popup = document.getElementById('file-operation-popup');
+        if (popup) {
+            popup.classList.add('hide');
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 300);
+        }
+    }
+
+    /**
+     * Confirm import operation and trigger file selection
+     */
+    confirmImport() {
+        this.hideImportConfirmPopup();
+        this.triggerFileInput();
+    }
+
+    /**
+     * Trigger the file input for import
+     */
+    triggerFileInput() {
+        const fileInput = document.getElementById('fsa-file-input');
+        if (fileInput) {
+            fileInput.click();
+        }
+    }
+
+    /**
+     * Perform the actual new FSA operation
+     */
+    performNewFSA() {
         try {
             fsaSerializationManager.clearCurrentFSA(this.jsPlumbInstance);
 
@@ -356,179 +727,15 @@ class FSAFileUIManager {
     }
 
     /**
-     * Setup auto-save functionality
-     * @param {number} intervalMs - Auto-save interval in milliseconds (default: 30 seconds)
+     * Sanitize filename to remove invalid characters
+     * @param {string} filename - Raw filename input
+     * @returns {string} - Sanitized filename
      */
-    setupAutoSave(intervalMs = 30000) {
-        // Clear any existing auto-save interval
-        if (this.autoSaveInterval) {
-            clearInterval(this.autoSaveInterval);
-        }
-
-        // Set up new auto-save interval
-        this.autoSaveInterval = setInterval(() => {
-            // Only auto-save if there are states and controls aren't locked
-            const states = document.querySelectorAll('.state, .accepting-state');
-            if (states.length > 0 && !controlLockManager.isControlsLocked()) {
-                this.quickSave();
-            }
-        }, intervalMs);
-
-        console.log(`Auto-save enabled with ${intervalMs / 1000}s interval`);
-        this.updateAutoSaveStatus('Auto-save: On');
-    }
-
-    /**
-     * Disable auto-save
-     */
-    disableAutoSave() {
-        if (this.autoSaveInterval) {
-            clearInterval(this.autoSaveInterval);
-            this.autoSaveInterval = null;
-            console.log('Auto-save disabled');
-            this.updateAutoSaveStatus('Auto-save: Off');
-        }
-    }
-
-    /**
-     * Quick save to localStorage (for auto-save functionality)
-     */
-    quickSave() {
-        if (!this.jsPlumbInstance) return false;
-
-        try {
-            const fsaData = fsaSerializationManager.quickSave(this.jsPlumbInstance);
-            if (fsaData) {
-                localStorage.setItem('fsa_autosave', fsaData);
-                localStorage.setItem('fsa_autosave_timestamp', new Date().toISOString());
-                this.updateAutoSaveStatus('Auto-save: Saved', 'saving');
-
-                // Reset status after 2 seconds
-                setTimeout(() => {
-                    this.updateAutoSaveStatus('Auto-save: On');
-                }, 2000);
-
-                return true;
-            }
-        } catch (error) {
-            console.error('Quick save failed:', error);
-            this.updateAutoSaveStatus('Auto-save: Error', 'error');
-
-            // Reset status after 5 seconds
-            setTimeout(() => {
-                this.updateAutoSaveStatus('Auto-save: On');
-            }, 5000);
-        }
-        return false;
-    }
-
-    /**
-     * Quick load from localStorage
-     */
-    async quickLoad() {
-        if (!this.jsPlumbInstance) return false;
-
-        try {
-            const fsaData = localStorage.getItem('fsa_autosave');
-            if (fsaData) {
-                const success = await fsaSerializationManager.quickLoad(fsaData, this.jsPlumbInstance);
-                if (success) {
-                    const timestamp = localStorage.getItem('fsa_autosave_timestamp');
-                    const savedTime = timestamp ? new Date(timestamp).toLocaleString() : 'Unknown';
-                    notificationManager.showSuccess(
-                        'Auto-save Restored',
-                        `Restored FSA from ${savedTime}`
-                    );
-                }
-                return success;
-            }
-        } catch (error) {
-            console.error('Quick load failed:', error);
-        }
-        return false;
-    }
-
-    /**
-     * Check if auto-save data exists
-     * @returns {boolean} - Whether auto-save data exists
-     */
-    hasAutoSave() {
-        return localStorage.getItem('fsa_autosave') !== null;
-    }
-
-    /**
-     * Clear auto-save data
-     */
-    clearAutoSave() {
-        localStorage.removeItem('fsa_autosave');
-        localStorage.removeItem('fsa_autosave_timestamp');
-    }
-
-    /**
-     * Update auto-save status indicator
-     * @param {string} text - Status text
-     * @param {string} type - Status type ('saving', 'error', or normal)
-     */
-    updateAutoSaveStatus(text, type = '') {
-        const statusElement = document.getElementById('auto-save-status');
-        if (statusElement) {
-            statusElement.textContent = text;
-            statusElement.className = 'auto-save-status';
-            if (type) {
-                statusElement.classList.add(type);
-            }
-        }
-    }
-
-    /**
-     * Show auto-save restore prompt on page load
-     */
-    showAutoSavePrompt() {
-        if (this.hasAutoSave()) {
-            const timestamp = localStorage.getItem('fsa_autosave_timestamp');
-            const savedTime = timestamp ? new Date(timestamp).toLocaleString() : 'Unknown time';
-
-            // Create a custom notification with restore option
-            const notificationId = notificationManager.showInfo(
-                'Auto-save Found',
-                `An auto-saved FSA from ${savedTime} was found. Would you like to restore it?`,
-                0 // Don't auto-hide
-            );
-
-            // Add restore button to the notification
-            setTimeout(() => {
-                const notification = document.getElementById(notificationId);
-                if (notification) {
-                    const buttonContainer = document.createElement('div');
-                    buttonContainer.style.marginTop = '10px';
-                    buttonContainer.style.textAlign = 'center';
-
-                    const restoreBtn = document.createElement('button');
-                    restoreBtn.textContent = 'Restore';
-                    restoreBtn.className = 'btn btn-sm btn-primary';
-                    restoreBtn.style.marginRight = '10px';
-                    restoreBtn.onclick = async () => {
-                        await this.quickLoad();
-                        notificationManager.hideNotification(notificationId);
-                    };
-
-                    const ignoreBtn = document.createElement('button');
-                    ignoreBtn.textContent = 'Ignore';
-                    ignoreBtn.className = 'btn btn-sm btn-secondary';
-                    ignoreBtn.onclick = () => {
-                        notificationManager.hideNotification(notificationId);
-                    };
-
-                    buttonContainer.appendChild(restoreBtn);
-                    buttonContainer.appendChild(ignoreBtn);
-
-                    const detailsDiv = notification.querySelector('.popup-details');
-                    if (detailsDiv) {
-                        detailsDiv.appendChild(buttonContainer);
-                    }
-                }
-            }, 200);
-        }
+    sanitizeFilename(filename) {
+        // Remove invalid characters for filenames
+        return filename.replace(/[<>:"/\\|?*\x00-\x1f]/g, '')
+                      .replace(/\.$/, '') // Remove trailing period
+                      .substring(0, 100); // Limit length
     }
 
     /**
