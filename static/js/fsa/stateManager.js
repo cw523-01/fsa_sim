@@ -107,16 +107,18 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks) {
  * @param {Map} edgeSymbolMap - Map of edge IDs to their symbols
  */
 export function deleteState(jsPlumbInstance, stateElement, edgeSymbolMap) {
+    const stateId = stateElement.id;
+
     // If this is the starting state, remove the starting state indicator
-    if (startingStateId === stateElement.id) {
+    if (startingStateId === stateId) {
         createStartingStateIndicator(jsPlumbInstance, null);
     }
 
     // Get all connections before removing the state
     const connections = jsPlumbInstance.getConnections({
-        source: stateElement.id
+        source: stateId
     }).concat(jsPlumbInstance.getConnections({
-        target: stateElement.id
+        target: stateId
     }));
 
     // Get the epsilonTransitionMap
@@ -128,24 +130,69 @@ export function deleteState(jsPlumbInstance, stateElement, edgeSymbolMap) {
         epsilonTransitionMap.delete(conn.id);
     });
 
-    // Remove the state and its endpoints
-    jsPlumbInstance.removeAllEndpoints(stateElement.id);
+    // Remove the state and its endpoints - this is critical for cleaning up JSPlumb references
+    jsPlumbInstance.removeAllEndpoints(stateId);
+
+    // Force JSPlumb to completely forget about this element
+    jsPlumbInstance.remove(stateElement);
+
+    // Remove from DOM
     stateElement.remove();
 
     // Update the alphabet display after removing connections
     updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap);
+
+    console.log(`State ${stateId} completely removed from JSPlumb and DOM`);
 }
 
 /**
- * Creates or updates the starting state indicator
+ * Creates or updates the starting state indicator with robust connection handling
  * @param {Object} jsPlumbInstance - The JSPlumb instance
  * @param {string|null} stateId - The ID of the state to make starting, or null to remove
  */
 export function createStartingStateIndicator(jsPlumbInstance, stateId) {
-    // Remove existing starting state connection if it exists
+    console.log(`Creating starting state indicator for: ${stateId}`);
+
+    // Clean up existing starting state connection thoroughly
+    cleanupExistingStartingConnection(jsPlumbInstance);
+
+    // Set the new starting state
+    startingStateId = stateId;
+
+    if (!stateId) {
+        console.log('No starting state specified, indicator removed');
+        return; // If null, just removing the previous indicator
+    }
+
+    // Verify the target state exists
+    const stateElement = document.getElementById(stateId);
+    if (!stateElement) {
+        console.error(`Target state ${stateId} not found in DOM`);
+        return;
+    }
+
+    // Create or get the hidden source for the starting arrow
+    const startSource = ensureStartSource(jsPlumbInstance);
+
+    // Position the start source relative to the target state
+    positionStartSource(startSource, stateElement);
+
+    // Force JSPlumb to recognize both elements
+    jsPlumbInstance.revalidate('start-source');
+    jsPlumbInstance.revalidate(stateId);
+
+    // Create the connection with multiple fallback attempts
+    createStartingConnection(jsPlumbInstance, startSource, stateId);
+}
+
+/**
+ * Thoroughly clean up any existing starting state connections
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ */
+function cleanupExistingStartingConnection(jsPlumbInstance) {
+    // Remove stored connection reference
     if (startingStateConnection) {
         try {
-            // Check if the connection still exists in JSPlumb before trying to delete it
             const allConnections = jsPlumbInstance.getAllConnections();
             const connectionExists = allConnections.some(conn => conn.id === startingStateConnection.id);
 
@@ -153,14 +200,12 @@ export function createStartingStateIndicator(jsPlumbInstance, stateId) {
                 jsPlumbInstance.deleteConnection(startingStateConnection);
             }
         } catch (error) {
-            console.warn('Error deleting starting state connection:', error);
-            // Continue anyway - the connection might already be gone
+            console.warn('Error deleting stored starting state connection:', error);
         }
         startingStateConnection = null;
     }
 
-    // Also remove any existing starting connections by searching for them
-    // This is a safety measure in case the stored reference is stale
+    // Clean up any starting connections by searching for them
     try {
         const allConnections = jsPlumbInstance.getAllConnections();
         const startingConnections = allConnections.filter(conn =>
@@ -170,6 +215,7 @@ export function createStartingStateIndicator(jsPlumbInstance, stateId) {
         startingConnections.forEach(conn => {
             try {
                 jsPlumbInstance.deleteConnection(conn);
+                console.log('Cleaned up stale starting connection:', conn.id);
             } catch (error) {
                 console.warn('Error deleting stale starting connection:', error);
             }
@@ -178,66 +224,148 @@ export function createStartingStateIndicator(jsPlumbInstance, stateId) {
         console.warn('Error cleaning up starting connections:', error);
     }
 
-    // Set the new starting state
-    startingStateId = stateId;
+    // Also clean up connections from start-source
+    try {
+        const startSourceConnections = jsPlumbInstance.getConnections({ source: 'start-source' });
+        startSourceConnections.forEach(conn => {
+            try {
+                jsPlumbInstance.deleteConnection(conn);
+                console.log('Cleaned up start-source connection:', conn.id);
+            } catch (error) {
+                console.warn('Error deleting start-source connection:', error);
+            }
+        });
+    } catch (error) {
+        console.warn('Error cleaning up start-source connections:', error);
+    }
+}
 
-    if (!stateId) return; // If null, just removing the previous indicator
-
-    // Create a hidden source point
-    const stateElement = document.getElementById(stateId);
-    if (!stateElement) return;
-
-    // Create hidden source for the starting arrow if it doesn't exist
+/**
+ * Ensure the start-source element exists and is properly configured
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @returns {HTMLElement} - The start-source element
+ */
+function ensureStartSource(jsPlumbInstance) {
     let startSource = document.getElementById('start-source');
+
     if (!startSource) {
         startSource = document.createElement('div');
         startSource.id = 'start-source';
         startSource.className = 'start-source';
         document.getElementById('fsa-canvas').appendChild(startSource);
-
-        // Make the start source a source endpoint
-        jsPlumbInstance.makeSource(startSource, {
-            anchor: "Right",
-            connectorStyle: { stroke: "black", strokeWidth: 2 },
-            connectionType: "basic"
-        });
+        console.log('Created new start-source element');
     }
 
-    // Position the start source to the left of the state
-    requestAnimationFrame(() => {
-        startSource.style.left = (stateElement.offsetLeft - 50) + 'px';
-        startSource.style.top = (stateElement.offsetTop + 25) + 'px';
-        jsPlumbInstance.revalidate('start-source');
+    // Ensure it's properly configured as a source endpoint
+    // Remove any existing endpoints first to avoid duplicates
+    try {
+        jsPlumbInstance.removeAllEndpoints('start-source');
+    } catch (error) {
+        // Ignore errors if element wasn't registered
+    }
 
-        // Create the connection after positioning
+    // Make the start source a source endpoint
+    jsPlumbInstance.makeSource(startSource, {
+        anchor: "Right",
+        connectorStyle: { stroke: "black", strokeWidth: 2 },
+        connectionType: "basic"
+    });
+
+    return startSource;
+}
+
+/**
+ * Position the start source relative to the target state
+ * @param {HTMLElement} startSource - The start source element
+ * @param {HTMLElement} stateElement - The target state element
+ */
+function positionStartSource(startSource, stateElement) {
+    startSource.style.left = (stateElement.offsetLeft - 50) + 'px';
+    startSource.style.top = (stateElement.offsetTop + 25) + 'px';
+    console.log(`Positioned start-source at (${startSource.style.left}, ${startSource.style.top})`);
+}
+
+/**
+ * Create the starting connection with robust error handling and retries
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @param {HTMLElement} startSource - The start source element
+ * @param {string} targetStateId - The target state ID
+ */
+function createStartingConnection(jsPlumbInstance, startSource, targetStateId) {
+    // Function to attempt connection creation
+    const attemptConnection = (attempt = 1) => {
         try {
-            // Always use straight connector for starting state connection
+            console.log(`Attempting to create starting connection (attempt ${attempt})`);
+
+            // Verify both elements exist and are valid
+            const sourceElement = document.getElementById('start-source');
+            const targetElement = document.getElementById(targetStateId);
+
+            if (!sourceElement || !targetElement) {
+                console.error(`Missing elements - source: ${!!sourceElement}, target: ${!!targetElement}`);
+                return false;
+            }
+
+            // Force JSPlumb to revalidate both elements
+            jsPlumbInstance.revalidate('start-source');
+            jsPlumbInstance.revalidate(targetStateId);
+
+            // Create the connection with explicit configuration
             startingStateConnection = jsPlumbInstance.connect({
                 source: 'start-source',
-                target: stateId,
-                connector: "Straight",  // Always straight for starting arrow
+                target: targetStateId,
+                connector: "Straight",
                 anchors: ["Right", "Left"],
-                // Only include the arrow overlay, no label
                 overlays: [
                     ["Arrow", { location: 1, width: 12, length: 12 }]
                 ],
-                // Custom paint style to avoid inheritance of default styles
-                paintStyle: { stroke: "black", strokeWidth: 2 }
+                paintStyle: { stroke: "black", strokeWidth: 2 },
+                // Prevent this connection from being affected by global settings
+                cssClass: "starting-connection-line"
             });
 
-            // Make the connection not deletable and not editable
-            if (startingStateConnection && startingStateConnection.canvas) {
-                startingStateConnection.canvas.classList.add('starting-connection');
+            if (startingStateConnection) {
+                // Mark the connection as special
+                if (startingStateConnection.canvas) {
+                    startingStateConnection.canvas.classList.add('starting-connection');
+                }
 
-                // Make sure no label is added
+                // Ensure no label is added
                 if (startingStateConnection.getOverlay('label')) {
                     startingStateConnection.removeOverlay('label');
                 }
+
+                console.log(`Successfully created starting connection: ${startingStateConnection.id}`);
+                return true;
+            } else {
+                console.error('Failed to create starting connection - connection is null');
+                return false;
             }
+
         } catch (error) {
-            console.error('Error creating starting state connection:', error);
+            console.error(`Error creating starting connection (attempt ${attempt}):`, error);
+            return false;
         }
-    });
+    };
+
+    // Try immediate connection first
+    if (attemptConnection(1)) {
+        return;
+    }
+
+    // If immediate attempt fails, try with a small delay to let DOM settle
+    setTimeout(() => {
+        if (attemptConnection(2)) {
+            return;
+        }
+
+        // Final attempt with full revalidation
+        setTimeout(() => {
+            console.log('Final attempt to create starting connection');
+            jsPlumbInstance.repaintEverything();
+            attemptConnection(3);
+        }, 100);
+    }, 50);
 }
 
 /**
