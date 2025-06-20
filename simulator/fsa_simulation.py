@@ -1,5 +1,6 @@
 from typing import Dict, List, Union, Tuple, Optional, Set
 from collections import deque
+from .fsa_properties import is_deterministic
 
 
 def simulate_deterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Tuple[str, str, str]], Dict]:
@@ -27,7 +28,7 @@ def simulate_deterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Tuple
         }
     """
     # Validate the FSA is deterministic
-    if not _is_deterministic(fsa):
+    if not is_deterministic(fsa):
         return {
             'accepted': False,
             'path': [],
@@ -87,27 +88,6 @@ def simulate_deterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Tuple
             'rejection_reason': f"Final state '{current_state}' is not an accepting state",
             'rejection_position': len(input_string)
         }
-
-
-def _is_deterministic(fsa: Dict) -> bool:
-    """
-    Checks if the FSA is deterministic.
-
-    An FSA is deterministic if:
-    1. For each state and each symbol, there is at most one transition
-    2. There are no epsilon transitions (this is assumed)
-    """
-    # Assuming no epsilon transitions
-
-    for state in fsa['states']:
-        for symbol in fsa['alphabet']:
-            # Check if there's a transition for this symbol
-            if symbol in fsa['transitions'][state]:
-                # If there's a transition, ensure it leads to at most one state
-                if len(fsa['transitions'][state][symbol]) > 1:
-                    return False  # Not deterministic (multiple possible next states)
-
-    return True
 
 
 def _has_epsilon_transitions(fsa: Dict) -> bool:

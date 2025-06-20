@@ -1,159 +1,106 @@
-import { generateTransitionTable } from './transitionTableManager.js';
-import { getEpsilonSymbol } from './edgeManager.js';
+import {
+    convertFSAToBackendFormat,
+    checkFSAProperties,
+    checkFSADeterministic,
+    checkFSAComplete,
+    checkFSAConnected
+} from './backendIntegration.js';
 
 /**
- * Checks if the FSA is deterministic
- * An FSA is deterministic if:
- * 1. It has no epsilon transitions
- * 2. For each state and each symbol, there is exactly one transition
+ * Updates the FSA properties display using backend property checks
  * @param {Object} jsPlumbInstance - The JSPlumb instance
- * @returns {boolean} - Whether the FSA is deterministic
  */
-export function isDeterministic(jsPlumbInstance) {
-    // Get the transition table data
-    const tableData = generateTransitionTable(jsPlumbInstance);
+export async function updateFSAPropertiesDisplay(jsPlumbInstance) {
+    try {
+        // Convert FSA to backend format
+        const fsa = convertFSAToBackendFormat(jsPlumbInstance);
 
-    // If there are epsilon transitions, the FSA is not deterministic
-    if (tableData.hasEpsilon) {
-        return false;
-    }
+        // Check all properties at once
+        const propertiesResult = await checkFSAProperties(fsa);
+        const properties = propertiesResult.properties;
 
-
-    // For each state and each symbol, check if there is exactly one transition
-    for (const stateId of tableData.states) {
-        for (const symbol of tableData.alphabet) {
-            // Get the transitions for this state and symbol
-            const transitions = tableData.transitions[stateId][symbol];
-
-            // If there is not exactly one transition, the FSA is not deterministic
-            if (transitions.length > 1) {
-                return false;
-            }
+        // Update the deterministic property display
+        const deterministicDisplay = document.querySelector('.fsa-properties .property:nth-child(2) span:last-child');
+        if (deterministicDisplay) {
+            deterministicDisplay.textContent = properties.deterministic ? '✓' : '✗';
+            deterministicDisplay.className = properties.deterministic ? 'checkmark' : 'crossmark';
         }
-    }
 
-    // If we get here, the FSA is deterministic
-    return true;
+        // Update the complete property display
+        const completeDisplay = document.querySelector('.fsa-properties .property:nth-child(3) span:last-child');
+        if (completeDisplay) {
+            completeDisplay.textContent = properties.complete ? '✓' : '✗';
+            completeDisplay.className = properties.complete ? 'checkmark' : 'crossmark';
+        }
+
+        // Update the connected property display
+        const connectedDisplay = document.querySelector('.fsa-properties .property:nth-child(1) span:last-child');
+        if (connectedDisplay) {
+            connectedDisplay.textContent = properties.connected ? '✓' : '✗';
+            connectedDisplay.className = properties.connected ? 'checkmark' : 'crossmark';
+        }
+
+        console.log('Updated FSA properties display:', properties);
+
+    } catch (error) {
+        console.error('Error updating FSA properties display:', error);
+
+        // Fallback: show error indicators
+        const displays = document.querySelectorAll('.fsa-properties .property span:last-child');
+        displays.forEach(display => {
+            display.textContent = '?';
+            display.className = 'error';
+        });
+    }
 }
 
 /**
- * Checks if the FSA is complete
- * An FSA is complete if for each state and each symbol, there is at least one transition
+ * Check if FSA is deterministic using backend
  * @param {Object} jsPlumbInstance - The JSPlumb instance
- * @returns {boolean} - Whether the FSA is complete
+ * @returns {Promise<boolean>} - Whether the FSA is deterministic
  */
-export function isComplete(jsPlumbInstance) {
-    // Get the transition table data
-    const tableData = generateTransitionTable(jsPlumbInstance);
-
-    // Ignore epsilon transitions for completeness check
-
-    // For each state and each symbol, check if there is at least one transition
-    for (const stateId of tableData.states) {
-        for (const symbol of tableData.alphabet) {
-            // Get the transitions for this state and symbol
-            const transitions = tableData.transitions[stateId][symbol];
-
-            // If there are no transitions, the FSA is not complete
-            if (transitions.length === 0) {
-                return false;
-            }
-        }
+export async function isDeterministic(jsPlumbInstance) {
+    try {
+        const fsa = convertFSAToBackendFormat(jsPlumbInstance);
+        const result = await checkFSADeterministic(fsa);
+        return result.deterministic;
+    } catch (error) {
+        console.error('Error checking determinism via backend:', error);
+        return false; // Default to non-deterministic on error
     }
-
-    // If we get here, the FSA is complete
-    return true;
 }
 
 /**
- * Checks if the FSA is connected
- * An FSA is connected if all states are reachable from the starting state
+ * Check if FSA is complete using backend
  * @param {Object} jsPlumbInstance - The JSPlumb instance
- * @returns {boolean} - Whether the FSA is connected
+ * @returns {Promise<boolean>} - Whether the FSA is complete
  */
-export function isConnected(jsPlumbInstance) {
-    // Get the transition table data
-    const tableData = generateTransitionTable(jsPlumbInstance);
-
-    // If there's no starting state, the FSA can't be connected
-    if (!tableData.startingState) {
-        return false;
+export async function isComplete(jsPlumbInstance) {
+    try {
+        const fsa = convertFSAToBackendFormat(jsPlumbInstance);
+        const result = await checkFSAComplete(fsa);
+        return result.complete;
+    } catch (error) {
+        console.error('Error checking completeness via backend:', error);
+        return false; // Default to incomplete on error
     }
-
-    // If there's only one state, it's trivially connected
-    if (tableData.states.length <= 1) {
-        return true;
-    }
-
-    // Use BFS to find all reachable states from the starting state
-    const reachableStates = new Set();
-    const queue = [tableData.startingState];
-    reachableStates.add(tableData.startingState);
-
-    while (queue.length > 0) {
-        const currentState = queue.shift();
-
-        // Safety check: make sure currentState exists in transitions
-        if (!tableData.transitions[currentState]) {
-            console.warn(`State ${currentState} not found in transitions during connectivity check`);
-            continue;
-        }
-
-        // Create symbols array
-        const symbolsToCheck = [...tableData.alphabet];
-        if (tableData.hasEpsilon) {
-            symbolsToCheck.push(''); // Use empty string for epsilon transitions
-        }
-
-        // Check all possible transitions from this state
-        for (const symbol of symbolsToCheck) {
-            // Safety check: make sure the symbol exists for this state
-            if (!tableData.transitions[currentState][symbol]) {
-                continue;
-            }
-
-            const transitions = tableData.transitions[currentState][symbol];
-
-            for (const nextState of transitions) {
-                if (!reachableStates.has(nextState)) {
-                    reachableStates.add(nextState);
-                    queue.push(nextState);
-                }
-            }
-        }
-    }
-
-    // If all states are reachable, the FSA is connected
-    return reachableStates.size === tableData.states.length;
 }
 
 /**
- * Updates the FSA properties display
+ * Check if FSA is connected using backend
  * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @returns {Promise<boolean>} - Whether the FSA is connected
  */
-export function updateFSAPropertiesDisplay(jsPlumbInstance) {
-    const isDeterministicResult = isDeterministic(jsPlumbInstance);
-    const isCompleteResult = isComplete(jsPlumbInstance);
-    const isConnectedResult = isConnected(jsPlumbInstance);
-
-    // Update the deterministic property display
-    const deterministicDisplay = document.querySelector('.fsa-properties .property:nth-child(2) span:last-child');
-    if (deterministicDisplay) {
-        deterministicDisplay.textContent = isDeterministicResult ? '✓' : '✗';
-        deterministicDisplay.className = isDeterministicResult ? 'checkmark' : 'crossmark';
-    }
-
-    // Update the complete property display
-    const completeDisplay = document.querySelector('.fsa-properties .property:nth-child(3) span:last-child');
-    if (completeDisplay) {
-        completeDisplay.textContent = isCompleteResult ? '✓' : '✗';
-        completeDisplay.className = isCompleteResult ? 'checkmark' : 'crossmark';
-    }
-
-    // Update the connected property display
-    const connectedDisplay = document.querySelector('.fsa-properties .property:nth-child(1) span:last-child');
-    if (connectedDisplay) {
-        connectedDisplay.textContent = isConnectedResult ? '✓' : '✗';
-        connectedDisplay.className = isConnectedResult ? 'checkmark' : 'crossmark';
+export async function isConnected(jsPlumbInstance) {
+    try {
+        const fsa = convertFSAToBackendFormat(jsPlumbInstance);
+        const result = await checkFSAConnected(fsa);
+        return result.connected;
+    } catch (error) {
+        console.error('Error checking connectivity via backend:', error);
+        return false; // Default to disconnected on error
     }
 }
+
+// Make the update function globally available
+window.updateFSAPropertiesDisplay = updateFSAPropertiesDisplay;

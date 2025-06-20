@@ -1,5 +1,4 @@
 import { generateTransitionTable } from './transitionTableManager.js';
-import { isDeterministic, isConnected } from './fsaPropertyChecker.js';
 import { getStartingStateId } from './stateManager.js';
 import { visualSimulationManager } from './visualSimulationManager.js';
 import { nfaResultsManager } from './nfaResultsManager.js';
@@ -13,21 +12,6 @@ import { notificationManager } from './notificationManager.js';
 export function convertFSAToBackendFormat(jsPlumbInstance) {
     // Generate transition table data
     const tableData = generateTransitionTable(jsPlumbInstance);
-
-    // Validate that we have a starting state
-    if (!tableData.startingState) {
-        throw new Error('No starting state defined. Please set a starting state.');
-    }
-
-    // Validate that we have at least one state
-    if (tableData.states.length === 0) {
-        throw new Error('No states defined. Please create at least one state.');
-    }
-
-    // Validate that we have an alphabet
-    if (tableData.alphabet.length === 0) {
-        throw new Error('No alphabet defined. Please create at least one transition with symbols.');
-    }
 
     // Convert transitions to the backend expected format
     const backendTransitions = {};
@@ -49,12 +33,13 @@ export function convertFSAToBackendFormat(jsPlumbInstance) {
     });
 
     // Create the FSA object in backend expected format
+    // Allow empty/null values for incomplete FSAs
     const fsa = {
-        states: tableData.states,
-        alphabet: tableData.alphabet,
+        states: tableData.states || [],
+        alphabet: tableData.alphabet || [],
         transitions: backendTransitions,
-        startingState: tableData.startingState,
-        acceptingStates: tableData.acceptingStates
+        startingState: tableData.startingState || null,
+        acceptingStates: tableData.acceptingStates || []
     };
 
     return fsa;
@@ -67,16 +52,30 @@ export function convertFSAToBackendFormat(jsPlumbInstance) {
  */
 export function validateFSAForSimulation(jsPlumbInstance) {
     try {
-        // Check if FSA is connected
-        if (!isConnected(jsPlumbInstance)) {
+        // Convert to backend format (this won't throw anymore)
+        const fsa = convertFSAToBackendFormat(jsPlumbInstance);
+
+        // For simulation, we still need these requirements
+        if (!fsa.startingState) {
             return {
                 success: false,
-                message: 'FSA must be connected for simulation. Please ensure all states are reachable from the starting state.'
+                message: 'No starting state defined. Please set a starting state.'
             };
         }
 
-        // Try to convert to backend format (this will catch other issues)
-        const fsa = convertFSAToBackendFormat(jsPlumbInstance);
+        if (fsa.states.length === 0) {
+            return {
+                success: false,
+                message: 'No states defined. Please create at least one state.'
+            };
+        }
+
+        if (fsa.alphabet.length === 0) {
+            return {
+                success: false,
+                message: 'No alphabet defined. Please create at least one transition with symbols.'
+            };
+        }
 
         return {
             success: true,
@@ -89,6 +88,146 @@ export function validateFSAForSimulation(jsPlumbInstance) {
             success: false,
             message: error.message
         };
+    }
+}
+
+/**
+ * Check FSA properties (deterministic, complete, connected) using backend
+ * @param {Object} fsa - FSA in backend format
+ * @returns {Promise<Object>} - Promise resolving to property check results
+ */
+export async function checkFSAProperties(fsa) {
+    const requestData = { fsa: fsa };
+
+    try {
+        console.log('Checking FSA properties:', requestData);
+
+        const response = await fetch('/api/check-fsa-properties/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('FSA properties result:', result);
+
+        return result;
+
+    } catch (error) {
+        console.error('Error during FSA properties check:', error);
+        throw error;
+    }
+}
+
+/**
+ * Check if FSA is deterministic using backend
+ * @param {Object} fsa - FSA in backend format
+ * @returns {Promise<Object>} - Promise resolving to determinism check result
+ */
+export async function checkFSADeterministic(fsa) {
+    const requestData = { fsa: fsa };
+
+    try {
+        console.log('Checking FSA determinism:', requestData);
+
+        const response = await fetch('/api/check-deterministic/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('FSA determinism result:', result);
+
+        return result;
+
+    } catch (error) {
+        console.error('Error during FSA determinism check:', error);
+        throw error;
+    }
+}
+
+/**
+ * Check if FSA is complete using backend
+ * @param {Object} fsa - FSA in backend format
+ * @returns {Promise<Object>} - Promise resolving to completeness check result
+ */
+export async function checkFSAComplete(fsa) {
+    const requestData = { fsa: fsa };
+
+    try {
+        console.log('Checking FSA completeness:', requestData);
+
+        const response = await fetch('/api/check-complete/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('FSA completeness result:', result);
+
+        return result;
+
+    } catch (error) {
+        console.error('Error during FSA completeness check:', error);
+        throw error;
+    }
+}
+
+/**
+ * Check if FSA is connected using backend
+ * @param {Object} fsa - FSA in backend format
+ * @returns {Promise<Object>} - Promise resolving to connectivity check result
+ */
+export async function checkFSAConnected(fsa) {
+    const requestData = { fsa: fsa };
+
+    try {
+        console.log('Checking FSA connectivity:', requestData);
+
+        const response = await fetch('/api/check-connected/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('FSA connectivity result:', result);
+
+        return result;
+
+    } catch (error) {
+        console.error('Error during FSA connectivity check:', error);
+        throw error;
     }
 }
 
@@ -284,8 +423,9 @@ export async function runFSASimulation(jsPlumbInstance, inputString, visualMode 
             }
         }
 
-        // Check if FSA is deterministic or non-deterministic
-        const isDFA = isDeterministic(jsPlumbInstance);
+        // Check if FSA is deterministic or non-deterministic using backend
+        const determinismResult = await checkFSADeterministic(validation.fsa);
+        const isDFA = determinismResult.deterministic;
 
         if (isDFA) {
             // Handle DFA simulation (existing logic)

@@ -12,6 +12,13 @@ from .fsa_simulation import (
     simulate_nondeterministic_fsa_with_depth_limit,
     simulate_nondeterministic_fsa_generator_with_depth_limit
 )
+from .fsa_properties import (
+    is_deterministic,
+    is_complete,
+    is_connected,
+    check_all_properties,
+    validate_fsa_structure
+)
 
 
 def index(request):
@@ -41,13 +48,9 @@ def simulate_fsa(request):
             return JsonResponse({'error': 'Missing FSA definition'}, status=400)
 
         # Validate FSA structure
-        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
-        missing_keys = [key for key in required_keys if key not in fsa]
-
-        if missing_keys:
-            return JsonResponse({
-                'error': f'FSA definition is missing required keys: {", ".join(missing_keys)}'
-            }, status=400)
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
 
         # Check if FSA is non-deterministic
         if is_nondeterministic(fsa):
@@ -113,14 +116,10 @@ def simulate_dfa(request):
         if not fsa:
             return JsonResponse({'error': 'Missing FSA definition'}, status=400)
 
-        # Check if the required keys are present in the FSA
-        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
-        missing_keys = [key for key in required_keys if key not in fsa]
-
-        if missing_keys:
-            return JsonResponse({
-                'error': f'FSA definition is missing required keys: {", ".join(missing_keys)}'
-            }, status=400)
+        # Validate FSA structure
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
 
         # Simulate the DFA
         result = simulate_deterministic_fsa(fsa, input_string)
@@ -171,13 +170,9 @@ def simulate_nfa(request):
             return JsonResponse({'error': 'Missing FSA definition'}, status=400)
 
         # Validate FSA structure
-        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
-        missing_keys = [key for key in required_keys if key not in fsa]
-
-        if missing_keys:
-            return JsonResponse({
-                'error': f'FSA definition is missing required keys: {", ".join(missing_keys)}'
-            }, status=400)
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
 
         # Simulate the NFA
         result = simulate_nondeterministic_fsa(fsa, input_string)
@@ -228,14 +223,10 @@ def simulate_nfa_stream(request):
             )
 
         # Validate FSA structure
-        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
-        missing_keys = [key for key in required_keys if key not in fsa]
-
-        if missing_keys:
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
             def error_generator():
-                missing_keys_str = ', '.join(missing_keys)
-                error_msg = f'FSA definition is missing required keys: {missing_keys_str}'
-                yield f"data: {json.dumps({'error': error_msg})}\n\n"
+                yield f"data: {json.dumps({'error': validation['error']})}\n\n"
 
             return StreamingHttpResponse(
                 error_generator(),
@@ -303,13 +294,9 @@ def check_fsa_type(request):
             return JsonResponse({'error': 'Missing FSA definition'}, status=400)
 
         # Validate FSA structure
-        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
-        missing_keys = [key for key in required_keys if key not in fsa]
-
-        if missing_keys:
-            return JsonResponse({
-                'error': f'FSA definition is missing required keys: {", ".join(missing_keys)}'
-            }, status=400)
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
 
         # Check FSA type
         is_nfa = is_nondeterministic(fsa)
@@ -346,13 +333,9 @@ def check_epsilon_loops(request):
             return JsonResponse({'error': 'Missing FSA definition'}, status=400)
 
         # Validate FSA structure
-        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
-        missing_keys = [key for key in required_keys if key not in fsa]
-
-        if missing_keys:
-            return JsonResponse({
-                'error': f'FSA definition is missing required keys: {", ".join(missing_keys)}'
-            }, status=400)
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
 
         # Detect epsilon loops
         result = detect_epsilon_loops(fsa)
@@ -440,13 +423,9 @@ def simulate_nfa_with_depth_limit(request):
             return JsonResponse({'error': 'max_depth must be a positive integer'}, status=400)
 
         # Validate FSA structure
-        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
-        missing_keys = [key for key in required_keys if key not in fsa]
-
-        if missing_keys:
-            return JsonResponse({
-                'error': f'FSA definition is missing required keys: {", ".join(missing_keys)}'
-            }, status=400)
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
 
         # Simulate the NFA with depth limit
         result = simulate_nondeterministic_fsa_with_depth_limit(fsa, input_string, max_depth)
@@ -539,14 +518,10 @@ def simulate_nfa_stream_with_depth_limit(request):
             )
 
         # Validate FSA structure
-        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
-        missing_keys = [key for key in required_keys if key not in fsa]
-
-        if missing_keys:
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
             def error_generator():
-                missing_keys_str = ', '.join(missing_keys)
-                error_msg = f'FSA definition is missing required keys: {missing_keys_str}'
-                yield f"data: {json.dumps({'error': error_msg})}\n\n"
+                yield f"data: {json.dumps({'error': validation['error']})}\n\n"
 
             return StreamingHttpResponse(
                 error_generator(),
@@ -594,3 +569,162 @@ def simulate_nfa_stream_with_depth_limit(request):
             content_type='text/event-stream',
             status=500
         )
+
+
+@csrf_exempt
+@require_POST
+def check_fsa_properties(request):
+    """
+    Django view to check FSA properties (deterministic, complete, connected).
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format
+
+    Returns a JSON response with property check results.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing FSA definition'}, status=400)
+
+        # Validate FSA structure
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
+
+        # Check all properties
+        properties = check_all_properties(fsa)
+
+        return JsonResponse({
+            'properties': properties,
+            'summary': {
+                'total_states': len(fsa['states']),
+                'alphabet_size': len(fsa['alphabet']),
+                'starting_state': fsa['startingState'],
+                'accepting_states_count': len(fsa['acceptingStates']),
+                'has_epsilon_transitions': any(
+                    '' in fsa['transitions'].get(state, {}) and fsa['transitions'][state]['']
+                    for state in fsa['states']
+                )
+            }
+        })
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def check_deterministic(request):
+    """
+    Django view to check if an FSA is deterministic.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format
+
+    Returns a JSON response with determinism check result.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing FSA definition'}, status=400)
+
+        # Validate FSA structure
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
+
+        # Check determinism
+        deterministic = is_deterministic(fsa)
+
+        return JsonResponse({
+            'deterministic': deterministic,
+            'type': 'DFA' if deterministic else 'NFA'
+        })
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def check_complete(request):
+    """
+    Django view to check if an FSA is complete.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format
+
+    Returns a JSON response with completeness check result.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing FSA definition'}, status=400)
+
+        # Validate FSA structure
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
+
+        # Check completeness
+        complete = is_complete(fsa)
+
+        return JsonResponse({
+            'complete': complete
+        })
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def check_connected(request):
+    """
+    Django view to check if an FSA is connected.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format
+
+    Returns a JSON response with connectivity check result.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing FSA definition'}, status=400)
+
+        # Validate FSA structure
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
+
+        # Check connectivity
+        connected = is_connected(fsa)
+
+        return JsonResponse({
+            'connected': connected
+        })
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)

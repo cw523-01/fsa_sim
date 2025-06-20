@@ -22,4 +22,10 @@ urlpatterns = [
     # Depth-limited NFA simulators
     path('api/simulate-nfa-depth-limit/', views.simulate_nfa_with_depth_limit, name='simulate_nfa_depth_limit'),
     path('api/simulate-nfa-stream-depth-limit/', views.simulate_nfa_stream_with_depth_limit, name='simulate_nfa_stream_depth_limit'),
+
+    # Property checking endpoints
+    path('api/check-fsa-properties/', views.check_fsa_properties, name='check_fsa_properties'),
+    path('api/check-deterministic/', views.check_deterministic, name='check_deterministic'),
+    path('api/check-complete/', views.check_complete, name='check_complete'),
+    path('api/check-connected/', views.check_connected, name='check_connected'),
 ]
