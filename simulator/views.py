@@ -7,7 +7,6 @@ from .fsa_simulation import (
     simulate_deterministic_fsa,
     simulate_nondeterministic_fsa,
     simulate_nondeterministic_fsa_generator,
-    is_nondeterministic,
     detect_epsilon_loops,
     simulate_nondeterministic_fsa_with_depth_limit,
     simulate_nondeterministic_fsa_generator_with_depth_limit
@@ -17,7 +16,8 @@ from .fsa_properties import (
     is_complete,
     is_connected,
     check_all_properties,
-    validate_fsa_structure
+    validate_fsa_structure,
+    is_nondeterministic
 )
 
 

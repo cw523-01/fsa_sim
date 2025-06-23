@@ -216,3 +216,37 @@ def validate_fsa_structure(fsa: Dict) -> Dict:
                 return {'valid': False, 'error': f'Accepting state {state} not in states list'}
 
     return {'valid': True}
+
+def is_nondeterministic(fsa: Dict) -> bool:
+    """
+    Checks if the FSA is non-deterministic.
+
+    An FSA is non-deterministic if:
+    1. For any state and symbol, there are multiple possible next states
+    2. There are epsilon transitions (empty string '')
+
+    Args:
+        fsa: The FSA dictionary
+
+    Returns:
+        True if non-deterministic, False if deterministic
+    """
+    # Check for epsilon transitions
+    for state in fsa['states']:
+        if state in fsa['transitions'] and '' in fsa['transitions'][state]:
+            if fsa['transitions'][state]['']:  # Non-empty epsilon transitions
+                return True
+
+    # Check for multiple transitions on same symbol
+    alphabet_with_epsilon = fsa['alphabet'] + ['']
+
+    for state in fsa['states']:
+        if state not in fsa['transitions']:
+            continue
+
+        for symbol in alphabet_with_epsilon:
+            if symbol in fsa['transitions'][state]:
+                if len(fsa['transitions'][state][symbol]) > 1:
+                    return True
+
+    return False

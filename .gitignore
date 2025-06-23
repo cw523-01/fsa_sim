@@ -3,3 +3,4 @@
 /simulator/migrations/__pycache__
 /simulator/tests/__pycache__
 /__pycache__
+.coverage

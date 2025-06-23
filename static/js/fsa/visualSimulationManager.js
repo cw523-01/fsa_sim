@@ -117,8 +117,8 @@ class VisualSimulationManager {
                             const nextStep = executionPath[i + 1];
                             const isSelfLoop = nextStep &&
                                 nextStep[0] === currentState &&
-                                nextStep[1] === symbol &&
-                                nextStep[2] === nextState;
+                                nextStep[2] === nextState &&
+                                currentState === nextState;
 
                             if (!isSelfLoop) {
                                 setTimeout(() => {

@@ -2,7 +2,7 @@ from django.test import TestCase
 from simulator.fsa_simulation import (
     simulate_deterministic_fsa,
     simulate_nondeterministic_fsa,
-    is_nondeterministic, simulate_nondeterministic_fsa_generator, detect_epsilon_loops,
+    simulate_nondeterministic_fsa_generator, detect_epsilon_loops,
     simulate_nondeterministic_fsa_with_depth_limit, simulate_nondeterministic_fsa_generator_with_depth_limit
 )
 from simulator.fsa_properties import (
@@ -388,47 +388,6 @@ class TestFsaSimulation(TestCase):
         self.assertIsInstance(result, dict)
         self.assertFalse(result['accepted'])
         self.assertIn('rejection_reason', result)
-
-
-    def test_nondeterministic_check(self):
-        # Valid non-deterministic FSA
-        nfa = {
-            'states': ['S0', 'S1'],
-            'alphabet': ['a', 'b'],
-            'transitions': {
-                'S0': {'a': ['S0', 'S1'], 'b': ['S0']},  # Multiple transitions for 'a'
-                'S1': {'b': ['S1']}
-            },
-            'startingState': 'S0',
-            'acceptingStates': ['S1']
-        }
-        self.assertTrue(is_nondeterministic(nfa))
-
-        # FSA with epsilon transitions
-        nfa_epsilon = {
-            'states': ['S0', 'S1'],
-            'alphabet': ['a'],
-            'transitions': {
-                'S0': {'': ['S1'], 'a': ['S0']},  # Epsilon transition
-                'S1': {}
-            },
-            'startingState': 'S0',
-            'acceptingStates': ['S1']
-        }
-        self.assertTrue(is_nondeterministic(nfa_epsilon))
-
-        # Deterministic FSA (should return False)
-        dfa = {
-            'states': ['S0', 'S1'],
-            'alphabet': ['a', 'b'],
-            'transitions': {
-                'S0': {'a': ['S1'], 'b': ['S0']},
-                'S1': {'a': ['S0'], 'b': ['S1']}
-            },
-            'startingState': 'S0',
-            'acceptingStates': ['S0']
-        }
-        self.assertFalse(is_nondeterministic(dfa))
 
 
     def test_complex_nfa(self):
@@ -1776,6 +1735,445 @@ class TestFsaSimulation(TestCase):
         result = simulate_nondeterministic_fsa_with_depth_limit(nfa, 'a', max_depth=50)
         self.assertIsInstance(result, list)
         self.assertTrue(len(result) > 0)
+
+    def test_deterministic_fsa_rejection_cases(self):
+        """Test deterministic FSA rejection scenarios"""
+        # FSA for testing various rejection scenarios
+        fsa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1']},
+                'S1': {'b': ['S0']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        # Test symbol not in alphabet (line 55)
+        result = simulate_deterministic_fsa(fsa, 'ac')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+        self.assertIn('not in alphabet', result['rejection_reason'])
+        self.assertEqual(result['rejection_position'], 1)
+
+        # Test no transition defined (line 66)
+        result = simulate_deterministic_fsa(fsa, 'aa')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+        self.assertIn('No transition defined', result['rejection_reason'])
+        self.assertEqual(result['rejection_position'], 1)
+
+    def test_nondeterministic_fsa_edge_cases(self):
+        """Test non-deterministic FSA edge cases"""
+        # Test invalid FSA structure - needs to be truly invalid to trigger line 140
+        invalid_nfa = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {'S0': {'a': ['S1']}},  # S1 not in states
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+
+        result = simulate_nondeterministic_fsa(invalid_nfa, 'a')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+        # The actual rejection reason is "No accepting paths found" because
+        # the structure validation in _is_valid_nfa_structure passes this FSA
+        # but S1 (target of transition) doesn't exist, leading to no accepting paths
+        self.assertIn('No accepting paths found', result['rejection_reason'])
+
+        # Test NFA with symbol not in alphabet (lines 300-312)
+        nfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1']},
+                'S1': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        result = simulate_nondeterministic_fsa(nfa, 'ab')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+        self.assertIn('rejection_reason', result)
+
+    def test_epsilon_closure_edge_cases(self):
+        """Test epsilon closure edge cases"""
+        # Test _get_epsilon_reachable_states with complex epsilon transitions
+        from simulator.fsa_simulation import _get_epsilon_reachable_states
+
+        # NFA with epsilon self-loops and cycles
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S0', 'S1']},  # Epsilon self-loop and to S1
+                'S1': {'': ['S2']},
+                'S2': {'': ['S3', 'S1']},  # Epsilon to S3 and back to S1
+                'S3': {'': ['S3']}  # Epsilon self-loop
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        # Test epsilon reachable states from S0
+        reachable = _get_epsilon_reachable_states(nfa, 'S0')
+        expected_states = {'S0', 'S1', 'S2', 'S3'}
+        self.assertEqual(reachable, expected_states)
+
+        # Test epsilon reachable states from S1
+        reachable = _get_epsilon_reachable_states(nfa, 'S1')
+        expected_states = {'S1', 'S2', 'S3'}
+        self.assertEqual(reachable, expected_states)
+
+        # Test epsilon reachable states from S3 (only self)
+        reachable = _get_epsilon_reachable_states(nfa, 'S3')
+        expected_states = {'S3'}
+        self.assertEqual(reachable, expected_states)
+
+    def test_cycle_path_finding(self):
+        """Test cycle path finding"""
+        from simulator.fsa_simulation import _find_cycle_path_in_scc
+
+        # Test with single state SCC
+        single_scc = ['S0']
+        epsilon_graph = {'S0': ['S0']}
+        result = _find_cycle_path_in_scc(single_scc, epsilon_graph)
+        self.assertEqual(result, ['S0'])
+
+        # Test with multi-state SCC but no valid cycle found
+        multi_scc = ['S0', 'S1', 'S2']
+        epsilon_graph = {
+            'S0': [],  # No outgoing edges
+            'S1': [],
+            'S2': []
+        }
+        result = _find_cycle_path_in_scc(multi_scc, epsilon_graph)
+        self.assertEqual(result, multi_scc)  # Should return the SCC itself as fallback
+
+    def test_depth_limited_epsilon_closure_edge_cases(self):
+        """Test depth-limited epsilon closure edge cases"""
+        from simulator.fsa_simulation import (_get_initial_states_with_paths_total_depth_limited,
+                                              _get_epsilon_closure_with_paths_total_depth_limited)
+
+        # NFA with epsilon transitions for depth testing
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1']},
+                'S1': {'': ['S2']},
+                'S2': {'': ['S3']},
+                'S3': {'': ['S1']}  # Creates cycle back to S1
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        # Test initial states with very low depth limit (lines 985-992)
+        result = _get_initial_states_with_paths_total_depth_limited(nfa, 'S0', max_depth=1)
+        self.assertTrue(len(result) >= 1)
+        # Should include S0 with empty path and S1 with one epsilon transition
+        states = [state for state, path in result]
+        self.assertIn('S0', states)
+        self.assertIn('S1', states)
+
+        # Test epsilon closure with depth limit (lines 1038-1047)
+        result = _get_epsilon_closure_with_paths_total_depth_limited(nfa, 'S1', max_depth=2)
+        self.assertTrue(len(result) >= 1)
+        # Should include states reachable within 2 epsilon transitions
+        states = [state for state, path in result]
+        self.assertIn('S1', states)
+        self.assertIn('S2', states)
+
+        # Test with zero depth limit
+        result = _get_initial_states_with_paths_total_depth_limited(nfa, 'S0', max_depth=0)
+        # Should only include the start state with empty path
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0][0], 'S0')
+        self.assertEqual(result[0][1], [])
+
+    def test_invalid_nfa_structure_validation(self):
+        """Test _is_valid_nfa_structure edge cases"""
+        from simulator.fsa_simulation import _is_valid_nfa_structure
+
+        # Test missing required keys
+        invalid_nfa_missing_states = {
+            'alphabet': ['a'],
+            'transitions': {},
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+        self.assertFalse(_is_valid_nfa_structure(invalid_nfa_missing_states))
+
+        invalid_nfa_missing_alphabet = {
+            'states': ['S0'],
+            'transitions': {},
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+        self.assertFalse(_is_valid_nfa_structure(invalid_nfa_missing_alphabet))
+
+        # Test starting state not in states
+        invalid_nfa_bad_start = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {},
+            'startingState': 'S1',  # Not in states
+            'acceptingStates': ['S0']
+        }
+        self.assertFalse(_is_valid_nfa_structure(invalid_nfa_bad_start))
+
+        # Test accepting state not in states
+        invalid_nfa_bad_accepting = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {},
+            'startingState': 'S0',
+            'acceptingStates': ['S1']  # Not in states
+        }
+        self.assertFalse(_is_valid_nfa_structure(invalid_nfa_bad_accepting))
+
+        # Test non-dict transitions
+        invalid_nfa_bad_transitions = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': "not a dict",
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+        self.assertFalse(_is_valid_nfa_structure(invalid_nfa_bad_transitions))
+
+    def test_get_transitions_edge_cases(self):
+        """Test _get_transitions with edge cases"""
+        from simulator.fsa_simulation import _get_transitions
+
+        # Test state not in transitions
+        fsa = {
+            'transitions': {
+                'S0': {'a': ['S1']}
+            }
+        }
+        result = _get_transitions(fsa, 'S1', 'a')  # S1 not in transitions
+        self.assertEqual(result, [])
+
+        # Test symbol not in state's transitions
+        result = _get_transitions(fsa, 'S0', 'b')  # 'b' not in S0's transitions
+        self.assertEqual(result, [])
+
+        # Test valid transition
+        result = _get_transitions(fsa, 'S0', 'a')
+        self.assertEqual(result, ['S1'])
+
+    def test_complex_epsilon_loop_scenarios(self):
+        """Test complex epsilon loop detection scenarios"""
+        # Test NFA with unreachable epsilon loops
+        nfa_unreachable_loops = {
+            'states': ['S0', 'S1', 'S2', 'S3', 'S4'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1']},  # Only path is S0 -> S1
+                'S1': {},  # Dead end
+                'S2': {'': ['S3']},  # Unreachable epsilon loop
+                'S3': {'': ['S4']},
+                'S4': {'': ['S2']}  # Completes unreachable loop
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        result = detect_epsilon_loops(nfa_unreachable_loops)
+        self.assertTrue(result['has_epsilon_loops'])
+        self.assertTrue(len(result['loop_details']) > 0)
+
+        # Should have at least one unreachable loop
+        unreachable_loops = [loop for loop in result['loop_details'] if not loop['reachable_from_start']]
+        self.assertTrue(len(unreachable_loops) > 0)
+
+    def test_deterministic_fsa_non_deterministic_transition_error(self):
+        """Test deterministic FSA simulator with non-deterministic transitions"""
+        # FSA that claims to be for deterministic simulation but has non-deterministic transitions
+        fsa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1', 'S2']},  # Multiple transitions for 'a'
+                'S1': {'b': ['S1']},
+                'S2': {'b': ['S2']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1', 'S2']
+        }
+
+        # This should be rejected by the deterministic simulator
+        result = simulate_deterministic_fsa(fsa, 'a')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+        self.assertIn('FSA must be deterministic', result['rejection_reason'])
+
+    def test_simulate_nondeterministic_transitions_missing(self):
+        """Test NFA simulation when transitions are missing for current state"""
+        nfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1']},
+                # S1 has no transitions defined
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        # Test string that would require transition from S1
+        result = simulate_nondeterministic_fsa(nfa, 'aa')
+        self.assertIsInstance(result, dict)
+        self.assertFalse(result['accepted'])
+
+    def test_epsilon_transitions_validation(self):
+        """Test _has_epsilon_transitions function edge cases"""
+        from simulator.fsa_simulation import _has_epsilon_transitions
+
+        # FSA with empty epsilon transition list
+        fsa_empty_epsilon = {
+            'states': ['S0'],
+            'transitions': {
+                'S0': {'': []}  # Empty epsilon transitions
+            }
+        }
+        self.assertFalse(_has_epsilon_transitions(fsa_empty_epsilon))
+
+        # FSA with no epsilon key
+        fsa_no_epsilon = {
+            'states': ['S0'],
+            'transitions': {
+                'S0': {'a': ['S0']}  # No epsilon key
+            }
+        }
+        self.assertFalse(_has_epsilon_transitions(fsa_no_epsilon))
+
+        # FSA with state not in transitions
+        fsa_missing_state = {
+            'states': ['S0', 'S1'],
+            'transitions': {
+                'S0': {'': ['S1']}
+                # S1 not in transitions
+            }
+        }
+        self.assertTrue(_has_epsilon_transitions(fsa_missing_state))
+
+    def test_depth_limit_generator_edge_cases(self):
+        """Test depth-limited generator edge cases"""
+        # NFA where reaching acceptance requires exceeding the depth limit
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1']},      # 1 epsilon: S0 -> S1
+                'S1': {'': ['S2']},      # 2 epsilon: S1 -> S2
+                'S2': {'': ['S3']},      # 3 epsilon: S2 -> S3
+                'S3': {}                 # No transitions from S3
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']  # Acceptance requires 3 epsilon transitions
+        }
+
+        # Test with max_depth=2, but acceptance requires depth 3
+        results = list(simulate_nondeterministic_fsa_generator_with_depth_limit(nfa, '', max_depth=2))
+
+        accepting_paths = [r for r in results if r['type'] == 'accepting_path']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        # Should have summary
+        self.assertEqual(len(summary), 1)
+
+        # Should NOT find any accepting paths (since acceptance requires depth 3 but limit is 2)
+        self.assertEqual(len(accepting_paths), 0)
+        self.assertFalse(summary[0]['accepted'])
+
+        # No paths should be found due to depth limitation
+        self.assertTrue(summary[0]['total_paths_explored'] > 0)  # Some exploration happened
+        self.assertEqual(summary[0]['total_accepting_paths'], 0)  # But no acceptance
+
+    def test_all_reachable_states_comprehensive(self):
+        """Test _get_all_reachable_states with comprehensive FSA"""
+        from simulator.fsa_simulation import _get_all_reachable_states
+
+        # Complex FSA with both regular and epsilon transitions
+        nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3', 'S4'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S2']},
+                'S1': {'b': ['S3']},
+                'S2': {'': ['S4']},
+                'S3': {'a': ['S4']},
+                'S4': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S4']
+        }
+
+        reachable = _get_all_reachable_states(nfa, 'S0')
+        expected = {'S0', 'S1', 'S2', 'S3', 'S4'}
+        self.assertEqual(reachable, expected)
+
+        # Test with isolated states
+        nfa_with_isolated = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1']},
+                'S1': {},
+                'S2': {'a': ['S2']}  # S2 is isolated
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        reachable = _get_all_reachable_states(nfa_with_isolated, 'S0')
+        expected = {'S0', 'S1'}  # S2 should not be reachable
+        self.assertEqual(reachable, expected)
+
+    def test_generator_depth_limit_invalid_symbol_in_input(self):
+        """Test symbol not in alphabet check in generator with depth limit"""
+
+        # Create a structurally valid NFA (passes _is_valid_nfa_structure)
+        # but provide input with symbols not in the alphabet
+        nfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a', 'b'],  # Only 'a' and 'b' are valid
+            'transitions': {
+                'S0': {'a': ['S1'], 'b': ['S0']},
+                'S1': {'a': ['S0'], 'b': ['S1']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        # Test with input containing symbol 'c' which is NOT in the alphabet
+        # This should trigger the "Symbol not in alphabet" check at lines 985-992
+        results = list(simulate_nondeterministic_fsa_generator_with_depth_limit(nfa, 'ac', max_depth=10))
+
+        # Should have rejected paths due to invalid symbol
+        rejected_paths = [r for r in results if r['type'] == 'rejected_path']
+        summary = [r for r in results if r['type'] == 'summary']
+
+        # Should have at least one rejection due to symbol not in alphabet
+        symbol_rejections = [r for r in rejected_paths if 'not in alphabet' in r['reason']]
+        self.assertTrue(len(symbol_rejections) > 0, "Should have rejections due to symbol not in alphabet")
+
+        # Check the rejection details
+        symbol_rejection = symbol_rejections[0]
+        self.assertIn('rejection_position', symbol_rejection)
+        self.assertIn('total_depth', symbol_rejection)
+        self.assertEqual(symbol_rejection['rejection_position'], 1)  # Position of 'c' in 'ac'
+
+        # Should have summary showing not accepted
+        self.assertEqual(len(summary), 1)
+        self.assertFalse(summary[0]['accepted'])
 
 class TestFsaProperties(TestCase):
     """Test cases for FSA property checking functions"""

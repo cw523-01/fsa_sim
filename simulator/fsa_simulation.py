@@ -286,32 +286,6 @@ def _get_epsilon_closure_with_paths(fsa: Dict, start_state: str) -> List[Tuple[s
     return result
 
 
-def _epsilon_closure(fsa: Dict, states: Set[str]) -> Set[str]:
-    """
-    Compute epsilon closure of a set of states.
-
-    Args:
-        fsa: The FSA dictionary
-        states: Set of states to compute closure for
-
-    Returns:
-        Set of states reachable via epsilon transitions
-    """
-    closure = set(states)
-    stack = list(states)
-
-    while stack:
-        current = stack.pop()
-        epsilon_transitions = _get_transitions(fsa, current, '')  # Empty string for epsilon
-
-        for next_state in epsilon_transitions:
-            if next_state not in closure:
-                closure.add(next_state)
-                stack.append(next_state)
-
-    return closure
-
-
 def _get_transitions(fsa: Dict, state: str, symbol: str) -> List[str]:
     """
     Get all states reachable from given state on given symbol.
@@ -364,41 +338,6 @@ def _is_valid_nfa_structure(fsa: Dict) -> bool:
         return False
 
     return True
-
-
-def is_nondeterministic(fsa: Dict) -> bool:
-    """
-    Checks if the FSA is non-deterministic.
-
-    An FSA is non-deterministic if:
-    1. For any state and symbol, there are multiple possible next states
-    2. There are epsilon transitions (empty string '')
-
-    Args:
-        fsa: The FSA dictionary
-
-    Returns:
-        True if non-deterministic, False if deterministic
-    """
-    # Check for epsilon transitions
-    for state in fsa['states']:
-        if state in fsa['transitions'] and '' in fsa['transitions'][state]:
-            if fsa['transitions'][state]['']:  # Non-empty epsilon transitions
-                return True
-
-    # Check for multiple transitions on same symbol
-    alphabet_with_epsilon = fsa['alphabet'] + ['']
-
-    for state in fsa['states']:
-        if state not in fsa['transitions']:
-            continue
-
-        for symbol in alphabet_with_epsilon:
-            if symbol in fsa['transitions'][state]:
-                if len(fsa['transitions'][state][symbol]) > 1:
-                    return True
-
-    return False
 
 
 def simulate_nondeterministic_fsa_generator(fsa: Dict, input_string: str):
@@ -1032,19 +971,6 @@ def simulate_nondeterministic_fsa_generator_with_depth_limit(fsa: Dict, input_st
                 for eps_state, eps_path_from_next in epsilon_states_with_paths:
                     final_path = transition_path + eps_path_from_next
                     final_depth = new_depth + len(eps_path_from_next)
-
-                    # Check if we've reached depth limit with epsilon transitions
-                    if final_depth > max_depth:
-                        depth_limit_reached = True
-                        yield {
-                            'type': 'depth_limit_reached',
-                            'path': final_path,
-                            'current_depth': final_depth,
-                            'max_depth': max_depth,
-                            'state': eps_state,
-                            'input_position': pos + 1
-                        }
-                        continue
 
                     queue.append((eps_state, pos + 1, final_path, final_depth))
             else:
