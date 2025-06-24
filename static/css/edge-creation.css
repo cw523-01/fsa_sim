@@ -151,35 +151,6 @@ body:not(.no-animation) .selected-source {
     transform: translateX(-50%) translateY(10px);
 }
 
-/* State connection preview dots with optimized animation */
-.connection-preview-dot {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background-color: var(--primary-color);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 12;
-    opacity: 0.8;
-    will-change: transform, opacity;
-}
-
-/* Only animate dots when not dragging */
-body:not(.no-animation) .connection-preview-dot {
-    animation: dotPulse 1s infinite;
-}
-
-@keyframes dotPulse {
-    0%, 100% {
-        transform: scale(1);
-        opacity: 0.8;
-    }
-    50% {
-        transform: scale(1.3);
-        opacity: 1;
-    }
-}
-
 /* Mouse follower indicator with GPU acceleration */
 .edge-creation-cursor {
     position: absolute;

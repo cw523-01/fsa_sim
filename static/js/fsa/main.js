@@ -198,7 +198,7 @@ function initializeEdgeCreationManager() {
 function initializeToolManager() {
     const canvas = document.getElementById('fsa-canvas');
     if (canvas && toolManager) {
-        toolManager.initialize(canvas, edgeCreationManager);
+        toolManager.initialize(canvas, edgeCreationManager, jsPlumbInstance);
         console.log('Enhanced tool manager initialized');
     }
 }

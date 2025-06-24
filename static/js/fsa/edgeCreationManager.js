@@ -166,9 +166,6 @@ class EdgeCreationManager {
         // Add active class to canvas
         this.canvas.classList.add('edge-creation-active');
 
-        // Create connection preview dot on source state
-        this.createConnectionDot(sourceStateElement);
-
         // Create preview edge
         this.createPreviewEdge();
 
@@ -344,25 +341,6 @@ class EdgeCreationManager {
             this.cursorFollower.remove();
             this.cursorFollower = null;
         }
-    }
-
-    /**
-     * Create connection dot on source state
-     * @param {HTMLElement} stateElement - The state element
-     */
-    createConnectionDot(stateElement) {
-        if (this.connectionDot) return;
-
-        const dot = document.createElement('div');
-        dot.classList.add('connection-preview-dot');
-        // Add GPU acceleration
-        dot.style.willChange = 'transform, opacity';
-
-        // Use cached position if available
-        this.updateConnectionDotPosition(dot, stateElement);
-
-        this.canvas.appendChild(dot);
-        this.connectionDot = dot;
     }
 
     /**

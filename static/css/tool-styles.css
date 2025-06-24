@@ -49,15 +49,50 @@
     transition: all 0.2s ease;
 }
 
-.delete-mode ._jsPlumb_connector:hover {
-    stroke: var(--error-color) !important;
-    stroke-width: 3px !important;
+/* Enhanced delete mode edge hover effects with higher specificity */
+.delete-mode ._jsPlumb_connector:hover,
+.delete-mode ._jsPlumb_connector:hover path,
+.delete-mode svg._jsPlumb_connector:hover,
+.delete-mode svg._jsPlumb_connector:hover path {
+    stroke: #f44336 !important;
+    stroke-width: 4px !important;
+    filter: drop-shadow(0 0 3px rgba(244, 67, 54, 0.6)) !important;
 }
 
-.delete-mode .edge-label:hover {
+/* Delete mode edge arrow hover effects */
+.delete-mode ._jsPlumb_overlay:hover,
+.delete-mode ._jsPlumb_overlay_Arrow:hover,
+.delete-mode ._jsPlumb_overlay:hover path,
+.delete-mode ._jsPlumb_overlay_Arrow:hover path {
+    fill: #f44336 !important;
+    stroke: #f44336 !important;
+    filter: drop-shadow(0 0 2px rgba(244, 67, 54, 0.6)) !important;
+}
+
+/* Delete mode edge label hover effects */
+.delete-mode .edge-label:hover,
+.delete-mode ._jsPlumb_overlay:hover .edge-label,
+.delete-mode .edge-label-style:hover {
     background-color: rgba(244, 67, 54, 0.2) !important;
     border-color: var(--error-color) !important;
+    color: #f44336 !important;
     transform: scale(1.1);
+    box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3) !important;
+}
+
+/* Additional selectors for different JSPlumb connector types */
+.delete-mode [data-jtk-component="connector"]:hover,
+.delete-mode [data-jtk-component="connector"]:hover path {
+    stroke: #f44336 !important;
+    stroke-width: 4px !important;
+}
+
+/* Ensure delete mode overrides any JSPlumb hover styles */
+.delete-mode .jtk-connector:hover,
+.delete-mode .jtk-connector:hover path,
+.delete-mode .jtk-connector:hover line {
+    stroke: #f44336 !important;
+    stroke-width: 4px !important;
 }
 
 /* Base tool selection style */

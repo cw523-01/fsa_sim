@@ -14,6 +14,8 @@ class ToolManager {
         this.edgeCreationManager = null;
         this.instructionsTimeout = null;
         this.cancelInstructionsTimeout = null;
+        this.originalHoverPaintStyle = null; // Store original JSPlumb hover style
+        this.jsPlumbInstance = null; // Store JSPlumb instance reference
 
         // Tool configurations
         this.toolConfigs = {
@@ -52,10 +54,12 @@ class ToolManager {
      * Initialize the tool manager
      * @param {HTMLElement} canvasElement - The FSA canvas element
      * @param {Object} edgeCreationManager - Reference to the edge creation manager
+     * @param {Object} jsPlumbInstance - Reference to the JSPlumb instance
      */
-    initialize(canvasElement, edgeCreationManager = null) {
+    initialize(canvasElement, edgeCreationManager = null, jsPlumbInstance = null) {
         this.canvas = canvasElement;
         this.edgeCreationManager = edgeCreationManager;
+        this.jsPlumbInstance = jsPlumbInstance;
         this.setupGlobalEventListeners();
     }
 
@@ -102,6 +106,11 @@ class ToolManager {
             return;
         }
 
+        // Special handling for delete tool - override JSPlumb hover styles
+        if (toolName === 'delete') {
+            this.activateDeleteMode();
+        }
+
         // Add visual feedback to canvas
         this.canvas.classList.add(config.cursorClass);
 
@@ -134,6 +143,11 @@ class ToolManager {
             return;
         }
 
+        // Special handling for delete tool - restore JSPlumb hover styles
+        if (this.currentTool === 'delete') {
+            this.deactivateDeleteMode();
+        }
+
         // Remove visual classes from canvas
         if (config) {
             this.canvas.classList.remove(config.cursorClass);
@@ -154,6 +168,62 @@ class ToolManager {
 
         console.log(`${config ? config.name : 'Tool'} deactivated`);
         this.currentTool = null;
+    }
+
+    /**
+     * Activate delete mode with special JSPlumb hover handling
+     */
+    activateDeleteMode() {
+        // Use the stored JSPlumb instance
+        if (this.jsPlumbInstance) {
+            // Store original hover paint style
+            this.originalHoverPaintStyle = this.jsPlumbInstance.Defaults.HoverPaintStyle;
+
+            // Override hover paint style for delete mode
+            this.jsPlumbInstance.Defaults.HoverPaintStyle = {
+                stroke: "#f44336",
+                strokeWidth: 4
+            };
+
+            // Apply to all existing connections
+            const connections = this.jsPlumbInstance.getAllConnections();
+            connections.forEach(conn => {
+                // Skip starting state connections
+                if (conn.canvas && conn.canvas.classList.contains('starting-connection')) {
+                    return;
+                }
+
+                conn.setHoverPaintStyle({ stroke: "#f44336", strokeWidth: 4 });
+            });
+        }
+
+        console.log('Delete mode activated with enhanced edge highlighting');
+    }
+
+    /**
+     * Deactivate delete mode and restore original JSPlumb hover styles
+     */
+    deactivateDeleteMode() {
+        // Restore original JSPlumb hover paint style
+        if (this.jsPlumbInstance && this.originalHoverPaintStyle) {
+            // Restore original hover paint style
+            this.jsPlumbInstance.Defaults.HoverPaintStyle = this.originalHoverPaintStyle;
+
+            // Restore to all existing connections
+            const connections = this.jsPlumbInstance.getAllConnections();
+            connections.forEach(conn => {
+                // Skip starting state connections
+                if (conn.canvas && conn.canvas.classList.contains('starting-connection')) {
+                    return;
+                }
+
+                conn.setHoverPaintStyle(this.originalHoverPaintStyle);
+            });
+
+            this.originalHoverPaintStyle = null;
+        }
+
+        console.log('Delete mode deactivated, JSPlumb hover styles restored');
     }
 
     /**

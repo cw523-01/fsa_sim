@@ -1,15 +1,6 @@
 import { updateAlphabetDisplay } from './alphabetManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 
-// Export functions to window for global access
-window.getCurrentTool = function() {
-    // Import from uiManager.js if available
-    if (typeof getCurrentTool === 'function') {
-        return getCurrentTool();
-    }
-    return null;
-};
-
 window.openInlineEdgeEditor = function(connection, jsPlumbInstance) {
     // Import from uiManager.js if available
     if (typeof openInlineEdgeEditor === 'function') {
