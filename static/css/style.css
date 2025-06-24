@@ -39,7 +39,13 @@
 /* 13. File Operations Popup */
 @import url('file-operations-popup.css');
 
-/* 14. Responsive Styles - Must be last */
+/* 14. Edge Creation Visual Feedback */
+@import url('edge-creation.css');
+
+/* 15. Tool Usage Visual Feedback */
+@import url('tool-styles.css');
+
+/* 15. Responsive Styles - Must be last */
 @import url('responsive.css');
 
 /* Hide drag‑and‑drop overlay unless actively dragging a file */

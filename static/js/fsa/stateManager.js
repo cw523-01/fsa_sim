@@ -46,6 +46,10 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks) {
     state.style.left = (x - 30) + 'px';
     state.style.top = (y - 30) + 'px';
 
+    // Add GPU acceleration hints
+    state.style.willChange = 'transform';
+    state.style.transform = 'translate3d(0, 0, 0)';
+
     document.getElementById('fsa-canvas').appendChild(state);
 
     // Automatically set the first state as the starting state
@@ -53,26 +57,74 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks) {
         createStartingStateIndicator(jsPlumbInstance, stateId);
     }
 
-    // Make state draggable
+    // Make state draggable with performance optimizations
     $(state).draggable({
         containment: "parent",
         stack: ".state, .accepting-state",
         zIndex: 100,
-        drag: function(event, ui) {
-            jsPlumbInstance.repaintEverything();
+        start: function(event, ui) {
+            // Mark that we're starting to drag a state
+            if (window.isStateDragging !== undefined) {
+                window.isStateDragging = true;
+            }
 
-            // Update starting state arrow if this is the starting state
+            // Disable animations during drag
+            document.body.classList.add('no-animation');
+
+            // Ensure GPU acceleration
+            this.style.willChange = 'transform';
+
+            // Store original position for transform calculations
+            const rect = this.getBoundingClientRect();
+            const parentRect = this.parentElement.getBoundingClientRect();
+            this._originalLeft = rect.left - parentRect.left;
+            this._originalTop = rect.top - parentRect.top;
+        },
+        drag: function(event, ui) {
+            // Update starting state arrow if this is the starting state - REAL TIME
             if (startingStateId === this.id) {
                 const startSource = document.getElementById('start-source');
                 if (startSource) {
-                    startSource.style.left = (ui.position.left - 50) + 'px';
-                    startSource.style.top = (ui.position.top + 30 - 5) + 'px';
+                    // Update both left/top in real-time during drag
+                    const newLeft = ui.position.left - 50;
+                    const newTop = ui.position.top + 25;
+                    startSource.style.left = newLeft + 'px';
+                    startSource.style.top = newTop + 'px';
                 }
+            }
+
+            // Use transform instead of top/left for better performance
+            const deltaX = ui.position.left - this._originalLeft;
+            const deltaY = ui.position.top - this._originalTop;
+
+            // Revalidate this state and the start-source
+            jsPlumbInstance.revalidate(this.id);
+            if (startingStateId === this.id) {
+                jsPlumbInstance.revalidate('start-source');
             }
 
             if (callbacks.onStateDrag) {
                 callbacks.onStateDrag(this, event, ui);
             }
+        },
+        stop: function(event, ui) {
+            // Re-enable animations after drag
+            document.body.classList.remove('no-animation');
+
+            // Reset will-change after drag completes
+            setTimeout(() => {
+                this.style.willChange = 'auto';
+            }, 100);
+
+            // Final repaint after drag
+            jsPlumbInstance.repaintEverything();
+
+            // Set flag to prevent canvas click from creating new state
+            setTimeout(() => {
+                if (window.isStateDragging !== undefined) {
+                    window.isStateDragging = false;
+                }
+            }, 10); // Small delay to let the click event fire first
         }
     });
 
@@ -252,6 +304,10 @@ function ensureStartSource(jsPlumbInstance) {
         startSource = document.createElement('div');
         startSource.id = 'start-source';
         startSource.className = 'start-source';
+        // Add GPU acceleration but use absolute positioning
+        startSource.style.position = 'absolute';
+        startSource.style.willChange = 'auto'; // Don't force transform changes
+        startSource.style.transform = 'translate3d(0, 0, 0)';
         document.getElementById('fsa-canvas').appendChild(startSource);
         console.log('Created new start-source element');
     }
@@ -280,9 +336,15 @@ function ensureStartSource(jsPlumbInstance) {
  * @param {HTMLElement} stateElement - The target state element
  */
 function positionStartSource(startSource, stateElement) {
-    startSource.style.left = (stateElement.offsetLeft - 50) + 'px';
-    startSource.style.top = (stateElement.offsetTop + 25) + 'px';
-    console.log(`Positioned start-source at (${startSource.style.left}, ${startSource.style.top})`);
+    // Use both positioning methods for compatibility - left/top for initial position, transform for updates
+    const leftPos = stateElement.offsetLeft - 50;
+    const topPos = stateElement.offsetTop + 25;
+
+    startSource.style.left = leftPos + 'px';
+    startSource.style.top = topPos + 'px';
+    startSource.style.transform = 'translate3d(0, 0, 0)'; // Just for GPU acceleration
+
+    console.log(`Positioned start-source at (${leftPos}, ${topPos})`);
 }
 
 /**

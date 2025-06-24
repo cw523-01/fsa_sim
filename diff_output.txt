@@ -1,0 +1,2019 @@
+diff --git a/static/css/edge-creation.css b/static/css/edge-creation.css
+index e69de29..801c195 100644
+--- a/static/css/edge-creation.css
++++ b/static/css/edge-creation.css
+@@ -0,0 +1,198 @@
++/* Cursor changes for edge tool */
++.edge-creation-mode {
++    cursor: crosshair !important;
++}
++
++.edge-creation-mode .state,
++.edge-creation-mode .accepting-state {
++    cursor: crosshair !important;
++}
++
++.edge-creation-mode .state:hover,
++.edge-creation-mode .accepting-state:hover {
++    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.4);
++    transform: scale(1.05);
++    transition: all 0.2s ease;
++}
++
++/* Enhanced source state selection */
++.selected-source {
++    box-shadow: 0 0 0 3px var(--primary-color) !important;
++    background-color: rgba(76, 175, 80, 0.1) !important;
++    border-color: var(--primary-color) !important;
++    transform: scale(1.1);
++    z-index: 15 !important;
++}
++
++.selected-source:before {
++    border-color: var(--primary-color) !important;
++}
++
++/* Pulsing animation for selected source */
++.selected-source {
++    animation: sourcePulse 1.5s infinite;
++}
++
++@keyframes sourcePulse {
++    0% {
++        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.6);
++    }
++    50% {
++        box-shadow: 0 0 0 6px rgba(76, 175, 80, 0.3);
++    }
++    100% {
++        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.6);
++    }
++}
++
++/* Target state hover when source is selected */
++.edge-creation-active .state:hover,
++.edge-creation-active .accepting-state:hover {
++    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.6) !important;
++    border-color: var(--secondary-color) !important;
++    background-color: rgba(33, 150, 243, 0.1) !important;
++    transform: scale(1.05);
++}
++
++/* Prevent hover effects on the source state when it's selected */
++.edge-creation-active .selected-source:hover {
++    box-shadow: 0 0 0 3px var(--primary-color) !important;
++    border-color: var(--primary-color) !important;
++    background-color: rgba(76, 175, 80, 0.1) !important;
++    transform: scale(1.1);
++}
++
++/* Preview edge styling */
++.preview-edge {
++    position: absolute;
++    pointer-events: none;
++    z-index: 5;
++    opacity: 0.6;
++}
++
++.preview-edge-line {
++    stroke: var(--text-gray);
++    stroke-width: 2;
++    stroke-dasharray: 5, 5;
++    fill: none;
++    pointer-events: none;
++}
++
++.preview-edge-arrow {
++    fill: var(--text-gray);
++    stroke: var(--text-gray);
++    stroke-width: 1;
++    pointer-events: none;
++}
++
++/* Edge creation instructions */
++.edge-creation-instructions {
++    position: absolute;
++    top: 10px;
++    left: 50%;
++    transform: translateX(-50%);
++    background-color: rgba(76, 175, 80, 0.9);
++    color: white;
++    padding: 8px 16px;
++    border-radius: 20px;
++    font-size: 14px;
++    font-weight: 500;
++    z-index: 100;
++    pointer-events: none;
++    transition: all 0.3s ease;
++    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
++}
++
++.edge-creation-instructions.hidden {
++    opacity: 0;
++    transform: translateX(-50%) translateY(-10px);
++}
++
++/* Enhanced tool selection feedback */
++.tool.edge-tool-active {
++    background-color: rgba(76, 175, 80, 0.2);
++    border: 2px solid var(--primary-color);
++    border-radius: 8px;
++}
++
++/* Cancel instruction */
++.edge-creation-cancel {
++    position: absolute;
++    bottom: 20px;
++    left: 50%;
++    transform: translateX(-50%);
++    background-color: rgba(244, 67, 54, 0.9);
++    color: white;
++    padding: 6px 12px;
++    border-radius: 15px;
++    font-size: 12px;
++    z-index: 100;
++    pointer-events: none;
++    transition: all 0.3s ease;
++}
++
++.edge-creation-cancel.hidden {
++    opacity: 0;
++    transform: translateX(-50%) translateY(10px);
++}
++
++/* State connection preview dots */
++.connection-preview-dot {
++    position: absolute;
++    width: 8px;
++    height: 8px;
++    background-color: var(--primary-color);
++    border-radius: 50%;
++    pointer-events: none;
++    z-index: 12;
++    opacity: 0.8;
++    animation: dotPulse 1s infinite;
++}
++
++@keyframes dotPulse {
++    0%, 100% {
++        transform: scale(1);
++        opacity: 0.8;
++    }
++    50% {
++        transform: scale(1.3);
++        opacity: 1;
++    }
++}
++
++/* Mouse follower indicator */
++.edge-creation-cursor {
++    position: absolute;
++    width: 12px;
++    height: 12px;
++    background-color: var(--secondary-color);
++    border: 2px solid white;
++    border-radius: 50%;
++    pointer-events: none;
++    z-index: 15;
++    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
++    transition: transform 0.1s ease;
++}
++
++.edge-creation-cursor.large {
++    transform: scale(1.5);
++}
++
++/* Smooth state transitions */
++.state,
++.accepting-state {
++    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
++}
++
++/* Enhanced visual feedback for edge tool selection */
++#edge-tool.tool-selected {
++    background-color: rgba(76, 175, 80, 0.3);
++    box-shadow: 0 0 0 2px var(--primary-color);
++    border-radius: 8px;
++}
++
++/* Disable other tool interactions during edge creation */
++.edge-creation-active .tool:not(#edge-tool) {
++    opacity: 0.5;
++    pointer-events: none;
++}
+\ No newline at end of file
+diff --git a/static/css/style.css b/static/css/style.css
+index 463d82d..6632bad 100644
+--- a/static/css/style.css
++++ b/static/css/style.css
+@@ -39,7 +39,13 @@
+ /* 13. File Operations Popup */
+ @import url('file-operations-popup.css');
+ 
+-/* 14. Responsive Styles - Must be last */
++/* 14. Edge Creation Visual Feedback */
++@import url('edge-creation.css');
++
++/* 15. Tool Usage Visual Feedback */
++@import url('tool-styles.css');
++
++/* 15. Responsive Styles - Must be last */
+ @import url('responsive.css');
+ 
+ /* Hide drag‑and‑drop overlay unless actively dragging a file */
+diff --git a/static/css/tool-styles.css b/static/css/tool-styles.css
+index e69de29..579eb80 100644
+--- a/static/css/tool-styles.css
++++ b/static/css/tool-styles.css
+@@ -0,0 +1,271 @@
++/* State creation mode */
++.state-creation-mode {
++    cursor: copy !important;
++}
++
++.state-creation-mode .state,
++.state-creation-mode .accepting-state {
++    cursor: copy !important;
++}
++
++/* Accepting state creation mode */
++.accepting-state-creation-mode {
++    cursor: copy !important;
++}
++
++.accepting-state-creation-mode .state,
++.accepting-state-creation-mode .accepting-state {
++    cursor: copy !important;
++}
++
++/* Edge creation mode (existing) */
++.edge-creation-mode {
++    cursor: crosshair !important;
++}
++
++.edge-creation-mode .state,
++.edge-creation-mode .accepting-state {
++    cursor: crosshair !important;
++}
++
++/* Delete mode */
++.delete-mode {
++    cursor: not-allowed !important;
++}
++
++.delete-mode .state,
++.delete-mode .accepting-state,
++.delete-mode ._jsPlumb_connector,
++.delete-mode .edge-label {
++    cursor: not-allowed !important;
++}
++
++.delete-mode .state:hover,
++.delete-mode .accepting-state:hover {
++    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.6) !important;
++    border-color: var(--error-color) !important;
++    background-color: rgba(244, 67, 54, 0.1) !important;
++    transform: scale(1.05);
++    transition: all 0.2s ease;
++}
++
++.delete-mode ._jsPlumb_connector:hover {
++    stroke: var(--error-color) !important;
++    stroke-width: 3px !important;
++}
++
++.delete-mode .edge-label:hover {
++    background-color: rgba(244, 67, 54, 0.2) !important;
++    border-color: var(--error-color) !important;
++    transform: scale(1.1);
++}
++
++/* Base tool selection style */
++.tool-selected {
++    background-color: rgba(76, 175, 80, 0.3) !important;
++    box-shadow: 0 0 0 2px var(--primary-color) !important;
++    border-radius: 8px !important;
++    transform: scale(1.05);
++    transition: all 0.2s ease;
++}
++
++/* Specific tool selection styles */
++.state-tool-selected {
++    background-color: rgba(33, 150, 243, 0.3) !important;
++    box-shadow: 0 0 0 2px var(--secondary-color) !important;
++}
++
++.accepting-state-tool-selected {
++    background-color: rgba(156, 39, 176, 0.3) !important;
++    box-shadow: 0 0 0 2px #9c27b0 !important;
++}
++
++.edge-tool-selected {
++    background-color: rgba(76, 175, 80, 0.3) !important;
++    box-shadow: 0 0 0 2px var(--primary-color) !important;
++}
++
++.delete-tool-selected {
++    background-color: rgba(244, 67, 54, 0.3) !important;
++    box-shadow: 0 0 0 2px var(--error-color) !important;
++}
++
++/* State creation hover effects */
++.state-creation-mode .state:hover,
++.state-creation-mode .accepting-state:hover,
++.accepting-state-creation-mode .state:hover,
++.accepting-state-creation-mode .accepting-state:hover {
++    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.4) !important;
++    transform: scale(1.05);
++    transition: all 0.2s ease;
++}
++
++/* Edge creation hover effects (existing but ensuring consistency) */
++.edge-creation-mode .state:hover,
++.edge-creation-mode .accepting-state:hover {
++    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.4) !important;
++    transform: scale(1.05);
++    transition: all 0.2s ease;
++}
++
++/* General tool instructions */
++.tool-instructions {
++    position: absolute;
++    top: 10px;
++    left: 50%;
++    transform: translateX(-50%);
++    background-color: rgba(33, 150, 243, 0.9);
++    color: white;
++    padding: 8px 16px;
++    border-radius: 20px;
++    font-size: 14px;
++    font-weight: 500;
++    z-index: 100;
++    pointer-events: none;
++    transition: all 0.3s ease;
++    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
++}
++
++.tool-instructions.hidden {
++    opacity: 0;
++    transform: translateX(-50%) translateY(-10px);
++}
++
++/* Specific instruction colors for different tools */
++.state-creation-mode .tool-instructions {
++    background-color: rgba(33, 150, 243, 0.9);
++}
++
++.accepting-state-creation-mode .tool-instructions {
++    background-color: rgba(156, 39, 176, 0.9);
++}
++
++.edge-creation-mode .tool-instructions {
++    background-color: rgba(76, 175, 80, 0.9);
++}
++
++.delete-mode .tool-instructions {
++    background-color: rgba(244, 67, 54, 0.9);
++}
++
++/* Cancel instructions */
++.tool-cancel-instructions {
++    position: absolute;
++    bottom: 20px;
++    left: 50%;
++    transform: translateX(-50%);
++    background-color: rgba(158, 158, 158, 0.9);
++    color: white;
++    padding: 6px 12px;
++    border-radius: 15px;
++    font-size: 12px;
++    z-index: 100;
++    pointer-events: none;
++    transition: all 0.3s ease;
++}
++
++.tool-cancel-instructions.hidden {
++    opacity: 0;
++    transform: translateX(-50%) translateY(10px);
++}
++
++/* Tool selection pulse animation */
++.tool-selected {
++    animation: toolSelectedPulse 2s infinite;
++}
++
++@keyframes toolSelectedPulse {
++    0% {
++        box-shadow: 0 0 0 2px var(--primary-color);
++    }
++    50% {
++        box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.3);
++    }
++    100% {
++        box-shadow: 0 0 0 2px var(--primary-color);
++    }
++}
++
++/* State-specific pulse colors */
++.state-tool-selected {
++    animation: stateToolPulse 2s infinite;
++}
++
++@keyframes stateToolPulse {
++    0% {
++        box-shadow: 0 0 0 2px var(--secondary-color);
++    }
++    50% {
++        box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.3);
++    }
++    100% {
++        box-shadow: 0 0 0 2px var(--secondary-color);
++    }
++}
++
++.accepting-state-tool-selected {
++    animation: acceptingStateToolPulse 2s infinite;
++}
++
++@keyframes acceptingStateToolPulse {
++    0% {
++        box-shadow: 0 0 0 2px #9c27b0;
++    }
++    50% {
++        box-shadow: 0 0 0 4px rgba(156, 39, 176, 0.3);
++    }
++    100% {
++        box-shadow: 0 0 0 2px #9c27b0;
++    }
++}
++
++.delete-tool-selected {
++    animation: deleteToolPulse 2s infinite;
++}
++
++@keyframes deleteToolPulse {
++    0% {
++        box-shadow: 0 0 0 2px var(--error-color);
++    }
++    50% {
++        box-shadow: 0 0 0 4px rgba(244, 67, 54, 0.3);
++    }
++    100% {
++        box-shadow: 0 0 0 2px var(--error-color);
++    }
++}
++
++/* Ensure all interactive elements have smooth transitions */
++.state,
++.accepting-state,
++._jsPlumb_connector,
++.edge-label {
++    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
++}
++
++/* Tool buttons smooth transitions */
++.tool {
++    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
++}
++
++/* Disable other tool interactions when a specific tool mode is active */
++.state-creation-mode .tool:not(#state-tool):not(#accepting-state-tool),
++.accepting-state-creation-mode .tool:not(#state-tool):not(#accepting-state-tool),
++.edge-creation-mode .tool:not(#edge-tool),
++.delete-mode .tool:not(#delete-tool) {
++    opacity: 0.5;
++    pointer-events: none;
++}
++
++/* Adjust instruction sizes for smaller screens */
++@media (max-width: 768px) {
++    .tool-instructions {
++        font-size: 12px;
++        padding: 6px 12px;
++    }
++
++    .tool-cancel-instructions {
++        font-size: 11px;
++        padding: 4px 8px;
++    }
++}
+\ No newline at end of file
+diff --git a/static/js/fsa/edgeCreationManager.js b/static/js/fsa/edgeCreationManager.js
+index e69de29..2c195b0 100644
+--- a/static/js/fsa/edgeCreationManager.js
++++ b/static/js/fsa/edgeCreationManager.js
+@@ -0,0 +1,660 @@
++/**
++ * Enhanced Edge Creation Visual Feedback Manager
++ * Optimized to prevent interference with state dragging
++ */
++
++class EdgeCreationManager {
++    constructor() {
++        this.isEdgeCreationMode = false;
++        this.sourceState = null;
++        this.previewEdge = null;
++        this.instructionsElement = null;
++        this.cancelInstructionsElement = null;
++        this.cursorFollower = null;
++        this.connectionDot = null;
++        this.canvas = null;
++        this.mouseMoveHandler = null;
++        this.keydownHandler = null;
++
++        // Performance optimization: throttle mouse move events
++        this.mouseThrottleTimeout = null;
++        this.lastMouseUpdate = 0;
++        this.mouseUpdateInterval = 16; // ~60fps
++
++        // Cache for expensive DOM operations
++        this.canvasRect = null;
++        this.statePositions = new Map();
++        this.cacheUpdateTime = 0;
++        this.cacheTimeout = 100; // Cache for 100ms
++
++        // Don't bind methods here - bind them when they're used
++    }
++
++    /**
++     * Initialize the edge creation manager
++     * @param {HTMLElement} canvasElement - The FSA canvas element
++     */
++    initialize(canvasElement) {
++        this.canvas = canvasElement;
++        this.setupEventListeners();
++    }
++
++    /**
++     * Setup global event listeners
++     */
++    setupEventListeners() {
++        // Create and bind the keydown handler when setting up
++        this.keydownHandler = (e) => {
++            if (e.key === 'Escape' && this.isEdgeCreationMode) {
++                this.cancelEdgeCreation();
++            }
++        };
++        document.addEventListener('keydown', this.keydownHandler);
++
++        // Create and bind the canvas click handler when setting up
++        this.canvasClickHandler = (e) => {
++            if (this.isEdgeCreationMode && e.target === this.canvas) {
++                this.cancelEdgeCreation();
++            }
++        };
++        this.canvas.addEventListener('click', this.canvasClickHandler);
++    }
++
++    /**
++     * Activate edge creation mode
++     */
++    activateEdgeCreationMode() {
++        if (this.isEdgeCreationMode) return;
++
++        this.isEdgeCreationMode = true;
++
++        // Add visual class to canvas
++        this.canvas.classList.add('edge-creation-mode');
++
++        // Add class to edge tool for visual feedback
++        const edgeTool = document.getElementById('edge-tool');
++        if (edgeTool) {
++            edgeTool.classList.add('tool-selected');
++        }
++
++        // Show instructions
++        this.showInstructions('Click on a state to start creating an edge');
++
++        console.log('Edge creation mode activated');
++    }
++
++    /**
++     * Deactivate edge creation mode
++     */
++    deactivateEdgeCreationMode() {
++        if (!this.isEdgeCreationMode) return;
++
++        this.isEdgeCreationMode = false;
++
++        // Remove visual classes
++        this.canvas.classList.remove('edge-creation-mode', 'edge-creation-active');
++
++        // Remove edge tool selection
++        const edgeTool = document.getElementById('edge-tool');
++        if (edgeTool) {
++            edgeTool.classList.remove('tool-selected');
++        }
++
++        // Clean up any active edge creation
++        this.cancelEdgeCreation();
++
++        console.log('Edge creation mode deactivated');
++    }
++
++    /**
++     * Start edge creation from a source state
++     * @param {HTMLElement} sourceStateElement - The source state element
++     */
++    startEdgeCreation(sourceStateElement) {
++        if (!this.isEdgeCreationMode) return;
++
++        this.sourceState = sourceStateElement;
++
++        // Add visual feedback to source state
++        sourceStateElement.classList.add('selected-source');
++
++        // Add active class to canvas
++        this.canvas.classList.add('edge-creation-active');
++
++        // Create connection preview dot on source state
++        this.createConnectionDot(sourceStateElement);
++
++        // Create preview edge
++        this.createPreviewEdge();
++
++        // Create cursor follower
++        this.createCursorFollower();
++
++        // Start optimized mouse tracking
++        this.startOptimizedMouseTracking();
++
++        // Update instructions
++        this.showInstructions('Click on a target state to create the edge');
++        this.showCancelInstructions('Press ESC or click empty space to cancel');
++
++        console.log('Edge creation started from state:', sourceStateElement.id);
++    }
++
++    /**
++     * Complete edge creation to a target state
++     * @param {HTMLElement} targetStateElement - The target state element
++     * @param {Function} onComplete - Callback function to handle edge creation
++     */
++    completeEdgeCreation(targetStateElement, onComplete) {
++        if (!this.sourceState || !this.isEdgeCreationMode) return;
++
++        const sourceId = this.sourceState.id;
++        const targetId = targetStateElement.id;
++
++        console.log('Edge creation completed:', sourceId, '->', targetId);
++
++        // Clean up visual elements
++        this.cleanupEdgeCreation();
++
++        // Call the completion callback
++        if (onComplete) {
++            onComplete(sourceId, targetId);
++        }
++
++        // Reset state but keep edge creation mode active for potential next edge
++        this.sourceState = null;
++        this.canvas.classList.remove('edge-creation-active');
++        this.showInstructions('Click on a state to start creating another edge');
++        this.hideCancelInstructions();
++    }
++
++    /**
++     * Cancel current edge creation
++     */
++    cancelEdgeCreation() {
++        console.log('Edge creation cancelled');
++
++        this.cleanupEdgeCreation();
++        this.sourceState = null;
++        this.canvas.classList.remove('edge-creation-active');
++
++        if (this.isEdgeCreationMode) {
++            this.showInstructions('Click on a state to start creating an edge');
++            this.hideCancelInstructions();
++        }
++    }
++
++    /**
++     * Clean up all visual elements from edge creation
++     */
++    cleanupEdgeCreation() {
++        // Remove source state visual feedback
++        if (this.sourceState) {
++            this.sourceState.classList.remove('selected-source');
++        }
++
++        // Remove preview edge
++        this.removePreviewEdge();
++
++        // Remove cursor follower
++        this.removeCursorFollower();
++
++        // Remove connection dot
++        this.removeConnectionDot();
++
++        // Stop mouse tracking
++        this.stopOptimizedMouseTracking();
++
++        // Hide instructions
++        this.hideInstructions();
++        this.hideCancelInstructions();
++
++        // Clear caches
++        this.clearCache();
++    }
++
++    /**
++     * Create preview edge SVG element
++     */
++    createPreviewEdge() {
++        if (this.previewEdge) return;
++
++        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
++        svg.classList.add('preview-edge');
++        svg.style.position = 'absolute';
++        svg.style.top = '0';
++        svg.style.left = '0';
++        svg.style.width = '100%';
++        svg.style.height = '100%';
++        svg.style.pointerEvents = 'none';
++        svg.style.zIndex = '5';
++
++        // Create line element
++        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
++        line.classList.add('preview-edge-line');
++        line.setAttribute('x1', '0');
++        line.setAttribute('y1', '0');
++        line.setAttribute('x2', '0');
++        line.setAttribute('y2', '0');
++
++        // Create arrow marker
++        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
++        const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
++        marker.setAttribute('id', 'preview-arrow');
++        marker.setAttribute('markerWidth', '10');
++        marker.setAttribute('markerHeight', '10');
++        marker.setAttribute('refX', '9');
++        marker.setAttribute('refY', '3');
++        marker.setAttribute('orient', 'auto');
++        marker.setAttribute('markerUnits', 'strokeWidth');
++
++        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
++        path.setAttribute('d', 'M0,0 L0,6 L9,3 z');
++        path.classList.add('preview-edge-arrow');
++
++        marker.appendChild(path);
++        defs.appendChild(marker);
++        svg.appendChild(defs);
++
++        line.setAttribute('marker-end', 'url(#preview-arrow)');
++        svg.appendChild(line);
++
++        this.canvas.appendChild(svg);
++        this.previewEdge = { svg, line };
++    }
++
++    /**
++     * Remove preview edge
++     */
++    removePreviewEdge() {
++        if (this.previewEdge && this.previewEdge.svg) {
++            this.previewEdge.svg.remove();
++            this.previewEdge = null;
++        }
++    }
++
++    /**
++     * Create cursor follower element
++     */
++    createCursorFollower() {
++        if (this.cursorFollower) return;
++
++        const follower = document.createElement('div');
++        follower.classList.add('edge-creation-cursor');
++        this.canvas.appendChild(follower);
++        this.cursorFollower = follower;
++    }
++
++    /**
++     * Remove cursor follower
++     */
++    removeCursorFollower() {
++        if (this.cursorFollower) {
++            this.cursorFollower.remove();
++            this.cursorFollower = null;
++        }
++    }
++
++    /**
++     * Create connection dot on source state
++     * @param {HTMLElement} stateElement - The state element
++     */
++    createConnectionDot(stateElement) {
++        if (this.connectionDot) return;
++
++        const dot = document.createElement('div');
++        dot.classList.add('connection-preview-dot');
++
++        // Use cached position if available
++        this.updateConnectionDotPosition(dot, stateElement);
++
++        this.canvas.appendChild(dot);
++        this.connectionDot = dot;
++    }
++
++    /**
++     * Update connection dot position efficiently
++     * @param {HTMLElement} dot - The dot element
++     * @param {HTMLElement} stateElement - The state element
++     */
++    updateConnectionDotPosition(dot, stateElement) {
++        const rect = this.getCachedElementRect(stateElement);
++        const canvasRect = this.getCachedCanvasRect();
++
++        dot.style.left = (rect.left - canvasRect.left + rect.width - 4) + 'px';
++        dot.style.top = (rect.top - canvasRect.top + rect.height / 2 - 4) + 'px';
++    }
++
++    /**
++     * Remove connection dot
++     */
++    removeConnectionDot() {
++        if (this.connectionDot) {
++            this.connectionDot.remove();
++            this.connectionDot = null;
++        }
++    }
++
++    /**
++     * Start optimized mouse tracking that doesn't interfere with drag operations
++     */
++    startOptimizedMouseTracking() {
++        if (this.mouseMoveHandler) return;
++
++        // Create throttled mouse move handler
++        this.mouseMoveHandler = (e) => {
++            // Skip if actively dragging a state (check for ui-draggable-dragging class)
++            if (document.querySelector('.ui-draggable-dragging')) {
++                return;
++            }
++
++            const now = performance.now();
++            if (now - this.lastMouseUpdate < this.mouseUpdateInterval) {
++                // Clear any pending throttle timeout
++                if (this.mouseThrottleTimeout) {
++                    clearTimeout(this.mouseThrottleTimeout);
++                }
++
++                // Schedule update for next frame
++                this.mouseThrottleTimeout = setTimeout(() => {
++                    this.handleOptimizedMouseMove(e);
++                    this.lastMouseUpdate = performance.now();
++                }, this.mouseUpdateInterval);
++                return;
++            }
++
++            this.handleOptimizedMouseMove(e);
++            this.lastMouseUpdate = now;
++        };
++
++        this.canvas.addEventListener('mousemove', this.mouseMoveHandler, { passive: true });
++        console.log('Optimized mouse tracking started');
++    }
++
++    /**
++     * Stop optimized mouse tracking
++     */
++    stopOptimizedMouseTracking() {
++        if (this.mouseMoveHandler) {
++            this.canvas.removeEventListener('mousemove', this.mouseMoveHandler);
++            this.mouseMoveHandler = null;
++        }
++
++        if (this.mouseThrottleTimeout) {
++            clearTimeout(this.mouseThrottleTimeout);
++            this.mouseThrottleTimeout = null;
++        }
++
++        console.log('Optimized mouse tracking stopped');
++    }
++
++    /**
++     * Handle mouse move events with performance optimizations
++     * @param {MouseEvent} e - Mouse move event
++     */
++    handleOptimizedMouseMove(e) {
++        if (!this.sourceState || !this.previewEdge) return;
++
++        const canvasRect = this.getCachedCanvasRect();
++        const mouseX = e.clientX - canvasRect.left;
++        const mouseY = e.clientY - canvasRect.top;
++
++        // Update cursor follower position
++        if (this.cursorFollower) {
++            this.cursorFollower.style.left = (mouseX - 6) + 'px';
++            this.cursorFollower.style.top = (mouseY - 6) + 'px';
++
++            // Optimized state proximity check
++            const isNearState = this.isMouseNearStateOptimized(mouseX, mouseY);
++            this.cursorFollower.classList.toggle('large', isNearState);
++        }
++
++        // Update preview edge
++        this.updatePreviewEdgeOptimized(mouseX, mouseY);
++    }
++
++    /**
++     * Update preview edge position with optimizations
++     * @param {number} mouseX - Mouse X coordinate
++     * @param {number} mouseY - Mouse Y coordinate
++     */
++    updatePreviewEdgeOptimized(mouseX, mouseY) {
++        if (!this.sourceState || !this.previewEdge) return;
++
++        const sourceRect = this.getCachedElementRect(this.sourceState);
++        const canvasRect = this.getCachedCanvasRect();
++
++        const sourceX = sourceRect.left - canvasRect.left + sourceRect.width / 2;
++        const sourceY = sourceRect.top - canvasRect.top + sourceRect.height / 2;
++
++        // Calculate edge points (from edge of circle, not center)
++        const dx = mouseX - sourceX;
++        const dy = mouseY - sourceY;
++        const distance = Math.sqrt(dx * dx + dy * dy);
++
++        if (distance > 0) {
++            const radius = 30; // Half of state size
++            const startX = sourceX + (dx / distance) * radius;
++            const startY = sourceY + (dy / distance) * radius;
++
++            // End point is slightly before cursor for arrow visibility
++            const endX = mouseX - (dx / distance) * 15;
++            const endY = mouseY - (dy / distance) * 15;
++
++            this.previewEdge.line.setAttribute('x1', startX);
++            this.previewEdge.line.setAttribute('y1', startY);
++            this.previewEdge.line.setAttribute('x2', endX);
++            this.previewEdge.line.setAttribute('y2', endY);
++        }
++    }
++
++    /**
++     * Optimized check if mouse is near a state element using cached positions
++     * @param {number} mouseX - Mouse X coordinate
++     * @param {number} mouseY - Mouse Y coordinate
++     * @returns {boolean} - True if mouse is near a state
++     */
++    isMouseNearStateOptimized(mouseX, mouseY) {
++        const threshold = 40; // Distance threshold
++        const states = this.getCachedStatePositions();
++
++        for (const [stateId, position] of states) {
++            const distance = Math.sqrt(
++                Math.pow(mouseX - position.x, 2) + Math.pow(mouseY - position.y, 2)
++            );
++
++            if (distance < threshold) {
++                return true;
++            }
++        }
++
++        return false;
++    }
++
++    /**
++     * Get cached canvas rect to avoid expensive getBoundingClientRect calls
++     * @returns {DOMRect} - Canvas bounding rect
++     */
++    getCachedCanvasRect() {
++        const now = performance.now();
++        if (!this.canvasRect || (now - this.cacheUpdateTime) > this.cacheTimeout) {
++            this.canvasRect = this.canvas.getBoundingClientRect();
++            this.cacheUpdateTime = now;
++        }
++        return this.canvasRect;
++    }
++
++    /**
++     * Get cached element rect
++     * @param {HTMLElement} element - The element
++     * @returns {DOMRect} - Element bounding rect
++     */
++    getCachedElementRect(element) {
++        // For source state, we can cache more aggressively since it's not moving during edge creation
++        if (element === this.sourceState && this.sourceStateRect) {
++            return this.sourceStateRect;
++        }
++
++        const rect = element.getBoundingClientRect();
++
++        if (element === this.sourceState) {
++            this.sourceStateRect = rect;
++        }
++
++        return rect;
++    }
++
++    /**
++     * Get cached state positions for proximity checking
++     * @returns {Map} - Map of state IDs to positions
++     */
++    getCachedStatePositions() {
++        const now = performance.now();
++        if (this.statePositions.size === 0 || (now - this.cacheUpdateTime) > this.cacheTimeout) {
++            this.updateStatePositionsCache();
++        }
++        return this.statePositions;
++    }
++
++    /**
++     * Update the cache of state positions
++     */
++    updateStatePositionsCache() {
++        this.statePositions.clear();
++        const canvasRect = this.getCachedCanvasRect();
++        const states = this.canvas.querySelectorAll('.state, .accepting-state');
++
++        states.forEach(state => {
++            const rect = state.getBoundingClientRect();
++            this.statePositions.set(state.id, {
++                x: rect.left - canvasRect.left + rect.width / 2,
++                y: rect.top - canvasRect.top + rect.height / 2
++            });
++        });
++    }
++
++    /**
++     * Clear all caches
++     */
++    clearCache() {
++        this.canvasRect = null;
++        this.sourceStateRect = null;
++        this.statePositions.clear();
++        this.cacheUpdateTime = 0;
++    }
++
++    /**
++     * Show instructions at top of canvas
++     * @param {string} text - Instruction text
++     */
++    showInstructions(text) {
++        if (!this.instructionsElement) {
++            this.instructionsElement = document.createElement('div');
++            this.instructionsElement.classList.add('edge-creation-instructions');
++            this.canvas.appendChild(this.instructionsElement);
++        }
++
++        this.instructionsElement.textContent = text;
++        this.instructionsElement.classList.remove('hidden');
++    }
++
++    /**
++     * Hide instructions
++     */
++    hideInstructions() {
++        if (this.instructionsElement) {
++            this.instructionsElement.classList.add('hidden');
++            setTimeout(() => {
++                if (this.instructionsElement && this.instructionsElement.parentNode) {
++                    this.instructionsElement.remove();
++                    this.instructionsElement = null;
++                }
++            }, 300);
++        }
++    }
++
++    /**
++     * Show cancel instructions at bottom of canvas
++     * @param {string} text - Cancel instruction text
++     */
++    showCancelInstructions(text) {
++        if (!this.cancelInstructionsElement) {
++            this.cancelInstructionsElement = document.createElement('div');
++            this.cancelInstructionsElement.classList.add('edge-creation-cancel');
++            this.canvas.appendChild(this.cancelInstructionsElement);
++        }
++
++        this.cancelInstructionsElement.textContent = text;
++        this.cancelInstructionsElement.classList.remove('hidden');
++    }
++
++    /**
++     * Hide cancel instructions
++     */
++    hideCancelInstructions() {
++        if (this.cancelInstructionsElement) {
++            this.cancelInstructionsElement.classList.add('hidden');
++            setTimeout(() => {
++                if (this.cancelInstructionsElement && this.cancelInstructionsElement.parentNode) {
++                    this.cancelInstructionsElement.remove();
++                    this.cancelInstructionsElement = null;
++                }
++            }, 300);
++        }
++    }
++
++    /**
++     * Check if edge creation mode is active
++     * @returns {boolean}
++     */
++    isActive() {
++        return this.isEdgeCreationMode;
++    }
++
++    /**
++     * Check if currently creating an edge (source selected)
++     * @returns {boolean}
++     */
++    isCreatingEdge() {
++        return this.isEdgeCreationMode && this.sourceState !== null;
++    }
++
++    /**
++     * Get current source state
++     * @returns {HTMLElement|null}
++     */
++    getSourceState() {
++        return this.sourceState;
++    }
++
++    /**
++     * Clean up all resources
++     */
++    destroy() {
++        this.deactivateEdgeCreationMode();
++
++        // Remove event listeners
++        if (this.keydownHandler) {
++            document.removeEventListener('keydown', this.keydownHandler);
++        }
++        if (this.canvasClickHandler && this.canvas) {
++            this.canvas.removeEventListener('click', this.canvasClickHandler);
++        }
++
++        // Clean up any remaining elements
++        this.cleanupEdgeCreation();
++    }
++}
++
++// Create singleton instance
++const edgeCreationManager = new EdgeCreationManager();
++
++// Make globally available
++window.edgeCreationManager = edgeCreationManager;
++
++// Export for module systems
++if (typeof module !== 'undefined' && module.exports) {
++    module.exports = { EdgeCreationManager, edgeCreationManager };
++}
++
++export { EdgeCreationManager, edgeCreationManager };
+\ No newline at end of file
+diff --git a/static/js/fsa/main.js b/static/js/fsa/main.js
+index 4bf0883..f724d0b 100644
+--- a/static/js/fsa/main.js
++++ b/static/js/fsa/main.js
+@@ -48,9 +48,12 @@ import {
+ import { nfaResultsManager } from './nfaResultsManager.js';
+ import { fsaSerializationManager } from './fsaSerializationManager.js';
+ import { fsaFileUIManager } from './fsaFileUI.js';
++import { edgeCreationManager } from './edgeCreationManager.js';
++import { toolManager } from './toolManager.js';
+ 
+-// Make NFA results manager globally available
++// Make managers globally available
+ window.nfaResultsManager = nfaResultsManager;
++window.toolManager = toolManager;
+ 
+ // Global variables
+ let jsPlumbInstance;
+@@ -81,6 +84,12 @@ export function initialiseSimulator() {
+     // Initialise the control lock manager with the JSPlumb instance
+     controlLockManager.initialize(jsPlumbInstance);
+ 
++    // Initialize enhanced edge creation manager
++    initializeEdgeCreationManager();
++
++    // Initialize enhanced tool manager
++    initializeToolManager();
++
+     // Initialize FSA serialization system with menu bar
+     initializeFSASerialization();
+ 
+@@ -98,6 +107,28 @@ export function initialiseSimulator() {
+     document.getElementById('curved-edges-btn').classList.remove('active');
+ }
+ 
++/**
++ * Initialize enhanced edge creation manager
++ */
++function initializeEdgeCreationManager() {
++    const canvas = document.getElementById('fsa-canvas');
++    if (canvas && edgeCreationManager) {
++        edgeCreationManager.initialize(canvas);
++        console.log('Enhanced edge creation manager initialized');
++    }
++}
++
++/**
++ * Initialize enhanced tool manager
++ */
++function initializeToolManager() {
++    const canvas = document.getElementById('fsa-canvas');
++    if (canvas && toolManager) {
++        toolManager.initialize(canvas, edgeCreationManager);
++        console.log('Enhanced tool manager initialized');
++    }
++}
++
+ /**
+  * Initialize FSA serialization system with menu bar
+  */
+@@ -355,17 +386,6 @@ function integrateWithControlLockManager() {
+     };
+ }
+ 
+-/**
+- * Setup auto-save triggers when FSA changes
+- */
+-// function setupAutoSaveTriggers() {
+-//     // Auto-save will be triggered by the existing event system
+-//     // The file UI manager's auto-save interval will handle saving periodically
+-// 
+-//     // We could add specific triggers here if needed, but the interval-based
+-//     // auto-save is sufficient for most use cases
+-// }
+-
+ /**
+  * Setup unsaved changes warning
+  */
+@@ -425,7 +445,7 @@ function clearNFAStoredResults() {
+  * Setup all event listeners
+  */
+ export function setupEventListeners() {
+-    // Tool selection
++    // Enhanced tool selection with unified tool manager
+     document.getElementById('state-tool').addEventListener('click', function() {
+         if (controlLockManager.isControlsLocked()) return;
+         closeInlineStateEditor();
+@@ -440,13 +460,18 @@ export function setupEventListeners() {
+         selectTool('accepting-state');
+     });
+ 
++    // Enhanced edge tool event listener with unified tool manager
+     document.getElementById('edge-tool').addEventListener('click', function() {
+         if (controlLockManager.isControlsLocked()) return;
++
+         closeInlineStateEditor();
+         closeInlineEdgeEditor();
++
++        // Use the unified tool manager to handle edge tool selection
+         selectTool('edge');
+     });
+ 
++    // Enhanced delete tool event listener with unified tool manager
+     document.getElementById('delete-tool').addEventListener('click', function() {
+         if (controlLockManager.isControlsLocked()) return;
+         closeInlineStateEditor();
+@@ -504,12 +529,20 @@ export function setupEventListeners() {
+     // Set initial active state for straight edges (default)
+     document.getElementById('straight-edges-btn').classList.add('active');
+ 
+-    // Canvas click event
++    // Enhanced canvas click event
+     document.getElementById('fsa-canvas').addEventListener('click', function(e) {
+         if (controlLockManager.isControlsLocked()) return;
+ 
+         if (e.target.id === 'fsa-canvas') {
+             const currentTool = getCurrentTool();
++
++            // Handle edge creation cancellation
++            if (currentTool === 'edge' && edgeCreationManager && edgeCreationManager.isCreatingEdge()) {
++                edgeCreationManager.cancelEdgeCreation();
++                return; // Don't create states when cancelling edge creation
++            }
++
++            // Normal state creation behavior
+             if (currentTool === 'state') {
+                 handleStateCreation(e.offsetX, e.offsetY, false);
+             } else if (currentTool === 'accepting-state') {
+@@ -690,7 +723,7 @@ function handleStateCreation(x, y, isAccepting) {
+ }
+ 
+ /**
+- * Handle click events on states
++ * Enhanced state click handler with edge creation visual feedback
+  * @param {HTMLElement} stateElement - The clicked state
+  * @param {Event} e - The click event
+  */
+@@ -699,44 +732,61 @@ function handleStateClick(stateElement, e) {
+ 
+     const currentTool = getCurrentTool();
+ 
+-    if (currentTool === 'delete'){
++    if (currentTool === 'delete') {
+         if (stateElement.classList.contains('state') || stateElement.classList.contains('accepting-state')) {
+             deleteState(jsPlumbInstance, stateElement, getEdgeSymbolMap());
+-            // Clear stored NFA results since FSA structure changed
+             clearNFAStoredResults();
+-            // Update properties display after deleting a state
+             updateFSAPropertiesDisplay(jsPlumbInstance);
+         }
+     }
+     else if (currentTool === 'edge') {
+-        if (!getSourceState()) {
+-            setSourceState(stateElement);
+-        } else {
+-            const existingConnection = getConnectionBetween(jsPlumbInstance, getSourceId(), stateElement.id);
+-            if (existingConnection) {
+-                openInlineEdgeEditor(existingConnection, jsPlumbInstance);
++        // Use enhanced edge creation manager
++        if (edgeCreationManager && edgeCreationManager.isActive()) {
++            if (!edgeCreationManager.isCreatingEdge()) {
++                // Start edge creation from this state
++                edgeCreationManager.startEdgeCreation(stateElement);
+             } else {
+-                openEdgeSymbolModal(getSourceId(), stateElement.id, (source, target, symbolsString, hasEpsilon, isCurved) => {
+-                    createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
+-                        onEdgeClick: handleEdgeClick
++                // Complete edge creation to this state
++                const sourceState = edgeCreationManager.getSourceState();
++                if (sourceState && sourceState !== stateElement) {
++                    // Complete the edge creation to different state
++                    edgeCreationManager.completeEdgeCreation(stateElement, (sourceId, targetId) => {
++                        // Check if connection already exists
++                        const existingConnection = getConnectionBetween(jsPlumbInstance, sourceId, targetId);
++                        if (existingConnection) {
++                            openInlineEdgeEditor(existingConnection, jsPlumbInstance);
++                        } else {
++                            // Open edge symbol modal for new connection
++                            openEdgeSymbolModal(sourceId, targetId, (source, target, symbolsString, hasEpsilon, isCurved) => {
++                                createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
++                                    onEdgeClick: handleEdgeClick
++                                });
++                                clearNFAStoredResults();
++                                updateFSAPropertiesDisplay(jsPlumbInstance);
++
++                                if (isCurved !== undefined) {
++                                    deselectEdgeStyleButtons();
++                                }
++                            });
++                        }
+                     });
+-                    // Clear stored NFA results since FSA structure changed
+-                    clearNFAStoredResults();
+-                    // Update properties display after creating a connection
+-                    updateFSAPropertiesDisplay(jsPlumbInstance);
+-
+-                    // If the user chose a curve style different from the default,
+-                    // deselect the edge style buttons
+-                    if (isCurved !== undefined) {
+-                        deselectEdgeStyleButtons();
+-                    }
+-                });
++                } else if (sourceState === stateElement) {
++                    // Clicking on the same state - create self-loop
++                    edgeCreationManager.completeEdgeCreation(stateElement, (sourceId, targetId) => {
++                        openEdgeSymbolModal(sourceId, targetId, (source, target, symbolsString, hasEpsilon, isCurved) => {
++                            createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, true, { // Self-loops are always curved
++                                onEdgeClick: handleEdgeClick
++                            });
++                            clearNFAStoredResults();
++                            updateFSAPropertiesDisplay(jsPlumbInstance);
++                        });
++                    });
++                }
+             }
+-            resetSourceState();
+         }
+     } else {
+         resetToolSelection();
+-        // If not using edge tool, open edit modal when clicking a state
++        // If not using any specific tool, open edit modal when clicking a state
+         openInlineStateEditor(stateElement, jsPlumbInstance);
+     }
+ }
+@@ -757,9 +807,6 @@ function handleStateDrag(stateElement, event, ui) {
+     if (getCurrentEditingEdge()) {
+         closeInlineEdgeEditor();
+     }
+-
+-    // Update properties display after dragging a state
+-    updateFSAPropertiesDisplay(jsPlumbInstance);
+ }
+ 
+ /**
+@@ -972,6 +1019,24 @@ function setupDraggableTools() {
+     });
+ }
+ 
++/**
++ * Cleanup function for enhanced managers
++ */
++function cleanupEnhancedManagers() {
++    if (edgeCreationManager) {
++        edgeCreationManager.destroy();
++        console.log('Edge creation manager cleaned up');
++    }
++
++    if (toolManager) {
++        toolManager.destroy();
++        console.log('Tool manager cleaned up');
++    }
++}
++
++// Add cleanup event listener
++window.addEventListener('beforeunload', cleanupEnhancedManagers);
++
+ // Make functions available globally for the serialization system
+ window.handleStateClick = handleStateClick;
+ window.handleStateDrag = handleStateDrag;
+\ No newline at end of file
+diff --git a/static/js/fsa/stateManager.js b/static/js/fsa/stateManager.js
+index 7cdd094..7610b89 100644
+--- a/static/js/fsa/stateManager.js
++++ b/static/js/fsa/stateManager.js
+@@ -53,26 +53,60 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks) {
+         createStartingStateIndicator(jsPlumbInstance, stateId);
+     }
+ 
+-    // Make state draggable
++    // PERFORMANCE OPTIMIZATION: Use jQuery UI draggable with optimized settings
++    // This provides better performance than JSPlumb's draggable for frequent updates
+     $(state).draggable({
+         containment: "parent",
+-        stack: ".state, .accepting-state",
+-        zIndex: 100,
++        // Remove stack to reduce overhead
++        // stack: ".state, .accepting-state",
++        // Optimize drag performance
++        scroll: false,
++        refreshPositions: false,
++        // Use optimized drag handler
+         drag: function(event, ui) {
++            // Throttle connection updates - only update every few pixels
++            const currentPos = ui.position;
++            const lastPos = $(this).data('lastDragPos') || { left: 0, top: 0 };
++            const deltaX = Math.abs(currentPos.left - lastPos.left);
++            const deltaY = Math.abs(currentPos.top - lastPos.top);
++
++            // Only update connections if we've moved significantly (reduces repaints)
++            if (deltaX > 3 || deltaY > 3) {
++                // Update starting state arrow if this is the starting state
++                if (startingStateId === this.id) {
++                    const startSource = document.getElementById('start-source');
++                    if (startSource) {
++                        startSource.style.left = (currentPos.left - 50) + 'px';
++                        startSource.style.top = (currentPos.top + 30 - 5) + 'px';
++                    }
++                }
++
++                // Use efficient repaint method
++                jsPlumbInstance.revalidate(this.id);
++
++                // Store last position for throttling
++                $(this).data('lastDragPos', { left: currentPos.left, top: currentPos.top });
++            }
++
++            if (callbacks.onStateDrag) {
++                callbacks.onStateDrag(this, event, ui);
++            }
++        },
++        stop: function(event, ui) {
++            // Final repaint after drag completes
+             jsPlumbInstance.repaintEverything();
+ 
+-            // Update starting state arrow if this is the starting state
++            // Update starting state indicator position if needed
+             if (startingStateId === this.id) {
+                 const startSource = document.getElementById('start-source');
+                 if (startSource) {
+-                    startSource.style.left = (ui.position.left - 50) + 'px';
+-                    startSource.style.top = (ui.position.top + 30 - 5) + 'px';
++                    // Force JSPlumb to revalidate the starting connection
++                    jsPlumbInstance.revalidate('start-source');
+                 }
+             }
+ 
+-            if (callbacks.onStateDrag) {
+-                callbacks.onStateDrag(this, event, ui);
+-            }
++            // Clear drag position cache
++            $(this).removeData('lastDragPos');
+         }
+     });
+ 
+@@ -130,6 +164,11 @@ export function deleteState(jsPlumbInstance, stateElement, edgeSymbolMap) {
+         epsilonTransitionMap.delete(conn.id);
+     });
+ 
++    // Remove jQuery UI draggable
++    if ($(stateElement).hasClass('ui-draggable')) {
++        $(stateElement).draggable('destroy');
++    }
++
+     // Remove the state and its endpoints - this is critical for cleaning up JSPlumb references
+     jsPlumbInstance.removeAllEndpoints(stateId);
+ 
+@@ -145,6 +184,7 @@ export function deleteState(jsPlumbInstance, stateElement, edgeSymbolMap) {
+     console.log(`State ${stateId} completely removed from JSPlumb and DOM`);
+ }
+ 
++// Rest of the functions remain the same...
+ /**
+  * Creates or updates the starting state indicator with robust connection handling
+  * @param {Object} jsPlumbInstance - The JSPlumb instance
+diff --git a/static/js/fsa/toolManager.js b/static/js/fsa/toolManager.js
+index e69de29..ae3edcd 100644
+--- a/static/js/fsa/toolManager.js
++++ b/static/js/fsa/toolManager.js
+@@ -0,0 +1,330 @@
++/**
++ * Enhanced Tool Manager
++ * Provides unified visual feedback and instructions for all FSA tools
++ */
++
++class ToolManager {
++    constructor() {
++        this.currentTool = null;
++        this.canvas = null;
++        this.instructionsElement = null;
++        this.cancelInstructionsElement = null;
++        this.keydownHandler = null;
++        this.canvasClickHandler = null;
++        this.edgeCreationManager = null;
++        this.instructionsTimeout = null;
++        this.cancelInstructionsTimeout = null;
++
++        // Tool configurations
++        this.toolConfigs = {
++            'state': {
++                name: 'State Tool',
++                instruction: 'Click on canvas to create a state',
++                cancelInstruction: 'Press ESC or select another tool to cancel',
++                cursorClass: 'state-creation-mode',
++                toolClass: 'state-tool-selected'
++            },
++            'accepting-state': {
++                name: 'Accepting State Tool',
++                instruction: 'Click on canvas to create an accepting state',
++                cancelInstruction: 'Press ESC or select another tool to cancel',
++                cursorClass: 'accepting-state-creation-mode',
++                toolClass: 'accepting-state-tool-selected'
++            },
++            'edge': {
++                name: 'Edge Tool',
++                instruction: 'Click on a state to start creating an edge',
++                cancelInstruction: 'Press ESC or click empty space to cancel',
++                cursorClass: 'edge-creation-mode',
++                toolClass: 'edge-tool-selected'
++            },
++            'delete': {
++                name: 'Delete Tool',
++                instruction: 'Click on a state or edge to delete it',
++                cancelInstruction: 'Press ESC or select another tool to cancel',
++                cursorClass: 'delete-mode',
++                toolClass: 'delete-tool-selected'
++            }
++        };
++    }
++
++    /**
++     * Initialize the tool manager
++     * @param {HTMLElement} canvasElement - The FSA canvas element
++     * @param {Object} edgeCreationManager - Reference to the edge creation manager
++     */
++    initialize(canvasElement, edgeCreationManager = null) {
++        this.canvas = canvasElement;
++        this.edgeCreationManager = edgeCreationManager;
++        this.setupGlobalEventListeners();
++    }
++
++    /**
++     * Setup global event listeners
++     */
++    setupGlobalEventListeners() {
++        // Create and bind the keydown handler
++        this.keydownHandler = (e) => {
++            if (e.key === 'Escape' && this.currentTool) {
++                this.deselectTool();
++            }
++        };
++        document.addEventListener('keydown', this.keydownHandler);
++
++        // Create and bind the canvas click handler for cancellation
++        this.canvasClickHandler = (e) => {
++            // Only handle empty canvas clicks for certain tools
++            if (this.currentTool && e.target === this.canvas) {
++                const config = this.toolConfigs[this.currentTool];
++                if (config && (this.currentTool === 'delete')) {
++                    // For delete tool, clicking empty space deselects
++                    this.deselectTool();
++                }
++            }
++        };
++        this.canvas.addEventListener('click', this.canvasClickHandler);
++    }
++
++    /**
++     * Select a tool with visual feedback
++     * @param {string} toolName - The name of the tool to select
++     */
++    selectTool(toolName) {
++        // If the same tool is already selected, deselect it
++        if (this.currentTool === toolName) {
++            this.deselectTool();
++            return;
++        }
++
++        // Deselect current tool first
++        this.deselectTool();
++
++        // Validate tool
++        const config = this.toolConfigs[toolName];
++        if (!config) {
++            console.error(`Unknown tool: ${toolName}`);
++            return;
++        }
++
++        this.currentTool = toolName;
++
++        // Special handling for edge tool
++        if (toolName === 'edge' && this.edgeCreationManager) {
++            this.edgeCreationManager.activateEdgeCreationMode();
++            // EdgeCreationManager handles its own instructions, so we return early
++            return;
++        }
++
++        // Add visual feedback to canvas
++        this.canvas.classList.add(config.cursorClass);
++
++        // Add visual feedback to tool button
++        const toolElement = document.getElementById(`${toolName}-tool`);
++        if (toolElement) {
++            toolElement.classList.add('tool-selected');
++            toolElement.classList.add(config.toolClass);
++        }
++
++        // Show instructions
++        this.showInstructions(config.instruction);
++        this.showCancelInstructions(config.cancelInstruction);
++
++        console.log(`${config.name} activated`);
++    }
++
++    /**
++     * Deselect the current tool
++     */
++    deselectTool() {
++        if (!this.currentTool) return;
++
++        const config = this.toolConfigs[this.currentTool];
++
++        // Special handling for edge tool
++        if (this.currentTool === 'edge' && this.edgeCreationManager) {
++            this.edgeCreationManager.deactivateEdgeCreationMode();
++            this.currentTool = null;
++            return;
++        }
++
++        // Remove visual classes from canvas
++        if (config) {
++            this.canvas.classList.remove(config.cursorClass);
++        }
++
++        // Remove visual classes from tool button
++        const toolElement = document.getElementById(`${this.currentTool}-tool`);
++        if (toolElement) {
++            toolElement.classList.remove('tool-selected');
++            if (config) {
++                toolElement.classList.remove(config.toolClass);
++            }
++        }
++
++        // Hide instructions
++        this.hideInstructions();
++        this.hideCancelInstructions();
++
++        console.log(`${config ? config.name : 'Tool'} deactivated`);
++        this.currentTool = null;
++    }
++
++    /**
++     * Get the currently selected tool
++     * @returns {string|null} - The current tool name
++     */
++    getCurrentTool() {
++        return this.currentTool;
++    }
++
++    /**
++     * Update instructions for the current tool
++     * @param {string} instruction - New instruction text
++     */
++    updateInstructions(instruction) {
++        if (this.currentTool && this.instructionsElement) {
++            this.showInstructions(instruction);
++        }
++    }
++
++    /**
++     * Check if a specific tool is selected
++     * @param {string} toolName - Tool name to check
++     * @returns {boolean} - True if the tool is selected
++     */
++    isToolSelected(toolName) {
++        return this.currentTool === toolName;
++    }
++
++    /**
++     * Show instructions at top of canvas
++     * @param {string} text - Instruction text
++     */
++    showInstructions(text) {
++        // Clear any pending hide timeout
++        if (this.instructionsTimeout) {
++            clearTimeout(this.instructionsTimeout);
++            this.instructionsTimeout = null;
++        }
++
++        if (!this.instructionsElement) {
++            this.instructionsElement = document.createElement('div');
++            this.instructionsElement.classList.add('tool-instructions');
++            this.canvas.appendChild(this.instructionsElement);
++        }
++
++        // Remove hidden class if it exists
++        this.instructionsElement.classList.remove('hidden');
++        this.instructionsElement.textContent = text;
++    }
++
++    /**
++     * Hide instructions
++     */
++    hideInstructions() {
++        if (this.instructionsElement) {
++            this.instructionsElement.classList.add('hidden');
++
++            // Clear any existing timeout
++            if (this.instructionsTimeout) {
++                clearTimeout(this.instructionsTimeout);
++            }
++
++            this.instructionsTimeout = setTimeout(() => {
++                if (this.instructionsElement && this.instructionsElement.parentNode) {
++                    this.instructionsElement.remove();
++                    this.instructionsElement = null;
++                }
++                this.instructionsTimeout = null;
++            }, 300);
++        }
++    }
++
++    /**
++     * Show cancel instructions at bottom of canvas
++     * @param {string} text - Cancel instruction text
++     */
++    showCancelInstructions(text) {
++        // Clear any pending hide timeout
++        if (this.cancelInstructionsTimeout) {
++            clearTimeout(this.cancelInstructionsTimeout);
++            this.cancelInstructionsTimeout = null;
++        }
++
++        if (!this.cancelInstructionsElement) {
++            this.cancelInstructionsElement = document.createElement('div');
++            this.cancelInstructionsElement.classList.add('tool-cancel-instructions');
++            this.canvas.appendChild(this.cancelInstructionsElement);
++        }
++
++        // Remove hidden class if it exists
++        this.cancelInstructionsElement.classList.remove('hidden');
++        this.cancelInstructionsElement.textContent = text;
++    }
++
++    /**
++     * Hide cancel instructions
++     */
++    hideCancelInstructions() {
++        if (this.cancelInstructionsElement) {
++            this.cancelInstructionsElement.classList.add('hidden');
++
++            // Clear any existing timeout
++            if (this.cancelInstructionsTimeout) {
++                clearTimeout(this.cancelInstructionsTimeout);
++            }
++
++            this.cancelInstructionsTimeout = setTimeout(() => {
++                if (this.cancelInstructionsElement && this.cancelInstructionsElement.parentNode) {
++                    this.cancelInstructionsElement.remove();
++                    this.cancelInstructionsElement = null;
++                }
++                this.cancelInstructionsTimeout = null;
++            }, 300);
++        }
++    }
++
++    /**
++     * Clean up all resources
++     */
++    destroy() {
++        this.deselectTool();
++
++        // Clear any pending timeouts
++        if (this.instructionsTimeout) {
++            clearTimeout(this.instructionsTimeout);
++            this.instructionsTimeout = null;
++        }
++        if (this.cancelInstructionsTimeout) {
++            clearTimeout(this.cancelInstructionsTimeout);
++            this.cancelInstructionsTimeout = null;
++        }
++
++        // Remove event listeners
++        if (this.keydownHandler) {
++            document.removeEventListener('keydown', this.keydownHandler);
++        }
++        if (this.canvasClickHandler && this.canvas) {
++            this.canvas.removeEventListener('click', this.canvasClickHandler);
++        }
++
++        // Clean up any remaining elements immediately
++        if (this.instructionsElement && this.instructionsElement.parentNode) {
++            this.instructionsElement.remove();
++            this.instructionsElement = null;
++        }
++        if (this.cancelInstructionsElement && this.cancelInstructionsElement.parentNode) {
++            this.cancelInstructionsElement.remove();
++            this.cancelInstructionsElement = null;
++        }
++    }
++}
++
++// Create singleton instance
++const toolManager = new ToolManager();
++
++// Make globally available
++window.toolManager = toolManager;
++
++// Export for module systems
++export { ToolManager, toolManager };
+\ No newline at end of file
+diff --git a/static/js/fsa/uiManager.js b/static/js/fsa/uiManager.js
+index 720b000..98e3790 100644
+--- a/static/js/fsa/uiManager.js
++++ b/static/js/fsa/uiManager.js
+@@ -16,9 +16,10 @@ import {updateAlphabetDisplay} from "./alphabetManager.js";
+ import { validateStateName } from './stateManager.js';
+ import { notificationManager } from './notificationManager.js';
+ import { nfaResultsManager } from './nfaResultsManager.js';
++import { edgeCreationManager } from './edgeCreationManager.js';
++import { toolManager } from './toolManager.js';
+ 
+ // UI state
+-let currentTool = null;
+ let currentEditingState = null;
+ let currentEditingEdge = null;
+ let pendingSourceId = null;
+@@ -37,20 +38,65 @@ function clearNFAStoredResults() {
+ }
+ 
+ /**
+- * Select a tool
++ * Enhanced select tool function with unified tool management
+  * @param {string} toolName - The name of the tool to select
+  */
+ export function selectTool(toolName) {
++    // Use the unified tool manager
++    if (toolManager) {
++        toolManager.selectTool(toolName);
++    } else {
++        // Fallback to legacy behavior if toolManager not available
++        legacySelectTool(toolName);
++    }
++}
++
++/**
++ * Legacy select tool function for backward compatibility
++ * @param {string} toolName - The name of the tool to select
++ */
++function legacySelectTool(toolName) {
++    // If switching away from edge tool, deactivate edge creation mode
++    if (getCurrentTool() === 'edge' && toolName !== 'edge' && edgeCreationManager) {
++        edgeCreationManager.deactivateEdgeCreationMode();
++    }
++
+     resetToolSelection();
+-    currentTool = toolName;
+-    document.getElementById(toolName + '-tool').style.border = '2px solid red';
++
++    // Set border for selected tool
++    const toolElement = document.getElementById(toolName + '-tool');
++    if (toolElement) {
++        toolElement.style.border = '2px solid red';
++    }
++
++    // If selecting edge tool, activate edge creation mode
++    if (toolName === 'edge' && edgeCreationManager) {
++        edgeCreationManager.activateEdgeCreationMode();
++    }
+ }
+ 
+ /**
+- * Reset tool selection
++ * Enhanced reset tool selection with unified tool management
+  */
+ export function resetToolSelection() {
+-    currentTool = null;
++    // Use the unified tool manager
++    if (toolManager) {
++        toolManager.deselectTool();
++    } else {
++        // Fallback to legacy behavior
++        legacyResetToolSelection();
++    }
++}
++
++/**
++ * Legacy reset tool selection for backward compatibility
++ */
++function legacyResetToolSelection() {
++    // Deactivate edge creation mode if active
++    if (edgeCreationManager && edgeCreationManager.isActive()) {
++        edgeCreationManager.deactivateEdgeCreationMode();
++    }
++
+     document.querySelectorAll('.tool').forEach(tool => {
+         tool.style.border = 'none';
+     });
+@@ -61,11 +107,24 @@ export function resetToolSelection() {
+  * @returns {string} - The current tool
+  */
+ export function getCurrentTool() {
+-    return currentTool;
++    // Use the unified tool manager if available
++    if (toolManager) {
++        return toolManager.getCurrentTool();
++    }
++
++    // Fallback: check which tool has the red border (legacy method)
++    const tools = document.querySelectorAll('.tool');
++    for (const tool of tools) {
++        if (tool.style.border.includes('red')) {
++            return tool.id.replace('-tool', '');
++        }
++    }
++
++    return null;
+ }
+ 
+ /**
+- * Set source state for edge creation
++ * Set source state for edge creation (legacy support)
+  * @param {HTMLElement} state - The state to set as source
+  */
+ export function setSourceState(state) {
+@@ -79,7 +138,7 @@ export function setSourceState(state) {
+ }
+ 
+ /**
+- * Get the current source state
++ * Get the current source state (legacy support)
+  * @returns {HTMLElement} - The current source state
+  */
+ export function getSourceState() {
+@@ -87,7 +146,7 @@ export function getSourceState() {
+ }
+ 
+ /**
+- * Get the source state ID
++ * Get the source state ID (legacy support)
+  * @returns {string} - The source state ID
+  */
+ export function getSourceId() {
+@@ -95,7 +154,7 @@ export function getSourceId() {
+ }
+ 
+ /**
+- * Reset source state
++ * Reset source state (legacy support)
+  */
+ export function resetSourceState() {
+     if (sourceState) {
+diff --git a/templates/simulator/base.html b/templates/simulator/base.html
+index 16e8000..aa84383 100644
+--- a/templates/simulator/base.html
++++ b/templates/simulator/base.html
+@@ -7,7 +7,7 @@
+     {% load static %}
+     
+     <!-- External CSS libraries -->
+-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
++    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+     {% block extra_css %}{% endblock %}
+ </head>
+@@ -16,7 +16,7 @@
+     
+     <!-- External JS libraries -->
+     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+-    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
++    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsPlumb/2.15.6/js/jsplumb.min.js"></script>
+     
+     {% block extra_js %}{% endblock %}
