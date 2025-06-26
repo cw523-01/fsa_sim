@@ -19,6 +19,7 @@ from .fsa_properties import (
     validate_fsa_structure,
     is_nondeterministic
 )
+from .fsa_transformations import minimise_dfa
 
 
 def index(request):
@@ -722,6 +723,95 @@ def check_connected(request):
 
         return JsonResponse({
             'connected': connected
+        })
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+@csrf_exempt
+@require_POST
+def min_dfa(request):
+    """
+    Django view to handle DFA minimisation requests.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format (must be deterministic)
+
+    Returns a JSON response with the minimised DFA.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing FSA definition'}, status=400)
+
+        # Validate FSA structure
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
+
+        # Check if FSA is deterministic (required for minimisation)
+        if not is_deterministic(fsa):
+            return JsonResponse({
+                'error': 'DFA minimisation requires a deterministic FSA. '
+                        'The provided FSA is non-deterministic.'
+            }, status=400)
+
+        # Store original FSA statistics for comparison
+        original_stats = {
+            'states_count': len(fsa['states']),
+            'alphabet_size': len(fsa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in fsa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(fsa['acceptingStates'])
+        }
+
+        # Minimise the DFA
+        minimised_fsa = minimise_dfa(fsa)
+
+        # Calculate minimised FSA statistics
+        minimised_stats = {
+            'states_count': len(minimised_fsa['states']),
+            'alphabet_size': len(minimised_fsa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in minimised_fsa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(minimised_fsa['acceptingStates'])
+        }
+
+        # Calculate reduction statistics
+        reduction_stats = {
+            'states_reduced': original_stats['states_count'] - minimised_stats['states_count'],
+            'states_reduction_percentage': round(
+                ((original_stats['states_count'] - minimised_stats['states_count']) /
+                 original_stats['states_count']) * 100, 2
+            ) if original_stats['states_count'] > 0 else 0,
+            'transitions_reduced': original_stats['transitions_count'] - minimised_stats['transitions_count'],
+            'transitions_reduction_percentage': round(
+                ((original_stats['transitions_count'] - minimised_stats['transitions_count']) /
+                 original_stats['transitions_count']) * 100, 2
+            ) if original_stats['transitions_count'] > 0 else 0,
+            'is_already_minimal': original_stats['states_count'] == minimised_stats['states_count']
+        }
+
+        return JsonResponse({
+            'success': True,
+            'original_fsa': fsa,
+            'minimised_fsa': minimised_fsa,
+            'statistics': {
+                'original': original_stats,
+                'minimised': minimised_stats,
+                'reduction': reduction_stats
+            },
+            'message': 'DFA minimised successfully' if not reduction_stats['is_already_minimal']
+                      else 'DFA was already minimal'
         })
 
     except ValueError as e:

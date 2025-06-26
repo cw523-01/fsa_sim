@@ -28,4 +28,7 @@ urlpatterns = [
     path('api/check-deterministic/', views.check_deterministic, name='check_deterministic'),
     path('api/check-complete/', views.check_complete, name='check_complete'),
     path('api/check-connected/', views.check_connected, name='check_connected'),
+
+    # FSA Transformation endpoints
+    path('api/minimise-dfa/', views.min_dfa, name='minimise_dfa'),
 ]
