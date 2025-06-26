@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: fsa-simulator
+    env: python
+    region: oregon  
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn fsa_sim.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
