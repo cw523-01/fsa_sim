@@ -1,0 +1,407 @@
+/* Performance optimization: Disable animations globally during drag */
+.no-animation *,
+.no-animation *::before,
+.no-animation *::after {
+    animation: none !important;
+    transition: none !important;
+}
+
+/* Cursor changes for edge tool */
+.edge-creation-mode {
+    cursor: crosshair !important;
+}
+
+.edge-creation-mode .state,
+.edge-creation-mode .accepting-state {
+    cursor: crosshair !important;
+}
+
+.edge-creation-mode .state:hover,
+.edge-creation-mode .accepting-state:hover {
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.4);
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+    will-change: transform, box-shadow;
+}
+
+/* Enhanced source state selection with GPU acceleration */
+.selected-source {
+    box-shadow: 0 0 0 3px var(--primary-color) !important;
+    background-color: rgba(76, 175, 80, 0.1) !important;
+    border-color: var(--primary-color) !important;
+    transform: scale(1.1);
+    z-index: 15 !important;
+    will-change: transform, box-shadow;
+}
+
+.selected-source:before {
+    border-color: var(--primary-color) !important;
+}
+
+/* Pulsing animation for selected source - only when not dragging */
+body:not(.no-animation) .selected-source {
+    animation: sourcePulse 1.5s infinite;
+}
+
+@keyframes sourcePulse {
+    0% {
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 0 6px rgba(76, 175, 80, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.6);
+    }
+}
+
+/* Target state hover when source is selected */
+.edge-creation-active .state:hover,
+.edge-creation-active .accepting-state:hover {
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.6) !important;
+    border-color: var(--secondary-color) !important;
+    background-color: rgba(33, 150, 243, 0.1) !important;
+    transform: scale(1.05);
+    will-change: transform, box-shadow;
+}
+
+/* Prevent hover effects on the source state when it's selected */
+.edge-creation-active .selected-source:hover {
+    box-shadow: 0 0 0 3px var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    background-color: rgba(76, 175, 80, 0.1) !important;
+    transform: scale(1.1);
+}
+
+/* Preview edge styling with GPU acceleration */
+.preview-edge {
+    position: absolute;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0.6;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+}
+
+.preview-edge-line {
+    stroke: var(--text-gray);
+    stroke-width: 2;
+    stroke-dasharray: 5, 5;
+    fill: none;
+    pointer-events: none;
+}
+
+.preview-edge-arrow {
+    fill: var(--text-gray);
+    stroke: var(--text-gray);
+    stroke-width: 1;
+    pointer-events: none;
+}
+
+/* Edge creation instructions with GPU acceleration */
+.edge-creation-instructions {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(76, 175, 80, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 100;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    will-change: transform, opacity;
+}
+
+.edge-creation-instructions.hidden {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+}
+
+/* Enhanced tool selection feedback */
+.tool.edge-tool-active {
+    background-color: rgba(76, 175, 80, 0.2);
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+}
+
+/* Cancel instruction with GPU acceleration */
+.edge-creation-cancel {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(244, 67, 54, 0.9);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    z-index: 100;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    will-change: transform, opacity;
+}
+
+.edge-creation-cancel.hidden {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+}
+
+/* Mouse follower indicator with GPU acceleration */
+.edge-creation-cursor {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background-color: var(--secondary-color);
+    border: 2px solid white;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 15;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.1s ease;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+}
+
+.edge-creation-cursor.large {
+    transform: scale(1.5) translate3d(0, 0, 0);
+}
+
+/* Smooth state transitions with GPU acceleration hints */
+.state,
+.accepting-state {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+}
+
+/* Disable transitions during drag operations */
+.no-animation .state,
+.no-animation .accepting-state {
+    transition: none !important;
+}
+
+/* Enhanced visual feedback for edge tool selection */
+#edge-tool.tool-selected {
+    background-color: rgba(76, 175, 80, 0.3);
+    box-shadow: 0 0 0 2px var(--primary-color);
+    border-radius: 8px;
+}
+
+/* Disable other tool interactions during edge creation */
+.edge-creation-active .tool:not(#edge-tool) {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Performance optimization for dragging states */
+.ui-draggable-dragging {
+    will-change: transform !important;
+    pointer-events: none;
+}
+
+/* Ensure smooth dragging for all draggable elements */
+.ui-draggable {
+    will-change: auto;
+}
+
+.ui-draggable.ui-draggable-dragging {
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+}
+
+/* Start source element performance optimization */
+.start-source {
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+}
+
+/* Global animation disabling during drag operations */
+.no-animation *,
+.no-animation *::before,
+.no-animation *::after {
+    animation: none !important;
+    transition: none !important;
+    will-change: auto !important;
+}
+
+/* Force GPU acceleration for draggable elements */
+.ui-draggable {
+    will-change: auto;
+    transform: translate3d(0, 0, 0);
+}
+
+.ui-draggable-dragging {
+    will-change: transform !important;
+    transform: translate3d(0, 0, 0) !important;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+/* Optimize state elements for better performance */
+.state,
+.accepting-state {
+    will-change: auto;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Performance optimizations for states during drag */
+.ui-draggable-dragging.state,
+.ui-draggable-dragging.accepting-state {
+    will-change: transform;
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Optimize start-source element - use left/top positioning, not transforms */
+.start-source {
+    position: absolute !important;
+    will-change: auto;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+}
+
+/* Prevent expensive reflows during drag */
+.no-animation .state:hover,
+.no-animation .accepting-state:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    transition: none !important;
+}
+
+/* Optimize JSPlumb connections for better rendering */
+.jtk-connector {
+    will-change: auto;
+    transform: translate3d(0, 0, 0);
+}
+
+.jtk-endpoint {
+    will-change: auto;
+    transform: translate3d(0, 0, 0);
+}
+
+/* Optimize overlays and labels */
+.jtk-overlay {
+    will-change: auto;
+    transform: translate3d(0, 0, 0);
+}
+
+/* Prevent transforms during drag to avoid compositing issues */
+.no-animation .selected-source {
+    transform: none !important;
+    animation: none !important;
+}
+
+/* Optimize edge creation elements */
+.edge-creation-cursor,
+.connection-preview-dot,
+.preview-edge {
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+}
+
+/* Disable cursor effects during drag */
+.no-animation .edge-creation-cursor {
+    animation: none !important;
+    transition: none !important;
+}
+
+.no-animation .connection-preview-dot {
+    animation: none !important;
+    transition: none !important;
+}
+
+/* Optimize canvas container */
+#fsa-canvas {
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Prevent layout thrashing during drag */
+.ui-draggable-dragging * {
+    pointer-events: none !important;
+}
+
+/* Ensure smooth rendering for all interactive elements */
+.tool,
+.btn,
+button {
+    will-change: auto;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+}
+
+/* Optimize state transitions but disable during drag */
+body:not(.no-animation) .state,
+body:not(.no-animation) .accepting-state {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth hover effects when not dragging */
+body:not(.no-animation) .state:hover,
+body:not(.no-animation) .accepting-state:hover {
+    will-change: transform, box-shadow;
+}
+
+/* Prevent browser-specific rendering issues */
+* {
+    -webkit-transform-style: preserve-3d;
+    -webkit-backface-visibility: hidden;
+    -webkit-perspective: 1000px;
+}
+
+/* Force hardware acceleration for critical elements */
+.state,
+.accepting-state,
+.start-source,
+.ui-draggable,
+.jtk-connector,
+.jtk-endpoint {
+    -webkit-transform: translate3d(0, 0, 0);
+    -moz-transform: translate3d(0, 0, 0);
+    -ms-transform: translate3d(0, 0, 0);
+    -o-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+}
+
+/* Optimize rendering during intensive operations */
+.performance-mode * {
+    will-change: auto !important;
+    animation: none !important;
+    transition: none !important;
+}
+
+/* Specific fixes for known problematic elements */
+.edge-label,
+.edge-label-style {
+    will-change: auto;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+}
+
+/* Prevent subpixel rendering issues */
+.state,
+.accepting-state,
+.start-source {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Optimize for touch devices */
+@media (hover: none) and (pointer: coarse) {
+    .state,
+    .accepting-state {
+        transform: translate3d(0, 0, 0) !important;
+        will-change: transform;
+    }
+}

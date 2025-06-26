@@ -16,9 +16,10 @@ import {updateAlphabetDisplay} from "./alphabetManager.js";
 import { validateStateName } from './stateManager.js';
 import { notificationManager } from './notificationManager.js';
 import { nfaResultsManager } from './nfaResultsManager.js';
+import { edgeCreationManager } from './edgeCreationManager.js';
+import { toolManager } from './toolManager.js';
 
 // UI state
-let currentTool = null;
 let currentEditingState = null;
 let currentEditingEdge = null;
 let pendingSourceId = null;
@@ -37,20 +38,65 @@ function clearNFAStoredResults() {
 }
 
 /**
- * Select a tool
+ * Enhanced select tool function with unified tool management
  * @param {string} toolName - The name of the tool to select
  */
 export function selectTool(toolName) {
-    resetToolSelection();
-    currentTool = toolName;
-    document.getElementById(toolName + '-tool').style.border = '2px solid red';
+    // Use the unified tool manager
+    if (toolManager) {
+        toolManager.selectTool(toolName);
+    } else {
+        // Fallback to legacy behavior if toolManager not available
+        legacySelectTool(toolName);
+    }
 }
 
 /**
- * Reset tool selection
+ * Legacy select tool function for backward compatibility
+ * @param {string} toolName - The name of the tool to select
+ */
+function legacySelectTool(toolName) {
+    // If switching away from edge tool, deactivate edge creation mode
+    if (getCurrentTool() === 'edge' && toolName !== 'edge' && edgeCreationManager) {
+        edgeCreationManager.deactivateEdgeCreationMode();
+    }
+
+    resetToolSelection();
+
+    // Set border for selected tool
+    const toolElement = document.getElementById(toolName + '-tool');
+    if (toolElement) {
+        toolElement.style.border = '2px solid red';
+    }
+
+    // If selecting edge tool, activate edge creation mode
+    if (toolName === 'edge' && edgeCreationManager) {
+        edgeCreationManager.activateEdgeCreationMode();
+    }
+}
+
+/**
+ * Enhanced reset tool selection with unified tool management
  */
 export function resetToolSelection() {
-    currentTool = null;
+    // Use the unified tool manager
+    if (toolManager) {
+        toolManager.deselectTool();
+    } else {
+        // Fallback to legacy behavior
+        legacyResetToolSelection();
+    }
+}
+
+/**
+ * Legacy reset tool selection for backward compatibility
+ */
+function legacyResetToolSelection() {
+    // Deactivate edge creation mode if active
+    if (edgeCreationManager && edgeCreationManager.isActive()) {
+        edgeCreationManager.deactivateEdgeCreationMode();
+    }
+
     document.querySelectorAll('.tool').forEach(tool => {
         tool.style.border = 'none';
     });
@@ -61,11 +107,24 @@ export function resetToolSelection() {
  * @returns {string} - The current tool
  */
 export function getCurrentTool() {
-    return currentTool;
+    // Use the unified tool manager if available
+    if (toolManager) {
+        return toolManager.getCurrentTool();
+    }
+
+    // Fallback: check which tool has the red border (legacy method)
+    const tools = document.querySelectorAll('.tool');
+    for (const tool of tools) {
+        if (tool.style.border.includes('red')) {
+            return tool.id.replace('-tool', '');
+        }
+    }
+
+    return null;
 }
 
 /**
- * Set source state for edge creation
+ * Set source state for edge creation (legacy support)
  * @param {HTMLElement} state - The state to set as source
  */
 export function setSourceState(state) {
@@ -79,7 +138,7 @@ export function setSourceState(state) {
 }
 
 /**
- * Get the current source state
+ * Get the current source state (legacy support)
  * @returns {HTMLElement} - The current source state
  */
 export function getSourceState() {
@@ -87,7 +146,7 @@ export function getSourceState() {
 }
 
 /**
- * Get the source state ID
+ * Get the source state ID (legacy support)
  * @returns {string} - The source state ID
  */
 export function getSourceId() {
@@ -95,7 +154,7 @@ export function getSourceId() {
 }
 
 /**
- * Reset source state
+ * Reset source state (legacy support)
  */
 export function resetSourceState() {
     if (sourceState) {

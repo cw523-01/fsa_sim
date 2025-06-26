@@ -48,9 +48,13 @@ import {
 import { nfaResultsManager } from './nfaResultsManager.js';
 import { fsaSerializationManager } from './fsaSerializationManager.js';
 import { fsaFileUIManager } from './fsaFileUI.js';
+import { edgeCreationManager } from './edgeCreationManager.js';
+import { toolManager } from './toolManager.js';
 
-// Make NFA results manager globally available
+// Make managers globally available
 window.nfaResultsManager = nfaResultsManager;
+window.toolManager = toolManager;
+window.isStateDragging = false; // Make dragging state available globally
 
 // Global variables
 let jsPlumbInstance;
@@ -81,8 +85,17 @@ export function initialiseSimulator() {
     // Initialise the control lock manager with the JSPlumb instance
     controlLockManager.initialize(jsPlumbInstance);
 
+    // Initialize enhanced edge creation manager
+    initializeEdgeCreationManager();
+
+    // Initialize enhanced tool manager
+    initializeToolManager();
+
     // Initialize FSA serialization system with menu bar
     initializeFSASerialization();
+
+    // Setup performance monitoring
+    setupPerformanceMonitoring();
 
     // Initial alphabet display
     updateAlphabetDisplay(getEdgeSymbolMap(), getEpsilonTransitionMap());
@@ -96,6 +109,98 @@ export function initialiseSimulator() {
     // Make sure the correct button is highlighted (Straight is default)
     document.getElementById('straight-edges-btn').classList.add('active');
     document.getElementById('curved-edges-btn').classList.remove('active');
+}
+
+/**
+ * Setup performance monitoring for drag operations
+ */
+function setupPerformanceMonitoring() {
+    let dragPerformanceWarningShown = false;
+
+    // Monitor for potential performance issues
+    const observer = new MutationObserver((mutations) => {
+        let hasDragMutations = false;
+
+        mutations.forEach((mutation) => {
+            if (mutation.target && mutation.target.classList) {
+                if (mutation.target.classList.contains('ui-draggable-dragging') ||
+                    mutation.target.classList.contains('state') ||
+                    mutation.target.classList.contains('accepting-state')) {
+                    hasDragMutations = true;
+                }
+            }
+        });
+
+        // If we detect excessive mutations during drag, log a warning
+        if (hasDragMutations && !dragPerformanceWarningShown) {
+            console.log('Performance: Drag mutations detected - monitoring for issues');
+            dragPerformanceWarningShown = true;
+        }
+    });
+
+    observer.observe(document.getElementById('fsa-canvas'), {
+        attributes: true,
+        childList: true,
+        subtree: true,
+        attributeFilter: ['style', 'class']
+    });
+
+    // Monitor frame rate during drag operations
+    let lastFrameTime = performance.now();
+    let frameCount = 0;
+    let dragStartTime = null;
+
+    function monitorFrameRate() {
+        const now = performance.now();
+        frameCount++;
+
+        // Check if we're currently dragging
+        const isDragging = document.querySelector('.ui-draggable-dragging') !== null;
+
+        if (isDragging && !dragStartTime) {
+            dragStartTime = now;
+            frameCount = 0;
+        } else if (!isDragging && dragStartTime) {
+            const dragDuration = now - dragStartTime;
+            const fps = frameCount / (dragDuration / 1000);
+
+            if (fps < 30) {
+                console.warn(`Performance: Low FPS during drag: ${fps.toFixed(1)} fps`);
+            } else {
+                console.log(`Performance: Drag completed at ${fps.toFixed(1)} fps`);
+            }
+
+            dragStartTime = null;
+        }
+
+        lastFrameTime = now;
+        requestAnimationFrame(monitorFrameRate);
+    }
+
+    // Start monitoring
+    requestAnimationFrame(monitorFrameRate);
+}
+
+/**
+ * Initialize enhanced edge creation manager
+ */
+function initializeEdgeCreationManager() {
+    const canvas = document.getElementById('fsa-canvas');
+    if (canvas && edgeCreationManager) {
+        edgeCreationManager.initialize(canvas);
+        console.log('Enhanced edge creation manager initialized');
+    }
+}
+
+/**
+ * Initialize enhanced tool manager
+ */
+function initializeToolManager() {
+    const canvas = document.getElementById('fsa-canvas');
+    if (canvas && toolManager) {
+        toolManager.initialize(canvas, edgeCreationManager, jsPlumbInstance);
+        console.log('Enhanced tool manager initialized');
+    }
 }
 
 /**
@@ -356,17 +461,6 @@ function integrateWithControlLockManager() {
 }
 
 /**
- * Setup auto-save triggers when FSA changes
- */
-// function setupAutoSaveTriggers() {
-//     // Auto-save will be triggered by the existing event system
-//     // The file UI manager's auto-save interval will handle saving periodically
-// 
-//     // We could add specific triggers here if needed, but the interval-based
-//     // auto-save is sufficient for most use cases
-// }
-
-/**
  * Setup unsaved changes warning
  */
 function setupUnsavedChangesWarning() {
@@ -425,7 +519,7 @@ function clearNFAStoredResults() {
  * Setup all event listeners
  */
 export function setupEventListeners() {
-    // Tool selection
+    // Enhanced tool selection with unified tool manager
     document.getElementById('state-tool').addEventListener('click', function() {
         if (controlLockManager.isControlsLocked()) return;
         closeInlineStateEditor();
@@ -440,13 +534,18 @@ export function setupEventListeners() {
         selectTool('accepting-state');
     });
 
+    // Enhanced edge tool event listener with unified tool manager
     document.getElementById('edge-tool').addEventListener('click', function() {
         if (controlLockManager.isControlsLocked()) return;
+
         closeInlineStateEditor();
         closeInlineEdgeEditor();
+
+        // Use the unified tool manager to handle edge tool selection
         selectTool('edge');
     });
 
+    // Enhanced delete tool event listener with unified tool manager
     document.getElementById('delete-tool').addEventListener('click', function() {
         if (controlLockManager.isControlsLocked()) return;
         closeInlineStateEditor();
@@ -454,7 +553,7 @@ export function setupEventListeners() {
         selectTool('delete');
     });
 
-    // Edge style buttons
+    // Edge style buttons with performance optimizations
     document.getElementById('straight-edges-btn').addEventListener('click', function() {
         if (controlLockManager.isControlsLocked()) return;
 
@@ -464,6 +563,10 @@ export function setupEventListeners() {
         closeEdgeSymbolModal();
 
         console.log("Setting all edges to straight");
+
+        // Add performance mode during edge style changes
+        document.body.classList.add('performance-mode');
+
         // Apply straight edges to all connections with our improved function
         setAllEdgeStyles(jsPlumbInstance, false);
 
@@ -476,6 +579,11 @@ export function setupEventListeners() {
         // Update button styling
         this.classList.add('active');
         document.getElementById('curved-edges-btn').classList.remove('active');
+
+        // Remove performance mode after a brief delay
+        setTimeout(() => {
+            document.body.classList.remove('performance-mode');
+        }, 100);
     });
 
     document.getElementById('curved-edges-btn').addEventListener('click', function() {
@@ -487,6 +595,10 @@ export function setupEventListeners() {
         closeEdgeSymbolModal();
 
         console.log("Setting all edges to curved");
+
+        // Add performance mode during edge style changes
+        document.body.classList.add('performance-mode');
+
         // Apply curved edges to all connections with our improved function
         setAllEdgeStyles(jsPlumbInstance, true);
 
@@ -499,17 +611,36 @@ export function setupEventListeners() {
         // Update button styling
         this.classList.add('active');
         document.getElementById('straight-edges-btn').classList.remove('active');
+
+        // Remove performance mode after a brief delay
+        setTimeout(() => {
+            document.body.classList.remove('performance-mode');
+        }, 100);
     });
 
     // Set initial active state for straight edges (default)
     document.getElementById('straight-edges-btn').classList.add('active');
 
-    // Canvas click event
+    // Enhanced canvas click event
     document.getElementById('fsa-canvas').addEventListener('click', function(e) {
         if (controlLockManager.isControlsLocked()) return;
 
+        // Don't create states if we just finished dragging a state
+        if (window.isStateDragging) {
+            window.isStateDragging = false; // Reset the flag
+            return;
+        }
+
         if (e.target.id === 'fsa-canvas') {
             const currentTool = getCurrentTool();
+
+            // Handle edge creation cancellation
+            if (currentTool === 'edge' && edgeCreationManager && edgeCreationManager.isCreatingEdge()) {
+                edgeCreationManager.cancelEdgeCreation();
+                return; // Don't create states when cancelling edge creation
+            }
+
+            // Normal state creation behavior
             if (currentTool === 'state') {
                 handleStateCreation(e.offsetX, e.offsetY, false);
             } else if (currentTool === 'accepting-state') {
@@ -560,10 +691,14 @@ export function setupEventListeners() {
     // Make tools draggable
     setupDraggableTools();
 
-    // Window resize event
+    // Window resize event with performance optimization
     window.addEventListener('resize', function() {
         if (!controlLockManager.isControlsLocked()) {
-            jsPlumbInstance.repaintEverything();
+            // Throttle resize events to avoid excessive repaints
+            clearTimeout(this.resizeTimeout);
+            this.resizeTimeout = setTimeout(() => {
+                jsPlumbInstance.repaintEverything();
+            }, 150);
         }
     });
 }
@@ -690,7 +825,7 @@ function handleStateCreation(x, y, isAccepting) {
 }
 
 /**
- * Handle click events on states
+ * Enhanced state click handler with edge creation visual feedback
  * @param {HTMLElement} stateElement - The clicked state
  * @param {Event} e - The click event
  */
@@ -699,50 +834,67 @@ function handleStateClick(stateElement, e) {
 
     const currentTool = getCurrentTool();
 
-    if (currentTool === 'delete'){
+    if (currentTool === 'delete') {
         if (stateElement.classList.contains('state') || stateElement.classList.contains('accepting-state')) {
             deleteState(jsPlumbInstance, stateElement, getEdgeSymbolMap());
-            // Clear stored NFA results since FSA structure changed
             clearNFAStoredResults();
-            // Update properties display after deleting a state
             updateFSAPropertiesDisplay(jsPlumbInstance);
         }
     }
     else if (currentTool === 'edge') {
-        if (!getSourceState()) {
-            setSourceState(stateElement);
-        } else {
-            const existingConnection = getConnectionBetween(jsPlumbInstance, getSourceId(), stateElement.id);
-            if (existingConnection) {
-                openInlineEdgeEditor(existingConnection, jsPlumbInstance);
+        // Use enhanced edge creation manager
+        if (edgeCreationManager && edgeCreationManager.isActive()) {
+            if (!edgeCreationManager.isCreatingEdge()) {
+                // Start edge creation from this state
+                edgeCreationManager.startEdgeCreation(stateElement);
             } else {
-                openEdgeSymbolModal(getSourceId(), stateElement.id, (source, target, symbolsString, hasEpsilon, isCurved) => {
-                    createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
-                        onEdgeClick: handleEdgeClick
-                    });
-                    // Clear stored NFA results since FSA structure changed
-                    clearNFAStoredResults();
-                    // Update properties display after creating a connection
-                    updateFSAPropertiesDisplay(jsPlumbInstance);
+                // Complete edge creation to this state
+                const sourceState = edgeCreationManager.getSourceState();
+                if (sourceState && sourceState !== stateElement) {
+                    // Complete the edge creation to different state
+                    edgeCreationManager.completeEdgeCreation(stateElement, (sourceId, targetId) => {
+                        // Check if connection already exists
+                        const existingConnection = getConnectionBetween(jsPlumbInstance, sourceId, targetId);
+                        if (existingConnection) {
+                            openInlineEdgeEditor(existingConnection, jsPlumbInstance);
+                        } else {
+                            // Open edge symbol modal for new connection
+                            openEdgeSymbolModal(sourceId, targetId, (source, target, symbolsString, hasEpsilon, isCurved) => {
+                                createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
+                                    onEdgeClick: handleEdgeClick
+                                });
+                                clearNFAStoredResults();
+                                updateFSAPropertiesDisplay(jsPlumbInstance);
 
-                    // If the user chose a curve style different from the default,
-                    // deselect the edge style buttons
-                    if (isCurved !== undefined) {
-                        deselectEdgeStyleButtons();
-                    }
-                });
+                                if (isCurved !== undefined) {
+                                    deselectEdgeStyleButtons();
+                                }
+                            });
+                        }
+                    });
+                } else if (sourceState === stateElement) {
+                    // Clicking on the same state - create self-loop
+                    edgeCreationManager.completeEdgeCreation(stateElement, (sourceId, targetId) => {
+                        openEdgeSymbolModal(sourceId, targetId, (source, target, symbolsString, hasEpsilon, isCurved) => {
+                            createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, true, { // Self-loops are always curved
+                                onEdgeClick: handleEdgeClick
+                            });
+                            clearNFAStoredResults();
+                            updateFSAPropertiesDisplay(jsPlumbInstance);
+                        });
+                    });
+                }
             }
-            resetSourceState();
         }
     } else {
         resetToolSelection();
-        // If not using edge tool, open edit modal when clicking a state
+        // If not using any specific tool, open edit modal when clicking a state
         openInlineStateEditor(stateElement, jsPlumbInstance);
     }
 }
 
 /**
- * Handle drag events on states
+ * Handle drag events on states with performance optimization
  * @param {HTMLElement} stateElement - The dragged state
  * @param {Event} event - The drag event
  * @param {Object} ui - The drag UI object
@@ -758,8 +910,10 @@ function handleStateDrag(stateElement, event, ui) {
         closeInlineEdgeEditor();
     }
 
-    // Update properties display after dragging a state
-    updateFSAPropertiesDisplay(jsPlumbInstance);
+    // Mark FSA as changed for unsaved changes tracking
+    if (window.markFSAAsChanged) {
+        window.markFSAAsChanged();
+    }
 }
 
 /**
@@ -787,6 +941,9 @@ function setupFunctionalButtons() {
     // Play button - locks controls and starts visual simulation
     document.getElementById('play-btn').addEventListener('click', async function() {
         if (controlLockManager.isControlsLocked()) return;
+
+        // Deselect any selected tool
+        resetToolSelection();
 
         console.log('Play button pressed - starting visual simulation');
 
@@ -865,6 +1022,9 @@ function setupFunctionalButtons() {
     document.getElementById('fast-forward-btn').addEventListener('click', async function() {
         if (controlLockManager.isControlsLocked()) return;
 
+        // Deselect any selected tool
+        resetToolSelection();
+
         console.log('Fast forward button pressed - running simulation without animation');
 
         // Get input string
@@ -925,26 +1085,37 @@ function setupFunctionalButtons() {
 }
 
 /**
- * Setup draggable tools
+ * Setup draggable tools with performance optimizations
  */
 function setupDraggableTools() {
     $('.tool').draggable({
         cursor: 'move',
-        cursorAt: { left: 25, top: 25 },
+        cursorAt: { left: 30, top: 30 }, // Center the helper on cursor
         helper: function() {
             // Create a custom helper with high z-index
             const clone = $(this).clone();
-            clone.css('z-index', '1000'); // High z-index to stay on top
+            clone.css({
+                'z-index': '9999', // Very high z-index to stay on top of canvas
+                'position': 'fixed', // Use fixed positioning to avoid canvas interference
+                'pointer-events': 'none' // Prevent interference with drop detection
+            });
             return clone;
         },
+        appendTo: 'body', // Append to body to avoid canvas clipping
         start: function(event, ui) {
             // Check if controls are locked before allowing drag
             if (controlLockManager.isControlsLocked()) {
                 return false; // Cancel the drag
             }
+
+            // Add performance optimization class during tool drag
+            document.body.classList.add('no-animation');
         },
         stop: function(event, ui) {
             if (controlLockManager.isControlsLocked()) return;
+
+            // Remove performance optimization class
+            document.body.classList.remove('no-animation');
 
             const tool = $(this).attr('id');
             const canvas = document.getElementById('fsa-canvas');
@@ -971,6 +1142,24 @@ function setupDraggableTools() {
         }
     });
 }
+
+/**
+ * Cleanup function for enhanced managers
+ */
+function cleanupEnhancedManagers() {
+    if (edgeCreationManager) {
+        edgeCreationManager.destroy();
+        console.log('Edge creation manager cleaned up');
+    }
+
+    if (toolManager) {
+        toolManager.destroy();
+        console.log('Tool manager cleaned up');
+    }
+}
+
+// Add cleanup event listener
+window.addEventListener('beforeunload', cleanupEnhancedManagers);
 
 // Make functions available globally for the serialization system
 window.handleStateClick = handleStateClick;

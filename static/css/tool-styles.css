@@ -1,0 +1,306 @@
+/* State creation mode */
+.state-creation-mode {
+    cursor: copy !important;
+}
+
+.state-creation-mode .state,
+.state-creation-mode .accepting-state {
+    cursor: copy !important;
+}
+
+/* Accepting state creation mode */
+.accepting-state-creation-mode {
+    cursor: copy !important;
+}
+
+.accepting-state-creation-mode .state,
+.accepting-state-creation-mode .accepting-state {
+    cursor: copy !important;
+}
+
+/* Edge creation mode (existing) */
+.edge-creation-mode {
+    cursor: crosshair !important;
+}
+
+.edge-creation-mode .state,
+.edge-creation-mode .accepting-state {
+    cursor: crosshair !important;
+}
+
+/* Delete mode */
+.delete-mode {
+    cursor: crosshair !important;
+}
+
+.delete-mode .state,
+.delete-mode .accepting-state,
+.delete-mode ._jsPlumb_connector,
+.delete-mode .edge-label {
+    cursor: crosshair  !important;
+}
+
+.delete-mode .state:hover,
+.delete-mode .accepting-state:hover {
+    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.6) !important;
+    border-color: var(--error-color) !important;
+    background-color: rgba(244, 67, 54, 0.1) !important;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+
+/* Enhanced delete mode edge hover effects with higher specificity */
+.delete-mode ._jsPlumb_connector:hover,
+.delete-mode ._jsPlumb_connector:hover path,
+.delete-mode svg._jsPlumb_connector:hover,
+.delete-mode svg._jsPlumb_connector:hover path {
+    stroke: #f44336 !important;
+    stroke-width: 4px !important;
+    filter: drop-shadow(0 0 3px rgba(244, 67, 54, 0.6)) !important;
+}
+
+/* Delete mode edge arrow hover effects */
+.delete-mode ._jsPlumb_overlay:hover,
+.delete-mode ._jsPlumb_overlay_Arrow:hover,
+.delete-mode ._jsPlumb_overlay:hover path,
+.delete-mode ._jsPlumb_overlay_Arrow:hover path {
+    fill: #f44336 !important;
+    stroke: #f44336 !important;
+    filter: drop-shadow(0 0 2px rgba(244, 67, 54, 0.6)) !important;
+}
+
+/* Delete mode edge label hover effects */
+.delete-mode .edge-label:hover,
+.delete-mode ._jsPlumb_overlay:hover .edge-label,
+.delete-mode .edge-label-style:hover {
+    background-color: rgba(244, 67, 54, 0.2) !important;
+    border-color: var(--error-color) !important;
+    color: #f44336 !important;
+    transform: scale(1.1);
+    box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3) !important;
+}
+
+/* Additional selectors for different JSPlumb connector types */
+.delete-mode [data-jtk-component="connector"]:hover,
+.delete-mode [data-jtk-component="connector"]:hover path {
+    stroke: #f44336 !important;
+    stroke-width: 4px !important;
+}
+
+/* Ensure delete mode overrides any JSPlumb hover styles */
+.delete-mode .jtk-connector:hover,
+.delete-mode .jtk-connector:hover path,
+.delete-mode .jtk-connector:hover line {
+    stroke: #f44336 !important;
+    stroke-width: 4px !important;
+}
+
+/* Base tool selection style */
+.tool-selected {
+    background-color: rgba(76, 175, 80, 0.3) !important;
+    box-shadow: 0 0 0 2px var(--primary-color) !important;
+    border-radius: 8px !important;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+
+/* Specific tool selection styles */
+.state-tool-selected {
+    background-color: rgba(33, 150, 243, 0.3) !important;
+    box-shadow: 0 0 0 2px var(--secondary-color) !important;
+}
+
+.accepting-state-tool-selected {
+    background-color: rgba(156, 39, 176, 0.3) !important;
+    box-shadow: 0 0 0 2px #9c27b0 !important;
+}
+
+.edge-tool-selected {
+    background-color: rgba(76, 175, 80, 0.3) !important;
+    box-shadow: 0 0 0 2px var(--primary-color) !important;
+}
+
+.delete-tool-selected {
+    background-color: rgba(244, 67, 54, 0.3) !important;
+    box-shadow: 0 0 0 2px var(--error-color) !important;
+}
+
+/* State creation hover effects */
+.state-creation-mode .state:hover,
+.state-creation-mode .accepting-state:hover,
+.accepting-state-creation-mode .state:hover,
+.accepting-state-creation-mode .accepting-state:hover {
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.4) !important;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+
+/* Edge creation hover effects (existing but ensuring consistency) */
+.edge-creation-mode .state:hover,
+.edge-creation-mode .accepting-state:hover {
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.4) !important;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+
+/* General tool instructions */
+.tool-instructions {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(33, 150, 243, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 100;
+    pointer-events: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.tool-instructions.hidden {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+}
+
+/* Specific instruction colors for different tools */
+.state-creation-mode .tool-instructions {
+    background-color: rgba(33, 150, 243, 0.9);
+}
+
+.accepting-state-creation-mode .tool-instructions {
+    background-color: rgba(156, 39, 176, 0.9);
+}
+
+.edge-creation-mode .tool-instructions {
+    background-color: rgba(76, 175, 80, 0.9);
+}
+
+.delete-mode .tool-instructions {
+    background-color: rgba(244, 67, 54, 0.9);
+}
+
+/* Cancel instructions */
+.tool-cancel-instructions {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(158, 158, 158, 0.9);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    z-index: 100;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.tool-cancel-instructions.hidden {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+}
+
+/* Tool selection pulse animation */
+.tool-selected {
+    animation: toolSelectedPulse 2s infinite;
+}
+
+@keyframes toolSelectedPulse {
+    0% {
+        box-shadow: 0 0 0 2px var(--primary-color);
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 0 2px var(--primary-color);
+    }
+}
+
+/* State-specific pulse colors */
+.state-tool-selected {
+    animation: stateToolPulse 2s infinite;
+}
+
+@keyframes stateToolPulse {
+    0% {
+        box-shadow: 0 0 0 2px var(--secondary-color);
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 0 2px var(--secondary-color);
+    }
+}
+
+.accepting-state-tool-selected {
+    animation: acceptingStateToolPulse 2s infinite;
+}
+
+@keyframes acceptingStateToolPulse {
+    0% {
+        box-shadow: 0 0 0 2px #9c27b0;
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(156, 39, 176, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 0 2px #9c27b0;
+    }
+}
+
+.delete-tool-selected {
+    animation: deleteToolPulse 2s infinite;
+}
+
+@keyframes deleteToolPulse {
+    0% {
+        box-shadow: 0 0 0 2px var(--error-color);
+    }
+    50% {
+        box-shadow: 0 0 0 4px rgba(244, 67, 54, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 0 2px var(--error-color);
+    }
+}
+
+/* Ensure all interactive elements have smooth transitions */
+.state,
+.accepting-state,
+._jsPlumb_connector,
+.edge-label {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tool buttons smooth transitions */
+.tool {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Disable other tool interactions when a specific tool mode is active */
+.state-creation-mode .tool:not(#state-tool):not(#accepting-state-tool),
+.accepting-state-creation-mode .tool:not(#state-tool):not(#accepting-state-tool),
+.edge-creation-mode .tool:not(#edge-tool),
+.delete-mode .tool:not(#delete-tool) {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Adjust instruction sizes for smaller screens */
+@media (max-width: 768px) {
+    .tool-instructions {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+
+    .tool-cancel-instructions {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+}
