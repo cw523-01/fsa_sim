@@ -311,3 +311,31 @@
         display: none !important;
     }
 }
+
+/* High DPI display handling */
+@media (-webkit-min-device-pixel-ratio: 1.25), (min-resolution: 120dpi) {
+    .fsa-simulator {
+        transform: scale(0.8);
+        transform-origin: top left;
+        width: 125%; /* Compensate for the scale */
+        height: 125%; /* Compensate for the scale */
+    }
+}
+
+@media (-webkit-min-device-pixel-ratio: 1.5), (min-resolution: 144dpi) {
+    .fsa-simulator {
+        transform: scale(0.67);
+        transform-origin: top left;
+        width: 150%;
+        height: 150%;
+    }
+}
+
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .fsa-simulator {
+        transform: scale(0.5);
+        transform-origin: top left;
+        width: 200%;
+        height: 200%;
+    }
+}

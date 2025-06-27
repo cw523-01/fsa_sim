@@ -192,31 +192,33 @@ class NotificationManager {
                 <div class="popup-input">
                     Input: <span class="popup-input-string">"${inputString}"</span>
                 </div>
-                ${loopDetails}
-                <div class="epsilon-loops-options">
-                    <div class="option-section">
-                        <h4>Choose how to proceed:</h4>
-                        
-                        <div class="option-item">
-                            <input type="radio" id="ignore-loops" name="loop-option" value="ignore" checked>
-                            <label for="ignore-loops">
-                                <strong>Ignore epsilon loops</strong>
-                                <span class="option-description">Proceed with normal simulation but skip over epsilon loops</span>
-                            </label>
-                        </div>
-                        
-                        <div class="option-item">
-                            <input type="radio" id="set-depth-limit" name="loop-option" value="depth_limit">
-                            <label for="set-depth-limit">
-                                <strong>Set depth limit</strong>
-                                <span class="option-description">Limit transition depth to prevent infinite loops</span>
-                            </label>
-                        </div>
-                        
-                        <div class="depth-limit-section" id="depth-limit-section" style="display: none;">
-                            <label for="depth-limit-input">Maximum epsilon transition depth:</label>
-                            <input type="number" id="depth-limit-input" min="1" max="1000" value="15" step="1">
-                            <span class="depth-limit-help">Recommended: lenght of input + number of ε-transitions</span>
+                <div class="epsilon-loops-scrollable-content">
+                    ${loopDetails}
+                    <div class="epsilon-loops-options">
+                        <div class="option-section">
+                            <h4>Choose how to proceed:</h4>
+                            
+                            <div class="option-item">
+                                <input type="radio" id="ignore-loops" name="loop-option" value="ignore" checked>
+                                <label for="ignore-loops">
+                                    <strong>Ignore epsilon loops</strong>
+                                    <span class="option-description">Proceed with normal simulation but skip over epsilon loops</span>
+                                </label>
+                            </div>
+                            
+                            <div class="option-item">
+                                <input type="radio" id="set-depth-limit" name="loop-option" value="depth_limit">
+                                <label for="set-depth-limit">
+                                    <strong>Set depth limit</strong>
+                                    <span class="option-description">Limit transition depth to prevent infinite loops</span>
+                                </label>
+                            </div>
+                            
+                            <div class="depth-limit-section" id="depth-limit-section" style="display: none;">
+                                <label for="depth-limit-input">Maximum epsilon transition depth:</label>
+                                <input type="number" id="depth-limit-input" min="1" max="1000" value="15" step="1">
+                                <span class="depth-limit-help">Recommended: lenght of input + number of ε-transitions</span>
+                            </div>
                         </div>
                     </div>
                 </div>
