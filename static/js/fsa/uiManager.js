@@ -193,8 +193,8 @@ export function openInlineStateEditor(stateElement, jsPlumbInstance) {
     // Focus on the input
     labelInput.focus();
 
-    // Add live update event listeners
-    setupLiveStateUpdates(jsPlumbInstance);
+    // Setup state update event listeners
+    setupStateUpdateListeners(jsPlumbInstance);
 }
 
 /**
@@ -205,8 +205,8 @@ export function closeInlineStateEditor() {
     inlineEditor.style.display = 'none';
     currentEditingState = null;
 
-    // Remove live update event listeners
-    removeLiveStateUpdateListeners();
+    // Remove event listeners
+    removeStateUpdateListeners();
 }
 
 /**
@@ -454,26 +454,47 @@ export function closeEdgeSymbolModal() {
     pendingTargetId = null;
 }
 
-// Setup live update event listeners for state editor
-function setupLiveStateUpdates(jsPlumbInstance) {
-    const labelInput = document.getElementById('inline-state-label-input');
+// Setup event listeners for state editor
+function setupStateUpdateListeners(jsPlumbInstance) {
     const acceptingCheckbox = document.getElementById('inline-accepting-state-checkbox');
     const startingCheckbox = document.getElementById('inline-starting-state-checkbox');
+    const renameButton = document.getElementById('rename-state-btn');
+    const labelInput = document.getElementById('inline-state-label-input');
 
-    labelInput.addEventListener('input', () => updateStateLabel(jsPlumbInstance));
+    // Immediate updates for checkboxes
     acceptingCheckbox.addEventListener('change', () => updateStateType(jsPlumbInstance));
     startingCheckbox.addEventListener('change', () => updateStartingState(jsPlumbInstance));
+
+    // Rename button click handler
+    renameButton.addEventListener('click', () => updateStateLabel(jsPlumbInstance));
+
+    // Enter key support for the input field to trigger rename
+    labelInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            updateStateLabel(jsPlumbInstance);
+        }
+    });
 }
 
-// Remove live update event listeners for state editor
-function removeLiveStateUpdateListeners() {
-    const labelInput = document.getElementById('inline-state-label-input');
+// Remove event listeners for state editor
+function removeStateUpdateListeners() {
     const acceptingCheckbox = document.getElementById('inline-accepting-state-checkbox');
     const startingCheckbox = document.getElementById('inline-starting-state-checkbox');
+    const renameButton = document.getElementById('rename-state-btn');
+    const labelInput = document.getElementById('inline-state-label-input');
 
-    labelInput.removeEventListener('input', updateStateLabel);
-    acceptingCheckbox.removeEventListener('change', updateStateType);
-    startingCheckbox.removeEventListener('change', updateStartingState);
+    if (acceptingCheckbox) {
+        acceptingCheckbox.removeEventListener('change', updateStateType);
+    }
+    if (startingCheckbox) {
+        startingCheckbox.removeEventListener('change', updateStartingState);
+    }
+    if (renameButton) {
+        renameButton.removeEventListener('click', updateStateLabel);
+    }
+    if (labelInput) {
+        labelInput.removeEventListener('keypress', updateStateLabel);
+    }
 }
 
 // Setup live update event listeners for edge editor
@@ -531,7 +552,7 @@ function removeEdgeLiveUpdateListeners() {
     }
 }
 
-// Live update functions
+// Updated state label function
 function updateStateLabel(jsPlumbInstance) {
     if (!currentEditingState || !jsPlumbInstance) return;
 
@@ -549,7 +570,10 @@ function updateStateLabel(jsPlumbInstance) {
     }
 
     // If unchanged, no need to do anything
-    if (newLabel === oldId) return;
+    if (newLabel === oldId) {
+        console.log('State name unchanged, no action needed');
+        return;
+    }
 
     // Use the validation function from stateManager
     if (!validateStateName(newLabel, oldId)) {
@@ -677,6 +701,12 @@ function updateStateLabel(jsPlumbInstance) {
     jsPlumbInstance.repaintEverything();
 
     console.log(`State renamed from ${oldId} to ${newLabel}, recreated ${connectionsToRecreate.length} connections`);
+
+    // Show success notification
+    notificationManager.showSuccess(
+        'State Renamed',
+        `State successfully renamed to "${newLabel}"`
+    );
 }
 
 function updateStateType(jsPlumbInstance) {
