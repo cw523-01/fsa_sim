@@ -30,10 +30,14 @@
 .accepting-state:before {
     content: '';
     position: absolute;
-    width: 45px;
-    height: 45px;
+    width: calc(var(--state-size) - 14px);
+    height: calc(var(--state-size) - 14px);
     border: 2px solid var(--black);
     border-radius: var(--radius-circle);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: -1;
 }
 
 /* Starting State Indicator */

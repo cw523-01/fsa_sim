@@ -86,8 +86,9 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks) {
                 const startSource = document.getElementById('start-source');
                 if (startSource) {
                     // Update both left/top in real-time during drag
+                    const stateHeight = this.offsetHeight;
                     const newLeft = ui.position.left - 50;
-                    const newTop = ui.position.top + 25;
+                    const newTop = ui.position.top + (stateHeight / 2) - 5;
                     startSource.style.left = newLeft + 'px';
                     startSource.style.top = newTop + 'px';
                 }
@@ -336,9 +337,10 @@ function ensureStartSource(jsPlumbInstance) {
  * @param {HTMLElement} stateElement - The target state element
  */
 function positionStartSource(startSource, stateElement) {
-    // Use both positioning methods for compatibility - left/top for initial position, transform for updates
+    // Calculate center position of the state
+    const stateHeight = stateElement.offsetHeight;
     const leftPos = stateElement.offsetLeft - 50;
-    const topPos = stateElement.offsetTop + 25;
+    const topPos = stateElement.offsetTop + (stateHeight / 2) - 5; // Center vertically, adjust by -10 for visual alignment
 
     startSource.style.left = leftPos + 'px';
     startSource.style.top = topPos + 'px';
