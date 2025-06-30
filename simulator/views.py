@@ -19,7 +19,7 @@ from .fsa_properties import (
     validate_fsa_structure,
     is_nondeterministic
 )
-from .fsa_transformations import minimise_dfa
+from .fsa_transformations import minimise_dfa, nfa_to_dfa
 
 
 def index(request):
@@ -812,6 +812,104 @@ def min_dfa(request):
             },
             'message': 'DFA minimised successfully' if not reduction_stats['is_already_minimal']
                       else 'DFA was already minimal'
+        })
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def convert_nfa_to_dfa(request):
+    """
+    Django view to handle NFA to DFA conversion requests.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format (can be deterministic or non-deterministic)
+
+    Returns a JSON response with the converted DFA.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing FSA definition'}, status=400)
+
+        # Validate FSA structure
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
+
+        # Store original FSA statistics for comparison
+        original_stats = {
+            'states_count': len(fsa['states']),
+            'alphabet_size': len(fsa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in fsa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(fsa['acceptingStates']),
+            'has_epsilon_transitions': any(
+                '' in fsa['transitions'].get(state, {}) and fsa['transitions'][state]['']
+                for state in fsa['states']
+            ),
+            'is_deterministic': is_deterministic(fsa)
+        }
+
+        # Convert the NFA to DFA
+        converted_dfa = nfa_to_dfa(fsa)
+
+        # Calculate converted DFA statistics
+        converted_stats = {
+            'states_count': len(converted_dfa['states']),
+            'alphabet_size': len(converted_dfa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in converted_dfa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(converted_dfa['acceptingStates']),
+            'has_epsilon_transitions': False,  # DFAs don't have epsilon transitions
+            'is_deterministic': True  # Result is always deterministic
+        }
+
+        # Calculate conversion statistics
+        conversion_stats = {
+            'states_added': converted_stats['states_count'] - original_stats['states_count'],
+            'states_change_percentage': round(
+                ((converted_stats['states_count'] - original_stats['states_count']) /
+                 original_stats['states_count']) * 100, 2
+            ) if original_stats['states_count'] > 0 else 0,
+            'transitions_added': converted_stats['transitions_count'] - original_stats['transitions_count'],
+            'transitions_change_percentage': round(
+                ((converted_stats['transitions_count'] - original_stats['transitions_count']) /
+                 original_stats['transitions_count']) * 100, 2
+            ) if original_stats['transitions_count'] > 0 else 0,
+            'epsilon_transitions_removed': original_stats['has_epsilon_transitions'],
+            'was_already_deterministic': original_stats['is_deterministic']
+        }
+
+        # Determine appropriate message
+        if original_stats['is_deterministic'] and not original_stats['has_epsilon_transitions']:
+            message = 'Input was already a DFA, returned equivalent DFA'
+        elif original_stats['is_deterministic'] and original_stats['has_epsilon_transitions']:
+            message = 'Input was deterministic but had epsilon transitions, converted to proper DFA'
+        else:
+            message = 'NFA successfully converted to DFA'
+
+        return JsonResponse({
+            'success': True,
+            'original_fsa': fsa,
+            'converted_dfa': converted_dfa,
+            'statistics': {
+                'original': original_stats,
+                'converted': converted_stats,
+                'conversion': conversion_stats
+            },
+            'message': message
         })
 
     except ValueError as e:

@@ -215,6 +215,17 @@ def validate_fsa_structure(fsa: Dict) -> Dict:
             if state not in fsa['states']:
                 return {'valid': False, 'error': f'Accepting state {state} not in states list'}
 
+    # Validate all transition target states are in 'states'
+    all_states = set(fsa.get('states', []))
+    for src, symbol_map in fsa.get('transitions', {}).items():
+        for symbol, targets in symbol_map.items():
+            for target in targets:
+                if target not in all_states:
+                    return {
+                        'valid': False,
+                        'error': f"Transition from '{src}' via '{symbol}' goes to undefined state '{target}'"
+                    }
+
     return {'valid': True}
 
 def is_nondeterministic(fsa: Dict) -> bool:

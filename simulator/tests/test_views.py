@@ -1394,3 +1394,561 @@ class PerformanceTests(FSAViewTestCase):
         })
 
         self.assertEqual(response.status_code, 200)
+
+
+class MinimizeDFAViewTests(FSAViewTestCase):
+    """Tests for the DFA minimization endpoint"""
+
+    def test_minimize_dfa_successful(self):
+        """Test successful DFA minimization"""
+        # Create a DFA that can be minimized
+        redundant_dfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1'], 'b': ['S2']},
+                'S1': {'a': ['S1'], 'b': ['S3']},
+                'S2': {'a': ['S1'], 'b': ['S2']},
+                'S3': {'a': ['S1'], 'b': ['S3']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1', 'S3']  # S1 and S3 might be equivalent
+        }
+
+        response = self.post_json('/api/minimise-dfa/', {
+            'fsa': redundant_dfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertTrue(data['success'])
+        self.assertIn('minimised_fsa', data)
+        self.assertIn('statistics', data)
+
+    def test_minimize_non_deterministic_fsa(self):
+        """Test minimization fails for non-deterministic FSA"""
+        response = self.post_json('/api/minimise-dfa/', {
+            'fsa': self.sample_nfa
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('deterministic FSA', data['error'])
+
+    def test_minimize_dfa_missing_fsa(self):
+        """Test minimization without FSA definition"""
+        response = self.post_json('/api/minimise-dfa/', {})
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing FSA definition', data['error'])
+
+
+class CombinedTransformationTests(FSAViewTestCase):
+    """Tests for combining multiple transformations"""
+
+    def test_nfa_to_dfa_then_minimize(self):
+        """Test converting NFA to DFA then minimizing the result"""
+        # 1. Convert NFA to DFA
+        convert_response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': self.sample_nfa
+        })
+        self.assertEqual(convert_response.status_code, 200)
+        converted_dfa = convert_response.json()['converted_dfa']
+
+        # 2. Minimize the resulting DFA
+        minimize_response = self.post_json('/api/minimise-dfa/', {
+            'fsa': converted_dfa
+        })
+        self.assertEqual(minimize_response.status_code, 200)
+        self.assertTrue(minimize_response.json()['success'])
+
+    def test_conversion_preserves_language(self):
+        """Test that NFA to DFA conversion preserves the language"""
+        # Convert NFA to DFA
+        convert_response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': self.sample_nfa
+        })
+        self.assertEqual(convert_response.status_code, 200)
+        converted_dfa = convert_response.json()['converted_dfa']
+
+        # Test that both accept/reject the same strings
+        test_strings = ['', 'a', 'b', 'ab', 'aab', 'abb', 'ba', 'bb']
+
+        for test_string in test_strings:
+            # Test original NFA
+            nfa_response = self.post_json('/api/simulate-nfa/', {
+                'fsa': self.sample_nfa,
+                'input': test_string
+            })
+
+            # Test converted DFA
+            dfa_response = self.post_json('/api/simulate-dfa/', {
+                'fsa': converted_dfa,
+                'input': test_string
+            })
+
+            self.assertEqual(nfa_response.status_code, 200)
+            self.assertEqual(dfa_response.status_code, 200)
+
+            nfa_accepted = nfa_response.json()['accepted']
+            dfa_accepted = dfa_response.json()['accepted']
+
+            self.assertEqual(nfa_accepted, dfa_accepted,
+                             f"Language disagreement on string '{test_string}'")
+
+
+class ComprehensiveErrorTests(FSAViewTestCase):
+    """Comprehensive error testing for all endpoints"""
+
+    def test_all_endpoints_handle_missing_fsa(self):
+        """Test that all endpoints properly handle missing FSA"""
+        endpoints = [
+            '/api/simulate-fsa/',
+            '/api/simulate-dfa/',
+            '/api/simulate-nfa/',
+            '/api/check-fsa-type/',
+            '/api/check-epsilon-loops/',
+            '/api/check-fsa-properties/',
+            '/api/check-deterministic/',
+            '/api/check-complete/',
+            '/api/check-connected/',
+            '/api/minimise-dfa/',
+            '/api/nfa-to-dfa/',
+        ]
+
+        for endpoint in endpoints:
+            with self.subTest(endpoint=endpoint):
+                response = self.post_json(endpoint, {})
+                self.assertEqual(response.status_code, 400)
+                data = response.json()
+                self.assertIn('error', data)
+                self.assertIn('Missing FSA definition', data['error'])
+
+    def test_all_endpoints_handle_invalid_fsa(self):
+        """Test that all endpoints properly handle invalid FSA"""
+        endpoints = [
+            '/api/simulate-fsa/',
+            '/api/simulate-dfa/',
+            '/api/simulate-nfa/',
+            '/api/check-fsa-type/',
+            '/api/check-epsilon-loops/',
+            '/api/check-fsa-properties/',
+            '/api/check-deterministic/',
+            '/api/check-complete/',
+            '/api/check-connected/',
+            '/api/minimise-dfa/',
+            '/api/nfa-to-dfa/',
+        ]
+
+        for endpoint in endpoints:
+            with self.subTest(endpoint=endpoint):
+                response = self.post_json(endpoint, {
+                    'fsa': self.invalid_fsa
+                })
+                self.assertEqual(response.status_code, 400)
+
+    def test_all_endpoints_reject_get_requests(self):
+        """Test that all POST-only endpoints reject GET requests"""
+        endpoints = [
+            '/api/simulate-fsa/',
+            '/api/simulate-dfa/',
+            '/api/simulate-nfa/',
+            '/api/simulate-nfa-stream/',
+            '/api/check-fsa-type/',
+            '/api/check-epsilon-loops/',
+            '/api/simulate-nfa-depth-limit/',
+            '/api/simulate-nfa-stream-depth-limit/',
+            '/api/check-fsa-properties/',
+            '/api/check-deterministic/',
+            '/api/check-complete/',
+            '/api/check-connected/',
+            '/api/minimise-dfa/',
+            '/api/nfa-to-dfa/',
+        ]
+
+        for endpoint in endpoints:
+            with self.subTest(endpoint=endpoint):
+                response = self.client.get(endpoint)
+                self.assertEqual(response.status_code, 405)  # Method Not Allowed
+
+
+class DataTypeValidationTests(FSAViewTestCase):
+    """Tests for data type validation in requests"""
+
+    def test_fsa_must_be_dict(self):
+        """Test that FSA parameter must be a dictionary"""
+        endpoints_with_fsa = [
+            '/api/simulate-fsa/',
+            '/api/simulate-dfa/',
+            '/api/simulate-nfa/',
+            '/api/check-fsa-type/',
+            '/api/nfa-to-dfa/',
+        ]
+
+        invalid_fsa_values = ["string", 123, [], None, True]
+
+        for endpoint in endpoints_with_fsa:
+            for invalid_fsa in invalid_fsa_values:
+                with self.subTest(endpoint=endpoint, fsa_type=type(invalid_fsa).__name__):
+                    response = self.post_json(endpoint, {
+                        'fsa': invalid_fsa,
+                        'input': 'a'
+                    })
+                    # Should return 400 due to validation failure
+                    self.assertEqual(response.status_code, 400)
+
+    def test_input_string_types(self):
+        """Test different input string types"""
+        simulation_endpoints = [
+            '/api/simulate-fsa/',
+            '/api/simulate-dfa/',
+            '/api/simulate-nfa/',
+        ]
+
+        # Test with various input types (should all work or be converted to string)
+        for endpoint in simulation_endpoints:
+            with self.subTest(endpoint=endpoint):
+                # Empty string should work
+                response = self.post_json(endpoint, {
+                    'fsa': self.sample_dfa,
+                    'input': ''
+                })
+                self.assertEqual(response.status_code, 200)
+
+                # Missing input should default to empty string
+                response = self.post_json(endpoint, {
+                    'fsa': self.sample_dfa
+                })
+                self.assertEqual(response.status_code, 200)
+
+
+class SpecialCharacterTests(FSAViewTestCase):
+    """Tests for handling special characters in FSA definitions"""
+
+    def test_unicode_state_names(self):
+        """Test FSA with Unicode state names"""
+        unicode_fsa = {
+            'states': ['α', 'β', 'γ'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'α': {'a': ['β'], 'b': ['α']},
+                'β': {'a': ['γ'], 'b': ['β']},
+                'γ': {}
+            },
+            'startingState': 'α',
+            'acceptingStates': ['γ']
+        }
+
+        response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': unicode_fsa
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+
+    def test_special_characters_in_alphabet(self):
+        """Test FSA with special characters in alphabet"""
+        special_char_fsa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['α', 'β', '1', '0'],
+            'transitions': {
+                'S0': {'α': ['S1'], 'β': ['S0'], '1': ['S0'], '0': ['S1']},
+                'S1': {'α': ['S0'], 'β': ['S1'], '1': ['S1'], '0': ['S0']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': special_char_fsa
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+
+
+class BoundaryConditionTests(FSAViewTestCase):
+    """Tests for boundary conditions and extreme cases"""
+
+    def test_very_long_state_names(self):
+        """Test with very long state names"""
+        long_state_name = 'S' + 'x' * 100
+        long_name_fsa = {
+            'states': [long_state_name, 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                long_state_name: {'a': ['S1']},
+                'S1': {'a': [long_state_name]}
+            },
+            'startingState': long_state_name,
+            'acceptingStates': ['S1']
+        }
+
+        response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': long_name_fsa
+        })
+        self.assertEqual(response.status_code, 200)
+
+    def test_large_alphabet(self):
+        """Test with large alphabet"""
+        # Create alphabet with many symbols
+        large_alphabet = [chr(i) for i in range(ord('a'), ord('z') + 1)]
+
+        large_alphabet_fsa = {
+            'states': ['S0', 'S1'],
+            'alphabet': large_alphabet,
+            'transitions': {
+                'S0': {symbol: ['S1'] for symbol in large_alphabet},
+                'S1': {symbol: ['S0'] for symbol in large_alphabet}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': large_alphabet_fsa
+        })
+        self.assertEqual(response.status_code, 200)
+
+    def test_maximum_transitions_per_state(self):
+        """Test state with maximum number of transitions"""
+        max_trans_fsa = {
+            'states': ['S0', 'S1', 'S2', 'S3', 'S4'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S0', 'S1', 'S2', 'S3', 'S4']},  # Max non-determinism
+                'S1': {'a': ['S1']},
+                'S2': {'a': ['S2']},
+                'S3': {'a': ['S3']},
+                'S4': {'a': ['S4']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S4']
+        }
+
+        response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': max_trans_fsa
+        })
+        self.assertEqual(response.status_code, 200)
+
+
+class StatisticsValidationTests(FSAViewTestCase):
+    """Tests to validate statistics calculations"""
+
+    def test_nfa_to_dfa_statistics_zero_division_prevention(self):
+        """Test that statistics handle zero division gracefully"""
+        # Create minimal FSA to test edge cases
+        minimal_fsa = {
+            'states': ['S0'],
+            'alphabet': [],
+            'transitions': {'S0': {}},
+            'startingState': 'S0',
+            'acceptingStates': []
+        }
+
+        response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': minimal_fsa
+        })
+
+        if response.status_code == 200:
+            data = response.json()
+            stats = data['statistics']['conversion']
+
+            # Check that percentages are handled gracefully
+            self.assertIsInstance(stats['states_change_percentage'], (int, float))
+            self.assertIsInstance(stats['transitions_change_percentage'], (int, float))
+
+    def test_minimize_dfa_statistics_calculations(self):
+        """Test DFA minimization statistics calculations"""
+        response = self.post_json('/api/minimise-dfa/', {
+            'fsa': self.sample_dfa
+        })
+
+        if response.status_code == 200:
+            data = response.json()
+            stats = data['statistics']
+
+            # Check that all required statistics are present
+            self.assertIn('original', stats)
+            self.assertIn('minimised', stats)
+            self.assertIn('reduction', stats)
+
+            # Check calculation accuracy
+            original = stats['original']
+            minimised = stats['minimised']
+            reduction = stats['reduction']
+
+            expected_states_reduced = original['states_count'] - minimised['states_count']
+            self.assertEqual(reduction['states_reduced'], expected_states_reduced)
+
+
+class RegressionTests(FSAViewTestCase):
+    """Regression tests for previously found issues"""
+
+    def test_empty_transitions_handling(self):
+        """Test FSA with empty transitions dict"""
+        empty_transitions_fsa = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {},
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+
+        response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': empty_transitions_fsa
+        })
+
+        # Should handle gracefully (might be invalid but shouldn't crash)
+        self.assertIn(response.status_code, [200, 400])
+
+    def test_state_not_in_transitions(self):
+        """Test state that exists in states list but not in transitions"""
+        missing_state_fsa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1']}
+                # S1 missing from transitions
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': missing_state_fsa
+        })
+        self.assertEqual(response.status_code, 200)
+
+    def test_transition_to_nonexistent_state(self):
+        """Test transition to state not in states list"""
+        invalid_target_fsa = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S999']}  # S999 doesn't exist
+            },
+            'startingState': 'S0',
+            'acceptingStates': []
+        }
+
+        response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': invalid_target_fsa
+        })
+        # Should be caught by validation
+        self.assertEqual(response.status_code, 400)
+
+
+class DocumentationExampleTests(FSAViewTestCase):
+    """Tests using examples that might appear in documentation"""
+
+    def test_simple_binary_string_nfa(self):
+        """Test NFA that accepts binary strings ending in '01'"""
+        binary_nfa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['0', '1'],
+            'transitions': {
+                'S0': {'0': ['S0', 'S1'], '1': ['S0']},
+                'S1': {'1': ['S2']},
+                'S2': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': binary_nfa
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+
+        # Test that the conversion preserves the language
+        converted_dfa = response.json()['converted_dfa']
+
+        # Test strings that should be accepted
+        accept_strings = ['01', '001', '101', '0001', '1001']
+        for string in accept_strings:
+            sim_response = self.post_json('/api/simulate-dfa/', {
+                'fsa': converted_dfa,
+                'input': string
+            })
+            self.assertTrue(sim_response.json()['accepted'],
+                            f"Should accept '{string}'")
+
+        # Test strings that should be rejected
+        reject_strings = ['', '0', '1', '10', '00', '11', '010']
+        for string in reject_strings:
+            sim_response = self.post_json('/api/simulate-dfa/', {
+                'fsa': converted_dfa,
+                'input': string
+            })
+            self.assertFalse(sim_response.json()['accepted'],
+                             f"Should reject '{string}'")
+
+    def test_epsilon_transition_example(self):
+        """Test classic epsilon transition example"""
+        epsilon_example = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'': ['S1', 'S3']},  # Epsilon transitions
+                'S1': {'a': ['S2']},
+                'S2': {'a': ['S2'], 'b': ['S2']},
+                'S3': {'b': ['S3']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2', 'S3']
+        }
+
+        response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': epsilon_example
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+
+        # Check that epsilon transitions were handled
+        stats = response.json()['statistics']
+        self.assertTrue(stats['original']['has_epsilon_transitions'])
+        self.assertFalse(stats['converted']['has_epsilon_transitions'])
+
+
+class ConcurrencySimulationTests(FSAViewTestCase):
+    """Tests simulating potential concurrency issues"""
+
+    def test_multiple_conversion_requests(self):
+        """Test multiple conversion requests don't interfere"""
+        responses = []
+
+        # Make multiple requests
+        for i in range(3):
+            response = self.post_json('/api/nfa-to-dfa/', {
+                'fsa': self.sample_nfa
+            })
+            responses.append(response)
+
+        # All should succeed independently
+        for i, response in enumerate(responses):
+            with self.subTest(request=i):
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.json()['success'])
+
+    def test_mixed_endpoint_requests(self):
+        """Test mixed requests to different endpoints"""
+        endpoints_and_data = [
+            ('/api/check-fsa-type/', {'fsa': self.sample_dfa}),
+            ('/api/nfa-to-dfa/', {'fsa': self.sample_nfa}),
+            ('/api/simulate-dfa/', {'fsa': self.sample_dfa, 'input': 'ab'}),
+            ('/api/check-fsa-properties/', {'fsa': self.sample_nfa}),
+        ]
+
+        responses = []
+        for endpoint, data in endpoints_and_data:
+            response = self.post_json(endpoint, data)
+            responses.append((endpoint, response))
+
+        # All should succeed
+        for endpoint, response in responses:
+            with self.subTest(endpoint=endpoint):
+                self.assertEqual(response.status_code, 200)
