@@ -308,6 +308,8 @@ export function updateEdgeCurveStyle(jsPlumbInstance, connection, curved) {
     // Add click handlers
     setupConnectionHandlers(newConnection, jsPlumbInstance);
 
+    updateFSAPropertiesDisplay(jsPlumbInstance);
+
     return newConnection;
 }
 
@@ -438,6 +440,9 @@ export function setAllEdgeStyles(jsPlumbInstance, curved) {
 
     // Force a complete repaint
     jsPlumbInstance.repaintEverything();
+
+    updateFSAPropertiesDisplay(jsPlumbInstance);
+
 }
 
 /**

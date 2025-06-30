@@ -245,7 +245,7 @@ class EdgeCreationManager {
         this.removeConnectionDot();
 
         // Stop mouse tracking
-        this.stopOptimizedMouseTracking();
+        this.stopMouseTracking();
 
         // Hide instructions
         this.hideInstructions();
@@ -369,7 +369,7 @@ class EdgeCreationManager {
     }
 
     /**
-     * Start optimized mouse tracking that doesn't interfere with drag operations
+     * Start mouse tracking
      */
     startOptimizedMouseTracking() {
         if (this.mouseMoveHandler) return;
@@ -400,13 +400,13 @@ class EdgeCreationManager {
 
                 // Schedule update for next frame
                 this.mouseThrottleTimeout = setTimeout(() => {
-                    this.handleOptimizedMouseMove(e);
+                    this.handleMouseMove(e);
                     this.lastMouseUpdate = performance.now();
                 }, this.mouseUpdateInterval);
                 return;
             }
 
-            this.handleOptimizedMouseMove(e);
+            this.handleMouseMove(e);
             this.lastMouseUpdate = now;
         };
 
@@ -418,9 +418,9 @@ class EdgeCreationManager {
     }
 
     /**
-     * Stop optimized mouse tracking
+     * Stop mouse tracking
      */
-    stopOptimizedMouseTracking() {
+    stopMouseTracking() {
         if (this.mouseMoveHandler) {
             this.canvas.removeEventListener('mousemove', this.mouseMoveHandler);
             this.mouseMoveHandler = null;
@@ -435,10 +435,10 @@ class EdgeCreationManager {
     }
 
     /**
-     * Handle mouse move events with performance optimizations
+     * Handle mouse move events
      * @param {MouseEvent} e - Mouse move event
      */
-    handleOptimizedMouseMove(e) {
+    handleMouseMove(e) {
         if (!this.sourceState || !this.previewEdge) return;
 
         const canvasRect = this.getCachedCanvasRect();
@@ -450,20 +450,20 @@ class EdgeCreationManager {
             this.cursorFollower.style.transform = `translate(${mouseX - 6}px, ${mouseY - 6}px)`;
 
             // Optimized state proximity check
-            const isNearState = this.isMouseNearStateOptimized(mouseX, mouseY);
+            const isNearState = this.isMouseNearState(mouseX, mouseY);
             this.cursorFollower.classList.toggle('large', isNearState);
         }
 
         // Update preview edge
-        this.updatePreviewEdgeOptimized(mouseX, mouseY);
+        this.updatePreviewEdge(mouseX, mouseY);
     }
 
     /**
-     * Update preview edge position with optimizations
+     * Update preview edge position
      * @param {number} mouseX - Mouse X coordinate
      * @param {number} mouseY - Mouse Y coordinate
      */
-    updatePreviewEdgeOptimized(mouseX, mouseY) {
+    updatePreviewEdge(mouseX, mouseY) {
         if (!this.sourceState || !this.previewEdge) return;
 
         const sourceRect = this.getCachedElementRect(this.sourceState);
@@ -494,12 +494,12 @@ class EdgeCreationManager {
     }
 
     /**
-     * Optimized check if mouse is near a state element using cached positions
+     * Check if mouse is near a state element using cached positions
      * @param {number} mouseX - Mouse X coordinate
      * @param {number} mouseY - Mouse Y coordinate
      * @returns {boolean} - True if mouse is near a state
      */
-    isMouseNearStateOptimized(mouseX, mouseY) {
+    isMouseNearState(mouseX, mouseY) {
         const threshold = 40; // Distance threshold
         const states = this.getCachedStatePositions();
 
