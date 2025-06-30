@@ -10,7 +10,29 @@
     justify-content: center;
     background-color: var(--white);
     cursor: move;
-    z-index: var(--z-states);
+    z-index: 30;
+
+    /* Ensure text is always visible with white background */
+    color: var(--black);
+    font-weight: var(--font-weight-medium);
+    text-align: center;
+    line-height: 1.2;
+
+    /* Text wrapping properties */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    white-space: normal;
+    padding: 4px;
+    box-sizing: border-box;
+
+    /* Add text shadow for readability */
+    text-shadow:
+        -2px -2px 0 var(--white),
+        2px -2px 0 var(--white),
+        -2px 2px 0 var(--white),
+        2px 2px 0 var(--white),
+        0 0 2px var(--white);
 }
 
 .accepting-state {
@@ -24,7 +46,29 @@
     justify-content: center;
     background-color: var(--white);
     cursor: move;
-    z-index: var(--z-states);
+    z-index: 30;
+
+    /* Ensure text is always visible with white background */
+    color: var(--black);
+    font-weight: var(--font-weight-medium);
+    text-align: center;
+    line-height: 1.2;
+
+    /* Text wrapping properties */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    white-space: normal;
+    padding: 4px;
+    box-sizing: border-box;
+
+    /* Add text shadow for readability */
+    text-shadow:
+        -2px -2px 0 var(--white),
+        2px -2px 0 var(--white),
+        -2px 2px 0 var(--white),
+        2px 2px 0 var(--white),
+        0 0 2px var(--white);
 }
 
 .accepting-state:before {
@@ -38,6 +82,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: -1;
+    background-color: var(--white);
 }
 
 /* Starting State Indicator */
