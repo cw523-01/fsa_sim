@@ -40,12 +40,22 @@ export function updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap) {
         }
 
         if (sortedSymbols.length > 0) {
-            displayText += sortedSymbols.join(',');
+            // Add spaces after commas to help with wrapping
+            displayText += sortedSymbols.join(', ');
         }
 
         displayText += '}';
 
-
         alphabetDisplay.textContent = displayText;
+
+        // Class for long alphabets to enable scrolling if needed
+        const alphabetContainer = document.querySelector('.alphabet-info');
+        if (alphabetContainer) {
+            if (sortedSymbols.length > 10) {
+                alphabetContainer.classList.add('long-alphabet');
+            } else {
+                alphabetContainer.classList.remove('long-alphabet');
+            }
+        }
     }
 }

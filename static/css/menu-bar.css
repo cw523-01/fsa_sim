@@ -39,7 +39,8 @@
     border: none;
     padding: var(--spacing-xs) var(--spacing-md);
     cursor: pointer;
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
     color: var(--text-color);
     display: flex;
     align-items: center;
@@ -93,7 +94,8 @@
     justify-content: space-between;
     padding: var(--spacing-sm) var(--spacing-md);
     cursor: pointer;
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-normal);
     color: var(--text-color);
     transition: var(--transition-fast);
 }
@@ -115,10 +117,11 @@
 .menu-label {
     flex: 1;
     text-align: left;
+    font-size: var(--font-size-md);
 }
 
 .menu-shortcut {
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-sm);
     color: var(--text-gray);
     margin-left: var(--spacing-md);
 }
@@ -166,11 +169,15 @@
 
     .menu-button {
         padding: var(--spacing-xs);
-        font-size: var(--font-size-xs);
+        font-size: var(--font-size-sm);
     }
 
     .menu-dropdown {
         min-width: 160px;
+    }
+
+    .menu-option {
+        font-size: var(--font-size-sm);
     }
 
     .menu-shortcut {

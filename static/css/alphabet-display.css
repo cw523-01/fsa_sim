@@ -1,0 +1,51 @@
+/* Make the alphabet info container handle overflow better */
+.alphabet-info {
+    margin-bottom: var(--spacing-xl);
+    overflow-wrap: break-word; /* Allow breaking of long words */
+    word-wrap: break-word; /* Legacy support */
+}
+
+/* Style the alphabet paragraph to wrap properly */
+.alphabet-info p {
+    /* Allow the text to wrap */
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+
+    /* Break long words if necessary */
+    word-break: break-word;
+
+    /* Ensure it doesn't overflow the container */
+    max-width: 100%;
+    overflow: hidden;
+
+    /* Add some line height for better readability when wrapped */
+    line-height: 1.4;
+
+    /* Allow breaking after commas and other punctuation */
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    -ms-hyphens: auto;
+}
+
+/* For very long alphabets, you might want to limit height and add scrolling */
+.alphabet-info.long-alphabet p {
+    max-height: 80px;
+    overflow-y: auto;
+    padding-right: 5px; /* Account for scrollbar */
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 1024px) {
+    .alphabet-info p {
+        font-size: var(--font-size-sm);
+        line-height: 1.3;
+    }
+}
+
+@media (max-width: 768px) {
+    .alphabet-info p {
+        font-size: var(--font-size-xs);
+        line-height: 1.2;
+    }
+}

@@ -130,7 +130,7 @@ class FSAFileUIManager {
             }
 
             // Ctrl+N or Cmd+N - New (clear)
-            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+            if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'n') {
                 e.preventDefault();
                 this.newFSA();
             }
