@@ -48,6 +48,7 @@ import {
 import { nfaResultsManager } from './nfaResultsManager.js';
 import { fsaSerializationManager } from './fsaSerializationManager.js';
 import { fsaFileUIManager } from './fsaFileUI.js';
+import { fsaTransformManager } from './transformManager.js';
 import { edgeCreationManager } from './edgeCreationManager.js';
 import { toolManager } from './toolManager.js';
 
@@ -93,6 +94,9 @@ export function initialiseSimulator() {
 
     // Initialize FSA serialization system with menu bar
     initializeFSASerialization();
+
+    // Initialize FSA transformation system
+    initializeFSATransformation();
 
     // Setup performance monitoring
     setupPerformanceMonitoring();
@@ -201,6 +205,19 @@ function initializeToolManager() {
         toolManager.initialize(canvas, edgeCreationManager, jsPlumbInstance);
         console.log('Enhanced tool manager initialized');
     }
+}
+
+/**
+ * Initialize FSA transformation system
+ */
+function initializeFSATransformation() {
+    // Initialize transform manager with JSPlumb instance
+    fsaTransformManager.initialize(jsPlumbInstance);
+
+    // Make transform functions globally available
+    window.fsaTransformManager = fsaTransformManager;
+
+    console.log('FSA transformation system initialized');
 }
 
 /**
@@ -452,11 +469,13 @@ function integrateWithControlLockManager() {
     controlLockManager.lockControls = function() {
         originalLockControls();
         fsaFileUIManager.updateMenuStates(true);
+        fsaTransformManager.updateMenuStates(true);
     };
 
     controlLockManager.unlockControls = function() {
         originalUnlockControls();
         fsaFileUIManager.updateMenuStates(false);
+        fsaTransformManager.updateMenuStates(false);
     };
 }
 

@@ -97,6 +97,10 @@ class FSAFileUIManager {
                 this.hideSavePopup();
                 this.hideNewFilePopup();
                 this.hideImportConfirmPopup();
+                // Close transform popups if available
+                if (window.fsaTransformManager) {
+                    window.fsaTransformManager.hideMinimizePopup();
+                }
             }
         });
     }
@@ -202,6 +206,11 @@ class FSAFileUIManager {
         allButtons.forEach(button => button.classList.remove('active'));
 
         this.currentOpenMenu = null;
+
+        // Also close transform menu if available
+        if (window.fsaTransformManager) {
+            window.fsaTransformManager.closeTransformMenu();
+        }
     }
 
     /**
@@ -743,7 +752,7 @@ class FSAFileUIManager {
      * @param {boolean} locked - Whether controls are locked
      */
     updateMenuStates(locked) {
-        const menuOptions = document.querySelectorAll('.menu-option');
+        const menuOptions = document.querySelectorAll('#file-dropdown .menu-option');
 
         menuOptions.forEach(option => {
             if (locked) {

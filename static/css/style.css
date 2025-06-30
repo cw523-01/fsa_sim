@@ -45,7 +45,10 @@
 /* 15. Tool Usage Visual Feedback */
 @import url('tool-styles.css');
 
-/* 15. Responsive Styles - Must be last */
+/* 16. Transform Drop-Down Menu */
+@import url('transform-menu.css');
+
+/* 17. Responsive Styles - Must be last */
 @import url('responsive.css');
 
 /* Hide drag‑and‑drop overlay unless actively dragging a file */

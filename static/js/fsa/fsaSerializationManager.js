@@ -336,6 +336,10 @@ class FSASerializationManager {
             state.style.left = `${stateData.position.x}px`;
             state.style.top = `${stateData.position.y}px`;
 
+            // Add GPU acceleration hints (same as createState)
+            state.style.willChange = 'transform';
+            state.style.transform = 'translate3d(0, 0, 0)';
+
             // Add any additional visual properties
             if (stateData.visual && stateData.visual.zIndex) {
                 state.style.zIndex = stateData.visual.zIndex;
@@ -344,27 +348,75 @@ class FSASerializationManager {
             // Add to canvas
             document.getElementById('fsa-canvas').appendChild(state);
 
-            // Make state draggable
+            // Make state draggable with EXACT same configuration as createState
             $(state).draggable({
                 containment: "parent",
                 stack: ".state, .accepting-state",
                 zIndex: 100,
-                drag: function(event, ui) {
-                    jsPlumbInstance.repaintEverything();
+                start: function(event, ui) {
+                    // Mark that we're starting to drag a state
+                    if (window.isStateDragging !== undefined) {
+                        window.isStateDragging = true;
+                    }
 
-                    // Keep the start arrow glued to the starting state while it’s dragged
+                    // Disable animations during drag
+                    document.body.classList.add('no-animation');
+
+                    // Ensure GPU acceleration
+                    this.style.willChange = 'transform';
+
+                    // Store original position for transform calculations
+                    const rect = this.getBoundingClientRect();
+                    const parentRect = this.parentElement.getBoundingClientRect();
+                    this._originalLeft = rect.left - parentRect.left;
+                    this._originalTop = rect.top - parentRect.top;
+                },
+                drag: function(event, ui) {
+                    // Update starting state arrow if this is the starting state - REAL TIME
                     if (getStartingStateId() === this.id) {
                         const startSource = document.getElementById('start-source');
                         if (startSource) {
-                            startSource.style.left = (ui.position.left - 50) + 'px';
-                            startSource.style.top  = (ui.position.top  + 25) + 'px'; // 25 = centre-offset of 30 px circle – 5 px tweak
-                            jsPlumbInstance.revalidate('start-source');              // optional but makes it extra-snappy
+                            // Update both left/top in real-time during drag
+                            const stateHeight = this.offsetHeight;
+                            const newLeft = ui.position.left - 50;
+                            const newTop = ui.position.top + (stateHeight / 2) - 5;
+                            startSource.style.left = newLeft + 'px';
+                            startSource.style.top = newTop + 'px';
                         }
+                    }
+
+                    // Use transform instead of top/left for better performance
+                    const deltaX = ui.position.left - this._originalLeft;
+                    const deltaY = ui.position.top - this._originalTop;
+
+                    // Revalidate this state and the start-source
+                    jsPlumbInstance.revalidate(this.id);
+                    if (getStartingStateId() === this.id) {
+                        jsPlumbInstance.revalidate('start-source');
                     }
 
                     if (callbacks.onStateDrag) {
                         callbacks.onStateDrag(this, event, ui);
                     }
+                },
+                stop: function(event, ui) {
+                    // Re-enable animations after drag
+                    document.body.classList.remove('no-animation');
+
+                    // Reset will-change after drag completes
+                    setTimeout(() => {
+                        this.style.willChange = 'auto';
+                    }, 100);
+
+                    // Final repaint after drag
+                    jsPlumbInstance.repaintEverything();
+
+                    // Set flag to prevent canvas click from creating new state
+                    setTimeout(() => {
+                        if (window.isStateDragging !== undefined) {
+                            window.isStateDragging = false;
+                        }
+                    }, 10); // Small delay to let the click event fire first
                 }
             });
 

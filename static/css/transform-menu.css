@@ -1,0 +1,245 @@
+/* Ensure menu items are properly grouped in the left section */
+.menu-left {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+/* Force both file and transform menus to stay in left section */
+#file-menu,
+#transform-menu {
+    flex-shrink: 0;
+    position: relative;
+    display: inline-block;
+}
+
+/* Remove any positioning that might cause transform menu to float right */
+#transform-menu {
+    margin-left: 0;
+    margin-right: 0;
+    order: unset;
+}
+
+/* Ensure transform dropdown inherits proper positioning */
+#transform-dropdown {
+    /* Inherits from base .menu-dropdown styles */
+}
+
+/* Minimization popup specific styles */
+.file-operation-popup.minimize {
+    /* Inherit styles from existing file operation popup */
+}
+
+/* Transform menu header for minimize popup */
+.file-operation-popup.minimize .popup-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+}
+
+.file-operation-popup.minimize .file-action-btn.primary {
+    background: var(--primary-color);
+}
+
+.file-operation-popup.minimize .file-action-btn.primary:hover:not(.disabled) {
+    background: var(--primary-hover);
+}
+
+/* Minimization-specific content styles */
+.file-operation-popup.minimize .minimization-info {
+    margin: var(--spacing-lg) 0;
+    padding: var(--spacing-md);
+    background-color: var(--light-gray);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--secondary-color);
+}
+
+.file-operation-popup.minimize .minimization-info .info-item {
+    margin-bottom: var(--spacing-sm);
+}
+
+.file-operation-popup.minimize .minimization-info .info-item:last-child {
+    margin-bottom: 0;
+}
+
+.file-operation-popup.minimize .minimization-info ul {
+    margin: var(--spacing-sm) 0 0 0;
+    padding-left: var(--spacing-xl);
+    list-style-type: none;
+}
+
+.file-operation-popup.minimize .minimization-info li {
+    margin: var(--spacing-xs) 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-color);
+    position: relative;
+}
+
+.file-operation-popup.minimize .minimization-info li::before {
+    content: '✓';
+    position: absolute;
+    left: calc(-1 * var(--spacing-lg));
+    color: var(--success-color);
+    font-weight: var(--font-weight-bold);
+}
+
+/* Loading state for minimize button */
+#minimize-confirm-btn.loading {
+    position: relative;
+    color: transparent !important;
+}
+
+#minimize-confirm-btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    margin-left: -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--white);
+    border-radius: var(--radius-circle);
+    animation: transform-spin 1s linear infinite;
+}
+
+@keyframes transform-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Transform menu specific enhancements */
+.transform-operation-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    color: var(--text-gray);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background-color: rgba(76, 175, 80, 0.1);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    margin-left: var(--spacing-sm);
+}
+
+.transform-operation-indicator.processing {
+    color: var(--warning-color);
+    background-color: rgba(255, 152, 0, 0.1);
+    border-color: rgba(255, 152, 0, 0.3);
+}
+
+.transform-operation-indicator.error {
+    color: var(--error-color);
+    background-color: rgba(244, 67, 54, 0.1);
+    border-color: rgba(244, 67, 54, 0.3);
+}
+
+/* Responsive adjustments for transform menu */
+@media (max-width: 768px) {
+    /* Transform menu inherits responsive behavior from menu-bar.css */
+
+    .file-operation-popup.minimize {
+        max-width: 90vw;
+        margin: var(--spacing-xl);
+    }
+
+    .file-operation-popup.minimize .minimization-info {
+        padding: var(--spacing-sm);
+    }
+
+    .file-operation-popup.minimize .minimization-info ul {
+        padding-left: var(--spacing-lg);
+    }
+}
+
+/* Dark mode support for transform menu */
+@media (prefers-color-scheme: dark) {
+    .file-operation-popup.minimize .minimization-info {
+        background-color: #2d3748;
+        border-left-color: var(--secondary-color);
+    }
+
+    .file-operation-popup.minimize .minimization-info li {
+        color: #e2e8f0;
+    }
+}
+
+/* Focus styles for transform menu accessibility */
+#transform-dropdown .menu-option:focus {
+    /* Inherits base focus styles from menu-bar.css */
+    background-color: var(--primary-color);
+    color: var(--white);
+    outline: none;
+}
+
+/* Transform menu integration with control lock states */
+.transform-menu-locked #transform-dropdown .menu-option {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.transform-menu-locked #transform-dropdown .menu-option:hover {
+    background-color: transparent;
+}
+
+/* Animation for transform operations */
+@keyframes transform-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.transform-operation-active {
+    animation: transform-pulse 2s ease-in-out infinite;
+}
+
+/* Success state for completed transforms */
+.transform-success-indicator {
+    color: var(--success-color);
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background-color: var(--sim-final-bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--success-color);
+    margin-top: var(--spacing-sm);
+}
+
+/* Transform results summary styling */
+.transform-results {
+    background: var(--light-gray);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+}
+
+.transform-results h4 {
+    margin: 0 0 var(--spacing-sm) 0;
+    color: var(--text-color);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+}
+
+.transform-results .result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-xs) 0;
+    border-bottom: 1px solid var(--medium-gray);
+    font-size: var(--font-size-sm);
+}
+
+.transform-results .result-item:last-child {
+    border-bottom: none;
+}
+
+.transform-results .result-value {
+    font-weight: var(--font-weight-medium);
+    color: var(--secondary-color);
+}
+
+.transform-results .result-improvement {
+    color: var(--success-color);
+    font-weight: var(--font-weight-medium);
+}

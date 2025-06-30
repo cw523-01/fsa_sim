@@ -17,6 +17,17 @@
     padding: 0 var(--spacing-md);
 }
 
+.menu-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.menu-right {
+    display: flex;
+    align-items: center;
+}
+
 /* Menu Items */
 .menu-item {
     position: relative;
