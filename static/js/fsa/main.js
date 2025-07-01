@@ -869,8 +869,9 @@ function handleStateClick(stateElement, e) {
             } else {
                 // Complete edge creation to this state
                 const sourceState = edgeCreationManager.getSourceState();
+
                 if (sourceState && sourceState !== stateElement) {
-                    // Complete the edge creation to different state
+                    // Complete the edge creation to a different state
                     edgeCreationManager.completeEdgeCreation(stateElement, (sourceId, targetId) => {
                         // Check if connection already exists
                         const existingConnection = getConnectionBetween(jsPlumbInstance, sourceId, targetId);
@@ -892,15 +893,23 @@ function handleStateClick(stateElement, e) {
                         }
                     });
                 } else if (sourceState === stateElement) {
-                    // Clicking on the same state - create self-loop
+                    // Clicking on the same state – create OR edit self-loop
                     edgeCreationManager.completeEdgeCreation(stateElement, (sourceId, targetId) => {
-                        openEdgeSymbolModal(sourceId, targetId, (source, target, symbolsString, hasEpsilon, isCurved) => {
-                            createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, true, { // Self-loops are always curved
-                                onEdgeClick: handleEdgeClick
+                        // Check if a self-loop already exists
+                        const existingConnection = getConnectionBetween(jsPlumbInstance, sourceId, targetId);
+                        if (existingConnection) {
+                            // Self-loop exists → open inline editor instead of creating another
+                            openInlineEdgeEditor(existingConnection, jsPlumbInstance);
+                        } else {
+                            // No existing self-loop → create a new curved one
+                            openEdgeSymbolModal(sourceId, targetId, (source, target, symbolsString, hasEpsilon) => {
+                                createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, true, {  // Self-loops are always curved
+                                    onEdgeClick: handleEdgeClick
+                                });
+                                clearNFAStoredResults();
+                                updateFSAPropertiesDisplay(jsPlumbInstance);
                             });
-                            clearNFAStoredResults();
-                            updateFSAPropertiesDisplay(jsPlumbInstance);
-                        });
+                        }
                     });
                 }
             }
