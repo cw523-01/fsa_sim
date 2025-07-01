@@ -14,6 +14,8 @@ class FSATransformManager {
     constructor() {
         this.jsPlumbInstance = null;
         this.eventListenersSetup = false;
+        this.currentFSAForMinimization = null;
+        this.currentFSAForConversion = null;
     }
 
     /**
@@ -53,6 +55,14 @@ class FSATransformManager {
             });
         }
 
+        const menuNFAToDFA = document.getElementById('menu-nfa-to-dfa');
+        if (menuNFAToDFA) {
+            menuNFAToDFA.addEventListener('click', () => {
+                this.closeTransformMenu();
+                this.convertNFAToDFA();
+            });
+        }
+
         // Close menus when clicking outside (integrate with existing system)
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#transform-menu')) {
@@ -77,6 +87,12 @@ class FSATransformManager {
             if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
                 e.preventDefault();
                 this.minimiseDFA();
+            }
+
+            // Ctrl+D or Cmd+D - Convert NFA to DFA
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                e.preventDefault();
+                this.convertNFAToDFA();
             }
         });
     }
@@ -183,6 +199,54 @@ class FSATransformManager {
     }
 
     /**
+     * Convert NFA to DFA - main function
+     */
+    async convertNFAToDFA() {
+        if (!this.jsPlumbInstance) {
+            notificationManager.showError('Conversion Error', 'FSA not initialized');
+            return;
+        }
+
+        if (controlLockManager.isControlsLocked()) {
+            notificationManager.showWarning('Cannot Convert', 'Cannot convert while simulation is running');
+            return;
+        }
+
+        // Check if there's an FSA to convert
+        const states = document.querySelectorAll('.state, .accepting-state');
+        if (states.length === 0) {
+            notificationManager.showWarning('Nothing to Convert', 'Create an FSA before converting');
+            return;
+        }
+
+        // Step 1: Validate FSA properties
+        try {
+            const fsa = convertFSAToBackendFormat(this.jsPlumbInstance);
+            const propertiesResult = await checkFSAProperties(fsa);
+            const properties = propertiesResult.properties;
+
+            // Check if FSA is connected
+            if (!properties.connected) {
+                notificationManager.showError(
+                    'Cannot Convert',
+                    'NFA to DFA conversion requires a connected automaton. Some states are unreachable from the starting state.'
+                );
+                return;
+            }
+
+            // Show confirmation popup
+            this.showConvertConfirmPopup(fsa, propertiesResult.summary, properties);
+
+        } catch (error) {
+            console.error('Error validating FSA for conversion:', error);
+            notificationManager.showError(
+                'Validation Error',
+                `Failed to validate FSA: ${error.message}`
+            );
+        }
+    }
+
+    /**
      * Show confirmation popup for DFA minimization
      * @param {Object} fsa - The FSA to minimize
      * @param {Object} summary - FSA summary information
@@ -252,6 +316,96 @@ class FSATransformManager {
     }
 
     /**
+     * Show confirmation popup for NFA to DFA conversion
+     * @param {Object} fsa - The FSA to convert
+     * @param {Object} summary - FSA summary information
+     * @param {Object} properties - FSA properties
+     */
+    showConvertConfirmPopup(fsa, summary, properties) {
+        // Remove any existing popup
+        const existingPopup = document.getElementById('transform-operation-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+
+        // Determine current FSA type and appropriate messaging
+        const isDeterministic = properties.deterministic;
+        const hasEpsilonTransitions = summary.has_epsilon_transitions;
+
+        let currentTypeDescription;
+        let conversionDescription;
+
+        if (isDeterministic && !hasEpsilonTransitions) {
+            currentTypeDescription = 'DFA (already deterministic)';
+            conversionDescription = 'The conversion will ensure the automaton is in proper DFA format.';
+        } else if (isDeterministic && hasEpsilonTransitions) {
+            currentTypeDescription = 'Deterministic automaton with ε-transitions';
+            conversionDescription = 'The conversion will remove epsilon transitions while maintaining determinism.';
+        } else {
+            currentTypeDescription = 'NFA (non-deterministic)';
+            conversionDescription = 'The conversion will create an equivalent deterministic automaton (DFA) using subset construction.';
+        }
+
+        // Create popup element
+        const popup = document.createElement('div');
+        popup.id = 'transform-operation-popup';
+        popup.className = 'file-operation-popup convert';
+
+        popup.innerHTML = `
+            <div class="popup-header">
+                <div class="popup-title">
+                    <div class="popup-icon">
+                        <img src="static/img/alert.png" alt="Warning" style="width: 20px; height: 20px;">
+                    </div>
+                    <span>Convert to DFA</span>
+                </div>
+                <button class="popup-close" onclick="fsaTransformManager.hideConvertPopup()">×</button>
+            </div>
+            <div class="file-operation-content">
+                <div class="file-operation-description">
+                    ${conversionDescription}
+                </div>
+                
+                <div class="states-info">
+                    Current FSA: <span class="states-count">${currentTypeDescription}</span><br>
+                    <span class="states-count">${summary.total_states} states</span> and <span class="states-count">${this.getTransitionCount()} transitions</span>
+                </div>
+
+                <div class="warning-section">
+                    <span class="warning-icon">⚠️</span>
+                    <div class="warning-text">
+                        <strong>Warning:</strong> This operation will permanently replace the current automaton with an equivalent DFA. 
+                        ${isDeterministic ? 'The resulting DFA may have a similar number of states.' : 'The resulting DFA may have significantly more states due to subset construction.'} 
+                        Consider exporting your current FSA first if you want to save it.
+                    </div>
+                </div>
+            </div>
+            <div class="file-operation-actions">
+                <button class="file-action-btn cancel" onclick="fsaTransformManager.hideConvertPopup()">
+                    Cancel
+                </button>
+                <button class="file-action-btn primary" id="convert-confirm-btn" onclick="fsaTransformManager.confirmConvert()">
+                    Convert to DFA
+                </button>
+            </div>
+        `;
+
+        // Store FSA data for later use
+        this.currentFSAForConversion = fsa;
+
+        // Add popup to canvas
+        const canvas = document.getElementById('fsa-canvas');
+        if (canvas) {
+            canvas.appendChild(popup);
+
+            // Trigger show animation
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 100);
+        }
+    }
+
+    /**
      * Hide minimize confirmation popup
      */
     hideMinimizePopup() {
@@ -265,6 +419,22 @@ class FSATransformManager {
             }, 300);
         }
         this.currentFSAForMinimization = null;
+    }
+
+    /**
+     * Hide convert confirmation popup
+     */
+    hideConvertPopup() {
+        const popup = document.getElementById('transform-operation-popup');
+        if (popup) {
+            popup.classList.add('hide');
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 300);
+        }
+        this.currentFSAForConversion = null;
     }
 
     /**
@@ -315,6 +485,53 @@ class FSATransformManager {
     }
 
     /**
+     * Confirm and execute NFA to DFA conversion
+     */
+    async confirmConvert() {
+        const confirmBtn = document.getElementById('convert-confirm-btn');
+        if (!confirmBtn || !this.currentFSAForConversion) return;
+
+        // Show loading state
+        confirmBtn.textContent = 'Converting...';
+        confirmBtn.disabled = true;
+
+        try {
+            // Call backend conversion API
+            const response = await fetch('/api/nfa-to-dfa/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ fsa: this.currentFSAForConversion })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // Hide popup
+            this.hideConvertPopup();
+
+            // Replace current FSA with converted version
+            await this.replaceWithConvertedFSA(result);
+
+            // Show success message with statistics
+            this.showConversionResults(result);
+
+        } catch (error) {
+            console.error('Conversion error:', error);
+            notificationManager.showError('Conversion Failed', error.message);
+
+            // Reset button state
+            confirmBtn.textContent = 'Convert to DFA';
+            confirmBtn.disabled = false;
+        }
+    }
+
+    /**
      * Replace current FSA with minimized version
      * @param {Object} result - Minimization result from backend
      */
@@ -348,7 +565,40 @@ class FSATransformManager {
     }
 
     /**
-     * Get current state positions before minimization
+     * Replace current FSA with converted DFA version
+     * @param {Object} result - Conversion result from backend
+     */
+    async replaceWithConvertedFSA(result) {
+        const originalFSA = result.original_fsa;
+        const convertedDFA = result.converted_dfa;
+
+        // Store original state positions for interpolation
+        const originalPositions = this.getOriginalStatePositions();
+
+        // Clear current FSA
+        await fsaSerializationManager.clearCurrentFSA(this.jsPlumbInstance);
+
+        // Calculate positions for new states based on original states and subset construction
+        const newStatePositions = this.calculateConvertedStatePositions(
+            originalFSA, convertedDFA, originalPositions
+        );
+
+        // Create serialized data for the converted DFA with calculated positions
+        const serializedConvertedDFA = this.createSerializedConvertedDFA(
+            convertedDFA, newStatePositions
+        );
+
+        // Load the converted DFA
+        await fsaSerializationManager.deserializeFSA(serializedConvertedDFA, this.jsPlumbInstance);
+
+        // Update properties display
+        updateFSAPropertiesDisplay(this.jsPlumbInstance);
+
+        console.log('Successfully replaced FSA with converted DFA version');
+    }
+
+    /**
+     * Get current state positions before transformation
      * @returns {Object} - Map of state IDs to their positions
      */
     getOriginalStatePositions() {
@@ -417,6 +667,84 @@ class FSATransformManager {
     }
 
     /**
+     * Calculate positions for converted DFA states based on subset construction
+     * @param {Object} originalFSA - Original FSA structure
+     * @param {Object} convertedDFA - Converted DFA structure
+     * @param {Object} originalPositions - Original state positions
+     * @returns {Object} - Map of new state IDs to their calculated positions
+     */
+    calculateConvertedStatePositions(originalFSA, convertedDFA, originalPositions) {
+        const newPositions = {};
+
+        convertedDFA.states.forEach(newStateId => {
+            // For NFA to DFA conversion, state names represent subsets of original states
+            // Try to parse the subset from the state name
+            const originalStateIds = this.parseSubsetFromStateName(newStateId);
+
+            // Calculate centroid of original states that this DFA state represents
+            let totalX = 0, totalY = 0, validCount = 0;
+
+            originalStateIds.forEach(originalId => {
+                if (originalPositions[originalId]) {
+                    totalX += originalPositions[originalId].x;
+                    totalY += originalPositions[originalId].y;
+                    validCount++;
+                }
+            });
+
+            if (validCount > 0) {
+                newPositions[newStateId] = {
+                    x: Math.round(totalX / validCount),
+                    y: Math.round(totalY / validCount)
+                };
+            } else {
+                // Fallback: place in a grid layout for new states
+                const canvas = document.getElementById('fsa-canvas');
+                const centerX = canvas ? canvas.offsetWidth / 2 : 400;
+                const centerY = canvas ? canvas.offsetHeight / 2 : 300;
+                const stateIndex = convertedDFA.states.indexOf(newStateId);
+
+                // Arrange in a rough grid
+                const gridSize = Math.ceil(Math.sqrt(convertedDFA.states.length));
+                const row = Math.floor(stateIndex / gridSize);
+                const col = stateIndex % gridSize;
+
+                newPositions[newStateId] = {
+                    x: centerX + (col - gridSize/2) * 120,
+                    y: centerY + (row - gridSize/2) * 120
+                };
+            }
+        });
+
+        // Ensure no overlapping states
+        this.adjustOverlappingPositions(newPositions);
+
+        return newPositions;
+    }
+
+    /**
+     * Parse subset information from DFA state name
+     * @param {string} stateName - The DFA state name
+     * @returns {Array} - Array of original state IDs
+     */
+    parseSubsetFromStateName(stateName) {
+        // Handle different naming conventions for DFA states
+        if (stateName === 'EMPTY' || stateName.startsWith('DEAD')) {
+            return [];
+        }
+
+        // Handle hash-based names for large subsets
+        if (stateName.includes('_PLUS_') && stateName.includes('more_H')) {
+            // Extract the first few states from hash-based names
+            const firstPart = stateName.split('_PLUS_')[0];
+            return firstPart.split('_');
+        }
+
+        // Standard underscore-separated state names
+        return stateName.split('_').filter(id => id && id !== 'EMPTY');
+    }
+
+    /**
      * Adjust positions to avoid overlapping states
      * @param {Object} positions - State positions to adjust
      */
@@ -452,21 +780,44 @@ class FSATransformManager {
      * @returns {Object} - Serialized FSA data
      */
     createSerializedMinimizedFSA(minimizedFSA, positions) {
+        return this.createSerializedFSA(minimizedFSA, positions, 'Minimized DFA', 'DFA generated by minimization', ['minimized']);
+    }
+
+    /**
+     * Create serialized FSA data for the converted DFA
+     * @param {Object} convertedDFA - Converted DFA from backend
+     * @param {Object} positions - Calculated positions for states
+     * @returns {Object} - Serialized FSA data
+     */
+    createSerializedConvertedDFA(convertedDFA, positions) {
+        return this.createSerializedFSA(convertedDFA, positions, 'Converted DFA', 'DFA generated by NFA to DFA conversion', ['converted', 'dfa']);
+    }
+
+    /**
+     * Create serialized FSA data for any transformed FSA
+     * @param {Object} fsa - FSA from backend
+     * @param {Object} positions - Calculated positions for states
+     * @param {string} name - Name for the FSA
+     * @param {string} description - Description for the FSA
+     * @param {Array} tags - Tags for the FSA
+     * @returns {Object} - Serialized FSA data
+     */
+    createSerializedFSA(fsa, positions, name, description, tags) {
         // Create states data
-        const statesData = minimizedFSA.states.map(stateId => ({
+        const statesData = fsa.states.map(stateId => ({
             id: stateId,
             label: stateId,
-            isAccepting: minimizedFSA.acceptingStates.includes(stateId),
+            isAccepting: fsa.acceptingStates.includes(stateId),
             position: positions[stateId] || { x: 100, y: 100 },
             visual: {
-                className: minimizedFSA.acceptingStates.includes(stateId) ? 'accepting-state' : 'state',
+                className: fsa.acceptingStates.includes(stateId) ? 'accepting-state' : 'state',
                 zIndex: 'auto'
             }
         }));
 
         // Create transitions data
         const transitionsData = [];
-        Object.entries(minimizedFSA.transitions).forEach(([sourceId, transitions]) => {
+        Object.entries(fsa.transitions).forEach(([sourceId, transitions]) => {
             Object.entries(transitions).forEach(([symbol, targets]) => {
                 if (targets && targets.length > 0) {
                     const targetId = targets[0]; // DFA has only one target per symbol
@@ -505,14 +856,14 @@ class FSATransformManager {
             version: "1.0.0",
             timestamp: new Date().toISOString(),
             metadata: {
-                name: "Minimized DFA",
-                description: "DFA generated by minimization",
+                name: name,
+                description: description,
                 creator: "FSA Simulator",
-                tags: ["minimized"]
+                tags: tags
             },
             states: statesData,
             transitions: transitionsData,
-            startingState: minimizedFSA.startingState,
+            startingState: fsa.startingState,
             canvasProperties: {
                 dimensions: { width: 800, height: 600 },
                 viewport: { scrollLeft: 0, scrollTop: 0 },
@@ -543,6 +894,41 @@ class FSATransformManager {
                 'DFA Minimized Successfully',
                 `Reduced from ${stats.original.states_count} to ${stats.minimised.states_count} states (${reductionPercentage}% reduction).`
             );
+        }
+    }
+
+    /**
+     * Show conversion results with statistics
+     * @param {Object} result - Conversion result from backend
+     */
+    showConversionResults(result) {
+        const stats = result.statistics;
+        const wasAlreadyDeterministic = stats.conversion.was_already_deterministic;
+        const epsilonTransitionsRemoved = stats.conversion.epsilon_transitions_removed;
+
+        if (wasAlreadyDeterministic && !epsilonTransitionsRemoved) {
+            notificationManager.showInfo(
+                'Already a DFA',
+                'The input was already a deterministic finite automaton.'
+            );
+        } else if (wasAlreadyDeterministic && epsilonTransitionsRemoved) {
+            notificationManager.showSuccess(
+                'DFA Conversion Complete',
+                'Removed epsilon transitions to create a proper DFA.'
+            );
+        } else {
+            const statesAdded = stats.conversion.states_added;
+            const changePercentage = Math.abs(stats.conversion.states_change_percentage);
+
+            let message = `Converted NFA to DFA: ${stats.original.states_count} → ${stats.converted.states_count} states`;
+
+            if (statesAdded > 0) {
+                message += ` (+${changePercentage}% states)`;
+            } else if (statesAdded < 0) {
+                message += ` (-${changePercentage}% states)`;
+            }
+
+            notificationManager.showSuccess('NFA to DFA Conversion Complete', message);
         }
     }
 

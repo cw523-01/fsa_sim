@@ -23,7 +23,7 @@
     word-break: break-word;
     hyphens: auto;
     white-space: normal;
-    padding: 4px;
+    padding: 0;
     box-sizing: border-box;
 
     /* Add text shadow for readability */
@@ -59,7 +59,7 @@
     word-break: break-word;
     hyphens: auto;
     white-space: normal;
-    padding: 4px;
+    padding: 0;
     box-sizing: border-box;
 
     /* Add text shadow for readability */

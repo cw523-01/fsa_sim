@@ -44,13 +44,69 @@
     background: var(--primary-hover);
 }
 
+/* Conversion popup specific styles */
+.file-operation-popup.convert {
+    /* Inherit styles from existing file operation popup */
+}
+
+/* Transform menu header for convert popup */
+.file-operation-popup.convert .popup-header {
+    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-hover) 100%);
+}
+
+.file-operation-popup.convert .file-action-btn.primary {
+    background: var(--secondary-color);
+}
+
+.file-operation-popup.convert .file-action-btn.primary:hover:not(.disabled) {
+    background: var(--secondary-hover);
+}
+
+/* Conversion-specific content styles */
+.file-operation-popup.convert .conversion-info {
+    margin: var(--spacing-lg) 0;
+    padding: var(--spacing-md);
+    background-color: var(--light-gray);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--secondary-color);
+}
+
+.file-operation-popup.convert .conversion-info .info-item {
+    margin-bottom: var(--spacing-sm);
+}
+
+.file-operation-popup.convert .conversion-info .info-item:last-child {
+    margin-bottom: 0;
+}
+
+.file-operation-popup.convert .conversion-info ul {
+    margin: var(--spacing-sm) 0 0 0;
+    padding-left: var(--spacing-xl);
+    list-style-type: none;
+}
+
+.file-operation-popup.convert .conversion-info li {
+    margin: var(--spacing-xs) 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-color);
+    position: relative;
+}
+
+.file-operation-popup.convert .conversion-info li::before {
+    content: '→';
+    position: absolute;
+    left: calc(-1 * var(--spacing-lg));
+    color: var(--secondary-color);
+    font-weight: var(--font-weight-bold);
+}
+
 /* Minimization-specific content styles */
 .file-operation-popup.minimize .minimization-info {
     margin: var(--spacing-lg) 0;
     padding: var(--spacing-md);
     background-color: var(--light-gray);
     border-radius: var(--radius-md);
-    border-left: 4px solid var(--secondary-color);
+    border-left: 4px solid var(--primary-color);
 }
 
 .file-operation-popup.minimize .minimization-info .info-item {
@@ -103,6 +159,27 @@
     animation: transform-spin 1s linear infinite;
 }
 
+/* Loading state for convert button */
+#convert-confirm-btn.loading {
+    position: relative;
+    color: transparent !important;
+}
+
+#convert-confirm-btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    margin-left: -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--white);
+    border-radius: var(--radius-circle);
+    animation: transform-spin 1s linear infinite;
+}
+
 @keyframes transform-spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -138,28 +215,37 @@
 @media (max-width: 768px) {
     /* Transform menu inherits responsive behavior from menu-bar.css */
 
-    .file-operation-popup.minimize {
+    .file-operation-popup.minimize,
+    .file-operation-popup.convert {
         max-width: 90vw;
         margin: var(--spacing-xl);
     }
 
-    .file-operation-popup.minimize .minimization-info {
+    .file-operation-popup.minimize .minimization-info,
+    .file-operation-popup.convert .conversion-info {
         padding: var(--spacing-sm);
     }
 
-    .file-operation-popup.minimize .minimization-info ul {
+    .file-operation-popup.minimize .minimization-info ul,
+    .file-operation-popup.convert .conversion-info ul {
         padding-left: var(--spacing-lg);
     }
 }
 
 /* Dark mode support for transform menu */
 @media (prefers-color-scheme: dark) {
-    .file-operation-popup.minimize .minimization-info {
+    .file-operation-popup.minimize .minimization-info,
+    .file-operation-popup.convert .conversion-info {
         background-color: #2d3748;
+        border-left-color: var(--primary-color);
+    }
+
+    .file-operation-popup.convert .conversion-info {
         border-left-color: var(--secondary-color);
     }
 
-    .file-operation-popup.minimize .minimization-info li {
+    .file-operation-popup.minimize .minimization-info li,
+    .file-operation-popup.convert .conversion-info li {
         color: #e2e8f0;
     }
 }
@@ -242,4 +328,38 @@
 .transform-results .result-improvement {
     color: var(--success-color);
     font-weight: var(--font-weight-medium);
+}
+
+/* Conversion-specific result improvements */
+.transform-results .result-conversion {
+    color: var(--secondary-color);
+    font-weight: var(--font-weight-medium);
+}
+
+/* FSA type indicators in popups */
+.fsa-type-indicator {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    margin-left: var(--spacing-xs);
+}
+
+.fsa-type-indicator.dfa {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: var(--success-color);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.fsa-type-indicator.nfa {
+    background-color: rgba(255, 152, 0, 0.1);
+    color: var(--warning-color);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.fsa-type-indicator.epsilon {
+    background-color: rgba(33, 150, 243, 0.1);
+    color: var(--secondary-color);
+    border: 1px solid rgba(33, 150, 243, 0.3);
 }
