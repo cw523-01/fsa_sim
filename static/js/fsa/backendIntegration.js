@@ -27,8 +27,9 @@ export function convertFSAToBackendFormat(jsPlumbInstance) {
 
         allSymbols.forEach(symbol => {
             const targets = tableData.transitions[stateId][symbol];
-            // For backend format, we need an array of target states
-            backendTransitions[stateId][symbol] = targets || [];
+            if (targets && targets.length > 0) {
+                backendTransitions[stateId][symbol] = targets;
+            }
         });
     });
 

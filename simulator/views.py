@@ -19,7 +19,7 @@ from .fsa_properties import (
     validate_fsa_structure,
     is_nondeterministic
 )
-from .fsa_transformations import minimise_dfa, nfa_to_dfa
+from .fsa_transformations import minimise_dfa, nfa_to_dfa, complete_dfa, complement_dfa
 
 
 def index(request):
@@ -916,3 +916,185 @@ def convert_nfa_to_dfa(request):
         return JsonResponse({'error': str(e)}, status=400)
     except Exception as e:
         return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+@csrf_exempt
+@require_POST
+def dfa_to_complete(request):
+    """
+    Django view to handle DFA completion requests.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format (must be deterministic)
+
+    Returns a JSON response with the completed DFA.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing FSA definition'}, status=400)
+
+        # Validate FSA structure
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
+
+        # Check if FSA is deterministic (required for completion)
+        if not is_deterministic(fsa):
+            return JsonResponse({
+                'error': 'DFA completion requires a deterministic FSA. '
+                        'The provided FSA is non-deterministic.'
+            }, status=400)
+
+        # Store original FSA statistics for comparison
+        original_stats = {
+            'states_count': len(fsa['states']),
+            'alphabet_size': len(fsa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in fsa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(fsa['acceptingStates']),
+            'is_complete': is_complete(fsa)
+        }
+
+        # Complete the DFA
+        completed_fsa = complete_dfa(fsa)
+
+        # Calculate completed FSA statistics
+        completed_stats = {
+            'states_count': len(completed_fsa['states']),
+            'alphabet_size': len(completed_fsa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in completed_fsa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(completed_fsa['acceptingStates']),
+            'is_complete': True  # Result is always complete
+        }
+
+        # Calculate completion statistics
+        completion_stats = {
+            'states_added': completed_stats['states_count'] - original_stats['states_count'],
+            'transitions_added': completed_stats['transitions_count'] - original_stats['transitions_count'],
+            'dead_state_added': completed_stats['states_count'] > original_stats['states_count'],
+            'was_already_complete': original_stats['is_complete']
+        }
+
+        # Determine appropriate message
+        message = ('DFA was already complete, no changes needed' if original_stats['is_complete']
+                  else f'DFA completed successfully by adding {completion_stats["states_added"]} dead state(s) '
+                       f'and {completion_stats["transitions_added"]} transition(s)')
+
+        return JsonResponse({
+            'success': True,
+            'original_fsa': fsa,
+            'completed_fsa': completed_fsa,
+            'statistics': {
+                'original': original_stats,
+                'completed': completed_stats,
+                'completion': completion_stats
+            },
+            'message': message
+        })
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def dfa_to_complement(request):
+    """
+    Django view to handle DFA complement requests.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format (must be deterministic)
+
+    Returns a JSON response with the complement DFA.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing FSA definition'}, status=400)
+
+        # Validate FSA structure
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
+
+        # Check if FSA is deterministic (required for complement)
+        if not is_deterministic(fsa):
+            return JsonResponse({
+                'error': 'DFA complement requires a deterministic FSA. '
+                        'The provided FSA is non-deterministic.'
+            }, status=400)
+
+        # Store original FSA statistics for comparison
+        original_stats = {
+            'states_count': len(fsa['states']),
+            'alphabet_size': len(fsa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in fsa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(fsa['acceptingStates']),
+            'non_accepting_states_count': len(fsa['states']) - len(fsa['acceptingStates']),
+            'is_complete': is_complete(fsa)
+        }
+
+        # Get the complement DFA
+        complement_fsa = complement_dfa(fsa)
+
+        # Calculate complement FSA statistics
+        complement_stats = {
+            'states_count': len(complement_fsa['states']),
+            'alphabet_size': len(complement_fsa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in complement_fsa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(complement_fsa['acceptingStates']),
+            'non_accepting_states_count': len(complement_fsa['states']) - len(complement_fsa['acceptingStates']),
+            'is_complete': True  # Complement always ensures completeness
+        }
+
+        # Calculate complement statistics
+        complement_analysis = {
+            'states_added_for_completeness': complement_stats['states_count'] - original_stats['states_count'],
+            'accepting_states_flipped': True,
+            'original_accepting_became_non_accepting': original_stats['accepting_states_count'],
+            'original_non_accepting_became_accepting': original_stats['non_accepting_states_count'],
+            'completion_required': not original_stats['is_complete']
+        }
+
+        # Determine appropriate message
+        completion_message = (f' (completion required: added {complement_analysis["states_added_for_completeness"]} dead state(s))'
+                             if complement_analysis['completion_required'] else '')
+        message = f'DFA complement computed successfully. {original_stats["accepting_states_count"]} accepting states became non-accepting, ' \
+                 f'{original_stats["non_accepting_states_count"]} non-accepting states became accepting{completion_message}'
+
+        return JsonResponse({
+            'success': True,
+            'original_fsa': fsa,
+            'complement_fsa': complement_fsa,
+            'statistics': {
+                'original': original_stats,
+                'complement': complement_stats,
+                'analysis': complement_analysis
+            },
+            'message': message
+        })
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+

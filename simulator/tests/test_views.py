@@ -710,6 +710,34 @@ class FunctionExceptionTests(FSAViewTestCase):
         self.assertIn('error', data)
         self.assertIn('Server error', data['error'])
 
+    @patch('simulator.views.complete_dfa')
+    def test_complete_dfa_function_exception(self, mock_complete):
+        """Test exception in complete_dfa endpoint"""
+        mock_complete.side_effect = Exception("Complete DFA error")
+
+        response = self.post_json('/api/complete-dfa/', {
+            'fsa': self.sample_dfa
+        })
+
+        self.assertEqual(response.status_code, 500)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Server error', data['error'])
+
+    @patch('simulator.views.complement_dfa')
+    def test_complement_dfa_function_exception(self, mock_complement):
+        """Test exception in complement_dfa endpoint"""
+        mock_complement.side_effect = Exception("Complement DFA error")
+
+        response = self.post_json('/api/complement-dfa/', {
+            'fsa': self.sample_dfa
+        })
+
+        self.assertEqual(response.status_code, 500)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Server error', data['error'])
+
 
 class StreamingErrorHandlingTests(FSAViewTestCase):
     """Tests for error handling in streaming endpoints"""
@@ -1299,6 +1327,9 @@ class URLRoutingTests(TestCase):
             '/api/check-deterministic/',
             '/api/check-complete/',
             '/api/check-connected/',
+            '/api/complete-dfa/',
+            '/api/complement-dfa/',
+
         ]
 
         for url in urls_to_test:
@@ -1500,6 +1531,63 @@ class CombinedTransformationTests(FSAViewTestCase):
             self.assertEqual(nfa_accepted, dfa_accepted,
                              f"Language disagreement on string '{test_string}'")
 
+    def test_complete_then_complement_workflow(self):
+        """Test completing a DFA then taking its complement"""
+        incomplete_dfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1']},  # Missing 'b' transition
+                'S1': {'a': ['S0'], 'b': ['S1']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        # 1. Complete the DFA
+        complete_response = self.post_json('/api/complete-dfa/', {
+            'fsa': incomplete_dfa
+        })
+        self.assertEqual(complete_response.status_code, 200)
+        completed_dfa = complete_response.json()['completed_fsa']
+
+        # 2. Take complement of completed DFA
+        complement_response = self.post_json('/api/complement-dfa/', {
+            'fsa': completed_dfa
+        })
+        self.assertEqual(complement_response.status_code, 200)
+        self.assertTrue(complement_response.json()['success'])
+
+    def test_nfa_to_dfa_complete_complement_chain(self):
+        """Test full transformation chain: NFA -> DFA -> Complete -> Complement"""
+        # 1. Convert NFA to DFA
+        convert_response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': self.sample_nfa
+        })
+        self.assertEqual(convert_response.status_code, 200)
+        dfa = convert_response.json()['converted_dfa']
+
+        # 2. Complete the DFA (might already be complete)
+        complete_response = self.post_json('/api/complete-dfa/', {
+            'fsa': dfa
+        })
+        self.assertEqual(complete_response.status_code, 200)
+        completed_dfa = complete_response.json()['completed_fsa']
+
+        # 3. Take complement
+        complement_response = self.post_json('/api/complement-dfa/', {
+            'fsa': completed_dfa
+        })
+        self.assertEqual(complement_response.status_code, 200)
+        complement_dfa = complement_response.json()['complement_fsa']
+
+        # 4. Verify the result is still a valid DFA
+        type_check_response = self.post_json('/api/check-fsa-type/', {
+            'fsa': complement_dfa
+        })
+        self.assertEqual(type_check_response.status_code, 200)
+        self.assertEqual(type_check_response.json()['type'], 'DFA')
+
 
 class ComprehensiveErrorTests(FSAViewTestCase):
     """Comprehensive error testing for all endpoints"""
@@ -1518,6 +1606,8 @@ class ComprehensiveErrorTests(FSAViewTestCase):
             '/api/check-connected/',
             '/api/minimise-dfa/',
             '/api/nfa-to-dfa/',
+            '/api/complete-dfa/',
+            '/api/complement-dfa/',
         ]
 
         for endpoint in endpoints:
@@ -1542,6 +1632,8 @@ class ComprehensiveErrorTests(FSAViewTestCase):
             '/api/check-connected/',
             '/api/minimise-dfa/',
             '/api/nfa-to-dfa/',
+            '/api/complete-dfa/',
+            '/api/complement-dfa/',
         ]
 
         for endpoint in endpoints:
@@ -1568,6 +1660,8 @@ class ComprehensiveErrorTests(FSAViewTestCase):
             '/api/check-connected/',
             '/api/minimise-dfa/',
             '/api/nfa-to-dfa/',
+            '/api/complete-dfa/',
+            '/api/complement-dfa/',
         ]
 
         for endpoint in endpoints:
@@ -1952,3 +2046,270 @@ class ConcurrencySimulationTests(FSAViewTestCase):
         for endpoint, response in responses:
             with self.subTest(endpoint=endpoint):
                 self.assertEqual(response.status_code, 200)
+
+
+class CompleteDFAViewTests(FSAViewTestCase):
+    """Tests for the DFA completion endpoint"""
+
+    def test_complete_dfa_successful(self):
+        """Test successful DFA completion"""
+        # Create an incomplete DFA
+        incomplete_dfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1']},  # Missing 'b' transition
+                'S1': {'a': ['S0'], 'b': ['S1']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        response = self.post_json('/api/complete-dfa/', {
+            'fsa': incomplete_dfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertTrue(data['success'])
+        self.assertIn('completed_fsa', data)
+        self.assertIn('statistics', data)
+        self.assertIn('message', data)
+
+        # Check that a dead state was added
+        stats = data['statistics']['completion']
+        self.assertTrue(stats['dead_state_added'])
+        self.assertGreater(stats['states_added'], 0)
+        self.assertGreater(stats['transitions_added'], 0)
+
+    def test_complete_already_complete_dfa(self):
+        """Test completion of already complete DFA"""
+        response = self.post_json('/api/complete-dfa/', {
+            'fsa': self.sample_dfa  # Already complete
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertTrue(data['success'])
+        stats = data['statistics']['completion']
+        self.assertTrue(stats['was_already_complete'])
+        self.assertFalse(stats['dead_state_added'])
+        self.assertEqual(stats['states_added'], 0)
+
+    def test_complete_non_deterministic_fsa(self):
+        """Test completion fails for non-deterministic FSA"""
+        response = self.post_json('/api/complete-dfa/', {
+            'fsa': self.sample_nfa
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('deterministic FSA', data['error'])
+
+    def test_complete_dfa_missing_fsa(self):
+        """Test completion without FSA definition"""
+        response = self.post_json('/api/complete-dfa/', {})
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing FSA definition', data['error'])
+
+    def test_complete_dfa_invalid_structure(self):
+        """Test completion with invalid FSA structure"""
+        response = self.post_json('/api/complete-dfa/', {
+            'fsa': self.invalid_fsa
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+
+    def test_complete_dfa_statistics_accuracy(self):
+        """Test that completion statistics are calculated correctly"""
+        incomplete_dfa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1'], 'b': ['S2']},
+                'S1': {'a': ['S0']},  # Missing 'b' transition
+                'S2': {'b': ['S2']}   # Missing 'a' transition
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        response = self.post_json('/api/complete-dfa/', {
+            'fsa': incomplete_dfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        original_stats = data['statistics']['original']
+        completed_stats = data['statistics']['completed']
+        completion_stats = data['statistics']['completion']
+
+        # Verify original was incomplete
+        self.assertFalse(original_stats['is_complete'])
+
+        # Verify completed is complete
+        self.assertTrue(completed_stats['is_complete'])
+
+        # Verify counts are correct
+        self.assertEqual(original_stats['states_count'], 3)
+        self.assertEqual(completed_stats['states_count'], 4)  # Added one dead state
+        self.assertEqual(completion_stats['states_added'], 1)
+        self.assertEqual(completion_stats['transitions_added'], 4)  # 2 missing + 2 for dead state
+
+
+class ComplementDFAViewTests(FSAViewTestCase):
+    """Tests for the DFA complement endpoint"""
+
+    def test_complement_dfa_successful(self):
+        """Test successful DFA complement"""
+        response = self.post_json('/api/complement-dfa/', {
+            'fsa': self.sample_dfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertTrue(data['success'])
+        self.assertIn('complement_fsa', data)
+        self.assertIn('statistics', data)
+        self.assertIn('message', data)
+
+        # Check that accepting states were flipped
+        original_accepting = set(self.sample_dfa['acceptingStates'])
+        complement_accepting = set(data['complement_fsa']['acceptingStates'])
+
+        # Should have different accepting states (unless completion added states)
+        self.assertNotEqual(original_accepting, complement_accepting)
+
+    def test_complement_incomplete_dfa(self):
+        """Test complement of incomplete DFA (should complete first)"""
+        incomplete_dfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1']},  # Missing 'b' transition
+                'S1': {'a': ['S0'], 'b': ['S1']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        response = self.post_json('/api/complement-dfa/', {
+            'fsa': incomplete_dfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertTrue(data['success'])
+        analysis = data['statistics']['analysis']
+        self.assertTrue(analysis['completion_required'])
+        self.assertGreater(analysis['states_added_for_completeness'], 0)
+
+    def test_complement_non_deterministic_fsa(self):
+        """Test complement fails for non-deterministic FSA"""
+        response = self.post_json('/api/complement-dfa/', {
+            'fsa': self.sample_nfa
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('deterministic FSA', data['error'])
+
+    def test_complement_dfa_missing_fsa(self):
+        """Test complement without FSA definition"""
+        response = self.post_json('/api/complement-dfa/', {})
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing FSA definition', data['error'])
+
+    def test_complement_language_inversion(self):
+        """Test that complement actually inverts the language"""
+        # Test with a simple DFA
+        simple_dfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1']},
+                'S1': {'a': ['S0']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S0']  # Accepts strings with even number of 'a's
+        }
+
+        # Get complement
+        response = self.post_json('/api/complement-dfa/', {
+            'fsa': simple_dfa
+        })
+        self.assertEqual(response.status_code, 200)
+        complement_dfa = response.json()['complement_fsa']
+
+        # Test strings
+        test_strings = ['', 'a', 'aa', 'aaa', 'aaaa']
+
+        for test_string in test_strings:
+            # Test original DFA
+            orig_response = self.post_json('/api/simulate-dfa/', {
+                'fsa': simple_dfa,
+                'input': test_string
+            })
+
+            # Test complement DFA
+            comp_response = self.post_json('/api/simulate-dfa/', {
+                'fsa': complement_dfa,
+                'input': test_string
+            })
+
+            orig_accepted = orig_response.json()['accepted']
+            comp_accepted = comp_response.json()['accepted']
+
+            # Should be opposite
+            self.assertNotEqual(orig_accepted, comp_accepted,
+                              f"Complement failed for string '{test_string}'")
+
+    def test_complement_statistics_accuracy(self):
+        """Test that complement statistics are calculated correctly"""
+        test_dfa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1']},
+                'S1': {'a': ['S2']},
+                'S2': {'a': ['S0']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']  # Only S1 is accepting
+        }
+
+        response = self.post_json('/api/complement-dfa/', {
+            'fsa': test_dfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        original_stats = data['statistics']['original']
+        complement_stats = data['statistics']['complement']
+        analysis = data['statistics']['analysis']
+
+        # Check accepting state counts
+        self.assertEqual(original_stats['accepting_states_count'], 1)
+        self.assertEqual(original_stats['non_accepting_states_count'], 2)
+
+        # In complement, accepting and non-accepting should be flipped
+        # (plus potentially a dead state if completion was needed)
+        self.assertGreaterEqual(complement_stats['accepting_states_count'], 2)
+        self.assertEqual(analysis['original_accepting_became_non_accepting'], 1)
+        self.assertEqual(analysis['original_non_accepting_became_accepting'], 2)

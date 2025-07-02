@@ -96,6 +96,57 @@ def minimise_dfa(fsa: Dict) -> Dict:
         "acceptingStates": new_accepting
     }
 
+def _add_dead_state(transitions: Dict, states: Set[str], alphabet: List[str]) -> Tuple[Set[str], bool]:
+    """
+    Helper function to add a dead state to transitions if needed for completeness.
+
+    Args:
+        transitions (Dict): Transitions dictionary to modify
+        states (Set[str]): Set of states to potentially modify
+        alphabet (List[str]): Alphabet symbols
+
+    Returns:
+        Tuple[Set[str], bool]: Updated states set and whether a dead state was added
+    """
+    # Check if we need a dead state for completeness
+    dead_state_needed = False
+    for state in states:
+        for symbol in alphabet:
+            if symbol not in transitions.get(state, {}):
+                dead_state_needed = True
+                break
+        if dead_state_needed:
+            break
+
+    if not dead_state_needed:
+        return states, False
+
+    # Find an unused name for the dead state
+    dead_state_name = "DEAD"
+    counter = 1
+    while dead_state_name in states:
+        dead_state_name = f"DEAD_{counter}"
+        counter += 1
+
+    # Add dead state to states
+    updated_states = states.copy()
+    updated_states.add(dead_state_name)
+
+    # Add missing transitions to dead state
+    for state in states:
+        for symbol in alphabet:
+            if symbol not in transitions.get(state, {}):
+                if state not in transitions:
+                    transitions[state] = {}
+                transitions[state][symbol] = [dead_state_name]
+
+    # Dead state transitions to itself
+    transitions[dead_state_name] = {}
+    for symbol in alphabet:
+        transitions[dead_state_name][symbol] = [dead_state_name]
+
+    return updated_states, True
+
 
 def nfa_to_dfa(nfa: Dict) -> Dict:
     """
@@ -227,39 +278,9 @@ def nfa_to_dfa(nfa: Dict) -> Dict:
             target_state_name = dfa_state_map[new_state_set]
             dfa_transitions[current_dfa_state][symbol] = [target_state_name]
 
-    # Handle missing transitions by adding them to a dead state only if necessary
-    all_dfa_states = list(dfa_state_map.values())
-    dead_state_needed = False
-
-    # Check if we need a dead state for completeness
-    for dfa_state in all_dfa_states:
-        for symbol in nfa['alphabet']:
-            if symbol not in dfa_transitions[dfa_state]:
-                dead_state_needed = True
-                break
-        if dead_state_needed:
-            break
-
-    # Add dead state only if needed
-    if dead_state_needed:
-        dead_state_name = "DEAD"
-        # Ensure dead state name doesn't conflict
-        counter = 1
-        while dead_state_name in all_dfa_states:
-            dead_state_name = f"DEAD_{counter}"
-            counter += 1
-
-        all_dfa_states.append(dead_state_name)
-
-        # Add missing transitions to dead state
-        for dfa_state in all_dfa_states[:-1]:  # Exclude the dead state itself
-            for symbol in nfa['alphabet']:
-                if symbol not in dfa_transitions[dfa_state]:
-                    dfa_transitions[dfa_state][symbol] = [dead_state_name]
-
-        # Dead state transitions to itself
-        for symbol in nfa['alphabet']:
-            dfa_transitions[dead_state_name][symbol] = [dead_state_name]
+    # Use helper function to add dead state if needed
+    all_dfa_states = set(dfa_state_map.values())
+    updated_states, dead_state_added = _add_dead_state(dfa_transitions, all_dfa_states, nfa['alphabet'])
 
     # Determine accepting states: any DFA state that contains an NFA accepting state
     dfa_accepting = []
@@ -269,7 +290,7 @@ def nfa_to_dfa(nfa: Dict) -> Dict:
 
     # Build the final DFA
     dfa = {
-        'states': sorted(all_dfa_states),
+        'states': sorted(updated_states),
         'alphabet': nfa['alphabet'][:],
         'transitions': dict(dfa_transitions),
         'startingState': start_state_name,
@@ -277,3 +298,78 @@ def nfa_to_dfa(nfa: Dict) -> Dict:
     }
 
     return dfa
+
+def complete_dfa(dfa: Dict) -> Dict:
+    """
+    Completes a DFA by adding a dead state and missing transitions if necessary.
+
+    Args:
+        dfa (Dict): A dictionary representing the DFA
+
+    Returns:
+        Dict: A complete DFA in the same format
+
+    Raises:
+        ValueError: If the input is not a deterministic FSA
+    """
+    if not is_deterministic(dfa):
+        raise ValueError("Input must be a deterministic FSA (DFA)")
+
+    # Create copies to avoid modifying the original
+    states = set(dfa['states'])
+    alphabet = dfa['alphabet'][:]
+    transitions = {}
+
+    # Deep copy transitions
+    for state in dfa['states']:
+        if state in dfa['transitions']:
+            transitions[state] = {}
+            for symbol in dfa['transitions'][state]:
+                transitions[state][symbol] = dfa['transitions'][state][symbol][:]
+
+    # Add dead state if needed
+    updated_states, dead_state_added = _add_dead_state(transitions, states, alphabet)
+
+    return {
+        'states': sorted(updated_states),
+        'alphabet': alphabet,
+        'transitions': transitions,
+        'startingState': dfa['startingState'],
+        'acceptingStates': dfa['acceptingStates'][:]
+    }
+
+
+def complement_dfa(dfa: Dict) -> Dict:
+    """
+    Returns the complement of a DFA. The complement accepts exactly the strings
+    that the original DFA rejects.
+
+    Args:
+        dfa (Dict): A dictionary representing the DFA
+
+    Returns:
+        Dict: The complement DFA in the same format
+
+    Raises:
+        ValueError: If the input is not a deterministic FSA
+    """
+    if not is_deterministic(dfa):
+        raise ValueError("Input must be a deterministic FSA (DFA)")
+
+    # First, ensure the DFA is complete (complement requires completeness)
+    complete_dfa_result = complete_dfa(dfa)
+
+    # Get all states and current accepting states
+    all_states = set(complete_dfa_result['states'])
+    current_accepting = set(complete_dfa_result['acceptingStates'])
+
+    # Complement: non-accepting states become accepting, accepting states become non-accepting
+    new_accepting = sorted(all_states - current_accepting)
+
+    return {
+        'states': complete_dfa_result['states'],
+        'alphabet': complete_dfa_result['alphabet'],
+        'transitions': complete_dfa_result['transitions'],
+        'startingState': complete_dfa_result['startingState'],
+        'acceptingStates': new_accepting
+    }

@@ -17,6 +17,8 @@ class FSATransformManager {
         this.eventListenersSetup = false;
         this.currentFSAForMinimization = null;
         this.currentFSAForConversion = null;
+        this.currentFSAForCompletion = null;
+        this.currentFSAForComplement = null;
     }
 
     /**
@@ -61,6 +63,22 @@ class FSATransformManager {
             menuNFAToDFA.addEventListener('click', () => {
                 this.closeTransformMenu();
                 this.convertNFAToDFA();
+            });
+        }
+
+        const menuCompleteDFA = document.getElementById('menu-complete-dfa');
+        if (menuCompleteDFA) {
+            menuCompleteDFA.addEventListener('click', () => {
+                this.closeTransformMenu();
+                this.completeDFA();
+            });
+        }
+
+        const menuComplementDFA = document.getElementById('menu-complement-dfa');
+        if (menuComplementDFA) {
+            menuComplementDFA.addEventListener('click', () => {
+                this.closeTransformMenu();
+                this.complementDFA();
             });
         }
 
@@ -248,6 +266,120 @@ class FSATransformManager {
     }
 
     /**
+     * Complete DFA - main function
+     */
+    async completeDFA() {
+        if (!this.jsPlumbInstance) {
+            notificationManager.showError('Completion Error', 'FSA not initialized');
+            return;
+        }
+
+        if (controlLockManager.isControlsLocked()) {
+            notificationManager.showWarning('Cannot Complete', 'Cannot complete while simulation is running');
+            return;
+        }
+
+        // Check if there's an FSA to complete
+        const states = document.querySelectorAll('.state, .accepting-state');
+        if (states.length === 0) {
+            notificationManager.showWarning('Nothing to Complete', 'Create an FSA before completing');
+            return;
+        }
+
+        // Step 1: Validate FSA properties
+        try {
+            const fsa = convertFSAToBackendFormat(this.jsPlumbInstance);
+            const propertiesResult = await checkFSAProperties(fsa);
+            const properties = propertiesResult.properties;
+
+            // Check if FSA is deterministic
+            if (!properties.deterministic) {
+                notificationManager.showError(
+                    'Cannot Complete',
+                    'DFA completion requires a deterministic automaton. The current FSA is non-deterministic (NFA).'
+                );
+                return;
+            }
+
+            // Check if FSA is connected
+            if (!properties.connected) {
+                notificationManager.showError(
+                    'Cannot Complete',
+                    'DFA completion requires a connected automaton. Some states are unreachable from the starting state.'
+                );
+                return;
+            }
+
+            // Show confirmation popup
+            this.showCompleteConfirmPopup(fsa, propertiesResult.summary, properties);
+
+        } catch (error) {
+            console.error('Error validating FSA for completion:', error);
+            notificationManager.showError(
+                'Validation Error',
+                `Failed to validate FSA: ${error.message}`
+            );
+        }
+    }
+
+    /**
+     * Complement DFA - main function
+     */
+    async complementDFA() {
+        if (!this.jsPlumbInstance) {
+            notificationManager.showError('Complement Error', 'FSA not initialized');
+            return;
+        }
+
+        if (controlLockManager.isControlsLocked()) {
+            notificationManager.showWarning('Cannot Complement', 'Cannot complement while simulation is running');
+            return;
+        }
+
+        // Check if there's an FSA to complement
+        const states = document.querySelectorAll('.state, .accepting-state');
+        if (states.length === 0) {
+            notificationManager.showWarning('Nothing to Complement', 'Create an FSA before taking complement');
+            return;
+        }
+
+        // Step 1: Validate FSA properties
+        try {
+            const fsa = convertFSAToBackendFormat(this.jsPlumbInstance);
+            const propertiesResult = await checkFSAProperties(fsa);
+            const properties = propertiesResult.properties;
+
+            // Check if FSA is deterministic
+            if (!properties.deterministic) {
+                notificationManager.showError(
+                    'Cannot Complement',
+                    'DFA complement requires a deterministic automaton. The current FSA is non-deterministic (NFA).'
+                );
+                return;
+            }
+
+            // Check if FSA is connected
+            if (!properties.connected) {
+                notificationManager.showError(
+                    'Cannot Complement',
+                    'DFA complement requires a connected automaton. Some states are unreachable from the starting state.'
+                );
+                return;
+            }
+
+            // Show confirmation popup
+            this.showComplementConfirmPopup(fsa, propertiesResult.summary, properties);
+
+        } catch (error) {
+            console.error('Error validating FSA for complement:', error);
+            notificationManager.showError(
+                'Validation Error',
+                `Failed to validate FSA: ${error.message}`
+            );
+        }
+    }
+
+    /**
      * Show confirmation popup for DFA minimization
      * @param {Object} fsa - The FSA to minimize
      * @param {Object} summary - FSA summary information
@@ -407,6 +539,184 @@ class FSATransformManager {
     }
 
     /**
+     * Show confirmation popup for DFA completion
+     * @param {Object} fsa - The FSA to complete
+     * @param {Object} summary - FSA summary information
+     * @param {Object} properties - FSA properties
+     */
+    showCompleteConfirmPopup(fsa, summary, properties) {
+        // Remove any existing popup
+        const existingPopup = document.getElementById('transform-operation-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+
+        // Determine current completeness status
+        const isComplete = properties.complete;
+
+        let completionDescription;
+        if (isComplete) {
+            completionDescription = 'The DFA is already complete. No changes will be made.';
+        } else {
+            completionDescription = 'Completing the DFA will add missing transitions by introducing a dead state and routing undefined transitions to it.';
+        }
+
+        // Create popup element
+        const popup = document.createElement('div');
+        popup.id = 'transform-operation-popup';
+        popup.className = 'file-operation-popup complete';
+
+        popup.innerHTML = `
+            <div class="popup-header">
+                <div class="popup-title">
+                    <div class="popup-icon">
+                        <img src="static/img/alert.png" alt="Warning" style="width: 20px; height: 20px;">
+                    </div>
+                    <span>Complete DFA</span>
+                </div>
+                <button class="popup-close" onclick="fsaTransformManager.hideCompletePopup()">×</button>
+            </div>
+            <div class="file-operation-content">
+                <div class="file-operation-description">
+                    ${completionDescription}
+                </div>
+                
+                <div class="states-info">
+                    Current DFA: <span class="states-count">${isComplete ? 'Complete' : 'Incomplete'}</span><br>
+                    <span class="states-count">${summary.total_states} states</span> and <span class="states-count">${this.getTransitionCount()} transitions</span>
+                </div>
+
+                ${!isComplete ? `
+                <div class="warning-section">
+                    <span class="warning-icon">⚠️</span>
+                    <div class="warning-text">
+                        <strong>Warning:</strong> This operation will permanently add a dead state and missing transitions to make the DFA complete. 
+                        The completed DFA will explicitly reject strings that lead to undefined transitions. 
+                        Consider exporting your current DFA first if you want to save it.
+                    </div>
+                </div>
+                ` : `
+                <div class="info-section">
+                    <span class="info-icon">ℹ️</span>
+                    <div class="info-text">
+                        <strong>Info:</strong> The DFA is already complete. All states have transitions defined for every symbol in the alphabet.
+                    </div>
+                </div>
+                `}
+            </div>
+            <div class="file-operation-actions">
+                <button class="file-action-btn cancel" onclick="fsaTransformManager.hideCompletePopup()">
+                    Cancel
+                </button>
+                <button class="file-action-btn primary" id="complete-confirm-btn" onclick="fsaTransformManager.confirmComplete()">
+                    ${isComplete ? 'Confirm (No Changes)' : 'Complete DFA'}
+                </button>
+            </div>
+        `;
+
+        // Store FSA data for later use
+        this.currentFSAForCompletion = fsa;
+
+        // Add popup to canvas
+        const canvas = document.getElementById('fsa-canvas');
+        if (canvas) {
+            canvas.appendChild(popup);
+
+            // Trigger show animation
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 100);
+        }
+    }
+
+    /**
+     * Show confirmation popup for DFA complement
+     * @param {Object} fsa - The FSA to complement
+     * @param {Object} summary - FSA summary information
+     * @param {Object} properties - FSA properties
+     */
+    showComplementConfirmPopup(fsa, summary, properties) {
+        // Remove any existing popup
+        const existingPopup = document.getElementById('transform-operation-popup');
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+
+        // Determine current completeness status
+        const isComplete = properties.complete;
+        const acceptingCount = summary.accepting_states_count;
+        const totalStates = summary.total_states;
+        const nonAcceptingCount = totalStates - acceptingCount;
+
+        let complementDescription;
+        if (isComplete) {
+            complementDescription = `Taking the complement will swap accepting and non-accepting states. ${acceptingCount} accepting states will become non-accepting, and ${nonAcceptingCount} non-accepting states will become accepting.`;
+        } else {
+            complementDescription = `Taking the complement will first complete the DFA (adding dead states for missing transitions), then swap accepting and non-accepting states. The result accepts exactly the strings that the original DFA rejects.`;
+        }
+
+        // Create popup element
+        const popup = document.createElement('div');
+        popup.id = 'transform-operation-popup';
+        popup.className = 'file-operation-popup complement';
+
+        popup.innerHTML = `
+            <div class="popup-header">
+                <div class="popup-title">
+                    <div class="popup-icon">
+                        <img src="static/img/alert.png" alt="Warning" style="width: 20px; height: 20px;">
+                    </div>
+                    <span>Complement DFA</span>
+                </div>
+                <button class="popup-close" onclick="fsaTransformManager.hideComplementPopup()">×</button>
+            </div>
+            <div class="file-operation-content">
+                <div class="file-operation-description">
+                    ${complementDescription}
+                </div>
+                
+                <div class="states-info">
+                    Current DFA: <span class="states-count">${isComplete ? 'Complete' : 'Incomplete'}</span><br>
+                    <span class="states-count">${totalStates} states</span> and <span class="states-count">${this.getTransitionCount()} transitions</span><br>
+                    <span class="states-count">${acceptingCount} accepting</span>, <span class="states-count">${nonAcceptingCount} non-accepting</span>
+                </div>
+
+                <div class="warning-section">
+                    <span class="warning-icon">⚠️</span>
+                    <div class="warning-text">
+                        <strong>Warning:</strong> This operation will permanently replace the current DFA with its complement. 
+                        ${!isComplete ? 'The DFA will be completed first, which may add dead states. ' : ''}
+                        The complement DFA accepts exactly the strings that the original DFA rejects. 
+                        Consider exporting your current DFA first if you want to save it.
+                    </div>
+                </div>
+            </div>
+            <div class="file-operation-actions">
+                <button class="file-action-btn cancel" onclick="fsaTransformManager.hideComplementPopup()">
+                    Cancel
+                </button>
+                <button class="file-action-btn primary" id="complement-confirm-btn" onclick="fsaTransformManager.confirmComplement()">
+                    Complement DFA
+                </button>
+            </div>
+        `;
+
+        // Store FSA data for later use
+        this.currentFSAForComplement = fsa;
+
+        // Add popup to canvas
+        const canvas = document.getElementById('fsa-canvas');
+        if (canvas) {
+            canvas.appendChild(popup);
+
+            // Trigger show animation
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 100);
+        }
+    }
+
+    /**
      * Hide minimize confirmation popup
      */
     hideMinimizePopup() {
@@ -436,6 +746,38 @@ class FSATransformManager {
             }, 300);
         }
         this.currentFSAForConversion = null;
+    }
+
+    /**
+     * Hide complete confirmation popup
+     */
+    hideCompletePopup() {
+        const popup = document.getElementById('transform-operation-popup');
+        if (popup) {
+            popup.classList.add('hide');
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 300);
+        }
+        this.currentFSAForCompletion = null;
+    }
+
+    /**
+     * Hide complement confirmation popup
+     */
+    hideComplementPopup() {
+        const popup = document.getElementById('transform-operation-popup');
+        if (popup) {
+            popup.classList.add('hide');
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.parentNode.removeChild(popup);
+                }
+            }, 300);
+        }
+        this.currentFSAForComplement = null;
     }
 
     /**
@@ -555,6 +897,122 @@ class FSATransformManager {
     }
 
     /**
+     * Confirm and execute DFA completion
+     */
+    async confirmComplete() {
+        const confirmBtn = document.getElementById('complete-confirm-btn');
+        if (!confirmBtn || !this.currentFSAForCompletion) return;
+
+        // Show loading state
+        confirmBtn.textContent = 'Completing...';
+        confirmBtn.disabled = true;
+
+        try {
+            // Create snapshot before completion for undo/redo
+            let snapshotCommand = null;
+            if (undoRedoManager && !undoRedoManager.isProcessing()) {
+                snapshotCommand = undoRedoManager.createSnapshotCommand('Complete DFA');
+            }
+
+            // Call backend completion API
+            const response = await fetch('/api/complete-dfa/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ fsa: this.currentFSAForCompletion })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // Hide popup
+            this.hideCompletePopup();
+
+            // Replace current FSA with completed version
+            await this.replaceWithCompletedFSA(result);
+
+            // Show success message with statistics
+            this.showCompletionResults(result);
+
+            // Finish undo/redo snapshot
+            if (snapshotCommand) {
+                undoRedoManager.finishSnapshotCommand(snapshotCommand);
+            }
+
+        } catch (error) {
+            console.error('Completion error:', error);
+            notificationManager.showError('Completion Failed', error.message);
+
+            // Reset button state
+            confirmBtn.textContent = 'Complete DFA';
+            confirmBtn.disabled = false;
+        }
+    }
+
+    /**
+     * Confirm and execute DFA complement
+     */
+    async confirmComplement() {
+        const confirmBtn = document.getElementById('complement-confirm-btn');
+        if (!confirmBtn || !this.currentFSAForComplement) return;
+
+        // Show loading state
+        confirmBtn.textContent = 'Taking Complement...';
+        confirmBtn.disabled = true;
+
+        try {
+            // Create snapshot before complement for undo/redo
+            let snapshotCommand = null;
+            if (undoRedoManager && !undoRedoManager.isProcessing()) {
+                snapshotCommand = undoRedoManager.createSnapshotCommand('Complement DFA');
+            }
+
+            // Call backend complement API
+            const response = await fetch('/api/complement-dfa/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ fsa: this.currentFSAForComplement })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // Hide popup
+            this.hideComplementPopup();
+
+            // Replace current FSA with complement version
+            await this.replaceWithComplementFSA(result);
+
+            // Show success message with statistics
+            this.showComplementResults(result);
+
+            // Finish undo/redo snapshot
+            if (snapshotCommand) {
+                undoRedoManager.finishSnapshotCommand(snapshotCommand);
+            }
+
+        } catch (error) {
+            console.error('Complement error:', error);
+            notificationManager.showError('Complement Failed', error.message);
+
+            // Reset button state
+            confirmBtn.textContent = 'Complement DFA';
+            confirmBtn.disabled = false;
+        }
+    }
+
+    /**
      * Replace current FSA with minimized version
      * @param {Object} result - Minimization result from backend
      */
@@ -618,6 +1076,72 @@ class FSATransformManager {
         updateFSAPropertiesDisplay(this.jsPlumbInstance);
 
         console.log('Successfully replaced FSA with converted DFA version');
+    }
+
+    /**
+     * Replace current FSA with completed DFA version
+     * @param {Object} result - Completion result from backend
+     */
+    async replaceWithCompletedFSA(result) {
+        const originalFSA = result.original_fsa;
+        const completedFSA = result.completed_fsa;
+
+        // Store original state positions for interpolation
+        const originalPositions = this.getOriginalStatePositions();
+
+        // Clear current FSA
+        await fsaSerializationManager.clearCurrentFSA(this.jsPlumbInstance);
+
+        // Calculate positions for new states (mainly for any dead states added)
+        const newStatePositions = this.calculateCompletedStatePositions(
+            originalFSA, completedFSA, originalPositions
+        );
+
+        // Create serialized data for the completed DFA with calculated positions
+        const serializedCompletedDFA = this.createSerializedCompletedDFA(
+            completedFSA, newStatePositions
+        );
+
+        // Load the completed DFA
+        await fsaSerializationManager.deserializeFSA(serializedCompletedDFA, this.jsPlumbInstance);
+
+        // Update properties display
+        updateFSAPropertiesDisplay(this.jsPlumbInstance);
+
+        console.log('Successfully replaced FSA with completed DFA version');
+    }
+
+    /**
+     * Replace current FSA with complement DFA version
+     * @param {Object} result - Complement result from backend
+     */
+    async replaceWithComplementFSA(result) {
+        const originalFSA = result.original_fsa;
+        const complementFSA = result.complement_fsa;
+
+        // Store original state positions for interpolation
+        const originalPositions = this.getOriginalStatePositions();
+
+        // Clear current FSA
+        await fsaSerializationManager.clearCurrentFSA(this.jsPlumbInstance);
+
+        // Calculate positions for new states (mainly preserving original positions since complement preserves structure)
+        const newStatePositions = this.calculateComplementStatePositions(
+            originalFSA, complementFSA, originalPositions
+        );
+
+        // Create serialized data for the complement DFA with calculated positions
+        const serializedComplementDFA = this.createSerializedComplementDFA(
+            complementFSA, newStatePositions
+        );
+
+        // Load the complement DFA
+        await fsaSerializationManager.deserializeFSA(serializedComplementDFA, this.jsPlumbInstance);
+
+        // Update properties display
+        updateFSAPropertiesDisplay(this.jsPlumbInstance);
+
+        console.log('Successfully replaced FSA with complement DFA version');
     }
 
     /**
@@ -746,6 +1270,122 @@ class FSATransformManager {
     }
 
     /**
+     * Calculate positions for completed DFA states (mostly preserving original positions)
+     * @param {Object} originalFSA - Original FSA structure
+     * @param {Object} completedFSA - Completed DFA structure
+     * @param {Object} originalPositions - Original state positions
+     * @returns {Object} - Map of new state IDs to their calculated positions
+     */
+    calculateCompletedStatePositions(originalFSA, completedFSA, originalPositions) {
+        const newPositions = {};
+
+        completedFSA.states.forEach(stateId => {
+            if (originalPositions[stateId]) {
+                // Keep original position for existing states
+                newPositions[stateId] = originalPositions[stateId];
+            } else {
+                // This is a new state (likely a dead state), place it appropriately
+                const canvas = document.getElementById('fsa-canvas');
+                const centerX = canvas ? canvas.offsetWidth / 2 : 400;
+                const centerY = canvas ? canvas.offsetHeight / 2 : 300;
+
+                // Place dead state away from existing states
+                if (stateId.includes('DEAD')) {
+                    // Find a position that doesn't overlap with existing states
+                    let deadX = centerX + 200;
+                    let deadY = centerY + 200;
+
+                    // Check for overlaps and adjust
+                    let attempts = 0;
+                    while (attempts < 10) {
+                        let hasOverlap = false;
+                        Object.values(originalPositions).forEach(pos => {
+                            const distance = Math.sqrt((deadX - pos.x) ** 2 + (deadY - pos.y) ** 2);
+                            if (distance < 80) {
+                                hasOverlap = true;
+                            }
+                        });
+
+                        if (!hasOverlap) break;
+
+                        deadX += 50;
+                        deadY += 50;
+                        attempts++;
+                    }
+
+                    newPositions[stateId] = { x: deadX, y: deadY };
+                } else {
+                    // Other new states
+                    newPositions[stateId] = {
+                        x: centerX + 100,
+                        y: centerY + 100
+                    };
+                }
+            }
+        });
+
+        return newPositions;
+    }
+
+    /**
+     * Calculate positions for complement DFA states (preserving original positions since structure is maintained)
+     * @param {Object} originalFSA - Original FSA structure
+     * @param {Object} complementFSA - Complement DFA structure
+     * @param {Object} originalPositions - Original state positions
+     * @returns {Object} - Map of new state IDs to their calculated positions
+     */
+    calculateComplementStatePositions(originalFSA, complementFSA, originalPositions) {
+        const newPositions = {};
+
+        complementFSA.states.forEach(stateId => {
+            if (originalPositions[stateId]) {
+                // Keep original position for existing states
+                newPositions[stateId] = originalPositions[stateId];
+            } else {
+                // This is a new state (likely added during completion), place it appropriately
+                const canvas = document.getElementById('fsa-canvas');
+                const centerX = canvas ? canvas.offsetWidth / 2 : 400;
+                const centerY = canvas ? canvas.offsetHeight / 2 : 300;
+
+                // Place new states away from existing states
+                if (stateId.includes('DEAD')) {
+                    // Find a position that doesn't overlap with existing states
+                    let newX = centerX + 200;
+                    let newY = centerY + 200;
+
+                    // Check for overlaps and adjust
+                    let attempts = 0;
+                    while (attempts < 10) {
+                        let hasOverlap = false;
+                        Object.values(originalPositions).forEach(pos => {
+                            const distance = Math.sqrt((newX - pos.x) ** 2 + (newY - pos.y) ** 2);
+                            if (distance < 80) {
+                                hasOverlap = true;
+                            }
+                        });
+
+                        if (!hasOverlap) break;
+
+                        newX += 50;
+                        newY += 50;
+                        attempts++;
+                    }
+
+                    newPositions[stateId] = { x: newX, y: newY };
+                } else {
+                    // Other new states
+                    newPositions[stateId] = {
+                        x: centerX + 100,
+                        y: centerY + 100
+                    };
+                }
+            }
+        });
+
+        return newPositions;
+    }
+
+    /**
      * Parse subset information from DFA state name
      * @param {string} stateName - The DFA state name
      * @returns {Array} - Array of original state IDs
@@ -814,6 +1454,26 @@ class FSATransformManager {
      */
     createSerializedConvertedDFA(convertedDFA, positions) {
         return this.createSerializedFSA(convertedDFA, positions, 'Converted DFA', 'DFA generated by NFA to DFA conversion', ['converted', 'dfa']);
+    }
+
+    /**
+     * Create serialized FSA data for the completed DFA
+     * @param {Object} completedDFA - Completed DFA from backend
+     * @param {Object} positions - Calculated positions for states
+     * @returns {Object} - Serialized FSA data
+     */
+    createSerializedCompletedDFA(completedDFA, positions) {
+        return this.createSerializedFSA(completedDFA, positions, 'Completed DFA', 'DFA generated by completion', ['completed', 'complete']);
+    }
+
+    /**
+     * Create serialized FSA data for the complement DFA
+     * @param {Object} complementDFA - Complement DFA from backend
+     * @param {Object} positions - Calculated positions for states
+     * @returns {Object} - Serialized FSA data
+     */
+    createSerializedComplementDFA(complementDFA, positions) {
+        return this.createSerializedFSA(complementDFA, positions, 'Complement DFA', 'DFA generated by taking complement', ['complement', 'complemented']);
     }
 
     /**
@@ -953,6 +1613,56 @@ class FSATransformManager {
 
             notificationManager.showSuccess('NFA to DFA Conversion Complete', message);
         }
+    }
+
+    /**
+     * Show completion results with statistics
+     * @param {Object} result - Completion result from backend
+     */
+    showCompletionResults(result) {
+        const stats = result.statistics;
+        const wasAlreadyComplete = stats.completion.was_already_complete;
+        const deadStateAdded = stats.completion.dead_state_added;
+
+        if (wasAlreadyComplete) {
+            notificationManager.showInfo(
+                'DFA Already Complete',
+                'The DFA was already complete. No changes were made.'
+            );
+        } else {
+            const statesAdded = stats.completion.states_added;
+            const transitionsAdded = stats.completion.transitions_added;
+
+            let message = `DFA completed successfully.`;
+
+            if (deadStateAdded) {
+                message += ` Added ${statesAdded} dead state(s) and ${transitionsAdded} transition(s).`;
+            } else {
+                message += ` Added ${transitionsAdded} missing transition(s).`;
+            }
+
+            notificationManager.showSuccess('DFA Completion Complete', message);
+        }
+    }
+
+    /**
+     * Show complement results with statistics
+     * @param {Object} result - Complement result from backend
+     */
+    showComplementResults(result) {
+        const stats = result.statistics;
+        const analysis = stats.analysis;
+        const completionRequired = analysis.completion_required;
+
+        let message = `DFA complement computed successfully. `;
+        message += `${analysis.original_accepting_became_non_accepting} accepting states became non-accepting, `;
+        message += `${analysis.original_non_accepting_became_accepting} non-accepting states became accepting.`;
+
+        if (completionRequired) {
+            message += ` The DFA was made complete first (added ${analysis.states_added_for_completeness} dead state(s)).`;
+        }
+
+        notificationManager.showSuccess('DFA Complement Complete', message);
     }
 
     /**

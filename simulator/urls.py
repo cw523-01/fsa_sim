@@ -32,4 +32,6 @@ urlpatterns = [
     # FSA Transformation endpoints
     path('api/minimise-dfa/', views.min_dfa, name='minimise_dfa'),
     path('api/nfa-to-dfa/', views.convert_nfa_to_dfa, name='nfa_to_dfa'),
+    path('api/complete-dfa/', views.dfa_to_complete, name='complete_dfa'),
+    path('api/complement-dfa/', views.dfa_to_complement, name='complement_dfa'),
 ]

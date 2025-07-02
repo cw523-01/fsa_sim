@@ -62,6 +62,63 @@
     background: var(--secondary-hover);
 }
 
+/* Complete DFA popup specific styles */
+.file-operation-popup.complete {
+    /* Inherit styles from existing file operation popup */
+}
+
+/* Transform menu header for complete popup */
+.file-operation-popup.complete .popup-header {
+    background: linear-gradient(135deg, var(--accent-color) 0%, #ef6c00 100%);
+}
+
+.file-operation-popup.complete .file-action-btn.primary {
+    background: var(--accent-color);
+}
+
+.file-operation-popup.complete .file-action-btn.primary:hover:not(.disabled) {
+    background: #ef6c00;
+}
+
+/* Complement DFA popup specific styles */
+.file-operation-popup.complement {
+    /* Inherit styles from existing file operation popup */
+}
+
+/* Transform menu header for complement popup */
+.file-operation-popup.complement .popup-header {
+    background: linear-gradient(135deg, var(--error-color) 0%, var(--error-hover) 100%);
+}
+
+.file-operation-popup.complement .file-action-btn.primary {
+    background: var(--error-color);
+}
+
+.file-operation-popup.complement .file-action-btn.primary:hover:not(.disabled) {
+    background: var(--error-hover);
+}
+
+/* Info section styling for complete popup */
+.file-operation-popup.complete .info-section {
+    background: rgba(255, 152, 0, 0.1);
+    border: 1px solid var(--accent-color);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.file-operation-popup.complete .info-icon {
+    color: var(--accent-color);
+    font-size: 16px;
+    margin-right: 8px;
+}
+
+.file-operation-popup.complete .info-text {
+    font-size: 13px;
+    color: #e65100;
+    line-height: 1.3;
+}
+
 /* Conversion-specific content styles */
 .file-operation-popup.convert .conversion-info {
     margin: var(--spacing-lg) 0;
@@ -138,6 +195,82 @@
     font-weight: var(--font-weight-bold);
 }
 
+/* Complete DFA-specific content styles */
+.file-operation-popup.complete .completion-info {
+    margin: var(--spacing-lg) 0;
+    padding: var(--spacing-md);
+    background-color: var(--light-gray);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--accent-color);
+}
+
+.file-operation-popup.complete .completion-info .info-item {
+    margin-bottom: var(--spacing-sm);
+}
+
+.file-operation-popup.complete .completion-info .info-item:last-child {
+    margin-bottom: 0;
+}
+
+.file-operation-popup.complete .completion-info ul {
+    margin: var(--spacing-sm) 0 0 0;
+    padding-left: var(--spacing-xl);
+    list-style-type: none;
+}
+
+.file-operation-popup.complete .completion-info li {
+    margin: var(--spacing-xs) 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-color);
+    position: relative;
+}
+
+.file-operation-popup.complete .completion-info li::before {
+    content: '⚡';
+    position: absolute;
+    left: calc(-1 * var(--spacing-lg));
+    color: var(--accent-color);
+    font-weight: var(--font-weight-bold);
+}
+
+/* Complement DFA-specific content styles */
+.file-operation-popup.complement .complement-info {
+    margin: var(--spacing-lg) 0;
+    padding: var(--spacing-md);
+    background-color: var(--light-gray);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--error-color);
+}
+
+.file-operation-popup.complement .complement-info .info-item {
+    margin-bottom: var(--spacing-sm);
+}
+
+.file-operation-popup.complement .complement-info .info-item:last-child {
+    margin-bottom: 0;
+}
+
+.file-operation-popup.complement .complement-info ul {
+    margin: var(--spacing-sm) 0 0 0;
+    padding-left: var(--spacing-xl);
+    list-style-type: none;
+}
+
+.file-operation-popup.complement .complement-info li {
+    margin: var(--spacing-xs) 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-color);
+    position: relative;
+}
+
+.file-operation-popup.complement .complement-info li::before {
+    content: '⟷';
+    position: absolute;
+    left: calc(-1 * var(--spacing-lg));
+    color: var(--error-color);
+    font-weight: var(--font-weight-bold);
+}
+
 /* Loading state for minimize button */
 #minimize-confirm-btn.loading {
     position: relative;
@@ -166,6 +299,48 @@
 }
 
 #convert-confirm-btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    margin-left: -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--white);
+    border-radius: var(--radius-circle);
+    animation: transform-spin 1s linear infinite;
+}
+
+/* Loading state for complete button */
+#complete-confirm-btn.loading {
+    position: relative;
+    color: transparent !important;
+}
+
+#complete-confirm-btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    margin-left: -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--white);
+    border-radius: var(--radius-circle);
+    animation: transform-spin 1s linear infinite;
+}
+
+/* Loading state for complement button */
+#complement-confirm-btn.loading {
+    position: relative;
+    color: transparent !important;
+}
+
+#complement-confirm-btn.loading::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -216,18 +391,24 @@
     /* Transform menu inherits responsive behavior from menu-bar.css */
 
     .file-operation-popup.minimize,
-    .file-operation-popup.convert {
+    .file-operation-popup.convert,
+    .file-operation-popup.complete,
+    .file-operation-popup.complement {
         max-width: 90vw;
         margin: var(--spacing-xl);
     }
 
     .file-operation-popup.minimize .minimization-info,
-    .file-operation-popup.convert .conversion-info {
+    .file-operation-popup.convert .conversion-info,
+    .file-operation-popup.complete .completion-info,
+    .file-operation-popup.complement .complement-info {
         padding: var(--spacing-sm);
     }
 
     .file-operation-popup.minimize .minimization-info ul,
-    .file-operation-popup.convert .conversion-info ul {
+    .file-operation-popup.convert .conversion-info ul,
+    .file-operation-popup.complete .completion-info ul,
+    .file-operation-popup.complement .complement-info ul {
         padding-left: var(--spacing-lg);
     }
 }
@@ -235,7 +416,9 @@
 /* Dark mode support for transform menu */
 @media (prefers-color-scheme: dark) {
     .file-operation-popup.minimize .minimization-info,
-    .file-operation-popup.convert .conversion-info {
+    .file-operation-popup.convert .conversion-info,
+    .file-operation-popup.complete .completion-info,
+    .file-operation-popup.complement .complement-info {
         background-color: #2d3748;
         border-left-color: var(--primary-color);
     }
@@ -244,8 +427,18 @@
         border-left-color: var(--secondary-color);
     }
 
+    .file-operation-popup.complete .completion-info {
+        border-left-color: var(--accent-color);
+    }
+
+    .file-operation-popup.complement .complement-info {
+        border-left-color: var(--error-color);
+    }
+
     .file-operation-popup.minimize .minimization-info li,
-    .file-operation-popup.convert .conversion-info li {
+    .file-operation-popup.convert .conversion-info li,
+    .file-operation-popup.complete .completion-info li,
+    .file-operation-popup.complement .complement-info li {
         color: #e2e8f0;
     }
 }
@@ -336,6 +529,18 @@
     font-weight: var(--font-weight-medium);
 }
 
+/* Completion-specific result improvements */
+.transform-results .result-completion {
+    color: var(--accent-color);
+    font-weight: var(--font-weight-medium);
+}
+
+/* Complement-specific result improvements */
+.transform-results .result-complement {
+    color: var(--error-color);
+    font-weight: var(--font-weight-medium);
+}
+
 /* FSA type indicators in popups */
 .fsa-type-indicator {
     display: inline-block;
@@ -362,4 +567,22 @@
     background-color: rgba(33, 150, 243, 0.1);
     color: var(--secondary-color);
     border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+.fsa-type-indicator.complete {
+    background-color: rgba(255, 152, 0, 0.1);
+    color: var(--accent-color);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.fsa-type-indicator.incomplete {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: var(--error-color);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.fsa-type-indicator.complement {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: var(--error-color);
+    border: 1px solid rgba(244, 67, 54, 0.3);
 }
