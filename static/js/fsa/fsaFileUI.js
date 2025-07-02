@@ -3,6 +3,7 @@
 import { fsaSerializationManager } from './fsaSerializationManager.js';
 import { notificationManager } from './notificationManager.js';
 import { controlLockManager } from './controlLockManager.js';
+import { undoRedoManager } from './undoRedoManager.js';
 
 /**
  * FSA File UI Manager - handles file operations UI with menu bar
@@ -210,6 +211,17 @@ class FSAFileUIManager {
         // Also close transform menu if available
         if (window.fsaTransformManager) {
             window.fsaTransformManager.closeTransformMenu();
+        }
+
+        // Close edit menu dropdown
+        const editDropdown = document.getElementById('edit-dropdown');
+        const editButton = document.getElementById('edit-menu-button');
+
+        if (editDropdown) {
+            editDropdown.classList.remove('show');
+        }
+        if (editButton) {
+            editButton.classList.remove('active');
         }
     }
 
@@ -663,11 +675,24 @@ class FSAFileUIManager {
      */
     performNewFSA() {
         try {
-            fsaSerializationManager.clearCurrentFSA(this.jsPlumbInstance);
+            // Create snapshot before clearing for undo/redo
+            if (undoRedoManager && !undoRedoManager.isProcessing()) {
+                const snapshotCommand = undoRedoManager.createSnapshotCommand('New FSA (clear all)');
 
-            // Clear any existing NFA results
-            if (window.nfaResultsManager) {
-                window.nfaResultsManager.clearStoredPaths();
+                fsaSerializationManager.clearCurrentFSA(this.jsPlumbInstance);
+
+                // Clear any existing NFA results
+                if (window.nfaResultsManager) {
+                    window.nfaResultsManager.clearStoredPaths();
+                }
+
+                undoRedoManager.finishSnapshotCommand(snapshotCommand);
+            } else {
+                // Fallback without undo/redo
+                fsaSerializationManager.clearCurrentFSA(this.jsPlumbInstance);
+                if (window.nfaResultsManager) {
+                    window.nfaResultsManager.clearStoredPaths();
+                }
             }
 
             notificationManager.showSuccess('New FSA', 'Canvas cleared successfully');
@@ -706,11 +731,27 @@ class FSAFileUIManager {
         }
 
         try {
-            const success = await fsaSerializationManager.importFromFile(file, this.jsPlumbInstance);
+            // Create snapshot before import for undo/redo
+            if (undoRedoManager && !undoRedoManager.isProcessing()) {
+                const snapshotCommand = undoRedoManager.createSnapshotCommand(`Import FSA from ${file.name}`);
 
-            if (success) {
-                // Clear any existing NFA results since FSA changed
-                if (window.nfaResultsManager) {
+                const success = await fsaSerializationManager.importFromFile(file, this.jsPlumbInstance);
+
+                if (success) {
+                    // Clear any existing NFA results since FSA changed
+                    if (window.nfaResultsManager) {
+                        window.nfaResultsManager.clearStoredPaths();
+                    }
+
+                    undoRedoManager.finishSnapshotCommand(snapshotCommand);
+                } else {
+                    // If import failed, don't save the snapshot
+                    console.log('Import failed, not saving undo snapshot');
+                }
+            } else {
+                // Fallback without undo/redo
+                const success = await fsaSerializationManager.importFromFile(file, this.jsPlumbInstance);
+                if (success && window.nfaResultsManager) {
                     window.nfaResultsManager.clearStoredPaths();
                 }
             }

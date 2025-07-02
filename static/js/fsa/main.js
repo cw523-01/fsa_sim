@@ -51,6 +51,7 @@ import { fsaFileUIManager } from './fsaFileUI.js';
 import { fsaTransformManager } from './transformManager.js';
 import { edgeCreationManager } from './edgeCreationManager.js';
 import { toolManager } from './toolManager.js';
+import { undoRedoManager } from './undoRedoManager.js';
 
 // Make managers globally available
 window.nfaResultsManager = nfaResultsManager;
@@ -86,16 +87,19 @@ export function initialiseSimulator() {
     // Initialise the control lock manager with the JSPlumb instance
     controlLockManager.initialize(jsPlumbInstance);
 
-    // Initialize enhanced edge creation manager
-    initializeEdgeCreationManager();
+    // Initialise enhanced edge creation manager
+    initialiseEdgeCreationManager();
 
-    // Initialize enhanced tool manager
-    initializeToolManager();
+    // Initialise enhanced tool manager
+    initialiseToolManager();
 
-    // Initialize FSA serialization system with menu bar
+    // Initialise undo/redo system FIRST (before any menu setup)
+    initialiseUndoRedoSystem();
+
+    // Initialise FSA serialization system with menu bar
     initializeFSASerialization();
 
-    // Initialize FSA transformation system
+    // Initialise FSA transformation system
     initializeFSATransformation();
 
     // Setup performance monitoring
@@ -188,7 +192,7 @@ function setupPerformanceMonitoring() {
 /**
  * Initialize enhanced edge creation manager
  */
-function initializeEdgeCreationManager() {
+function initialiseEdgeCreationManager() {
     const canvas = document.getElementById('fsa-canvas');
     if (canvas && edgeCreationManager) {
         edgeCreationManager.initialize(canvas);
@@ -199,7 +203,7 @@ function initializeEdgeCreationManager() {
 /**
  * Initialize enhanced tool manager
  */
-function initializeToolManager() {
+function initialiseToolManager() {
     const canvas = document.getElementById('fsa-canvas');
     if (canvas && toolManager) {
         toolManager.initialize(canvas, edgeCreationManager, jsPlumbInstance);
@@ -221,26 +225,33 @@ function initializeFSATransformation() {
 }
 
 /**
+ * Initialize undo/redo system
+ */
+function initialiseUndoRedoSystem() {
+    // Initialize undo/redo manager with JSPlumb instance
+    undoRedoManager.initialize(jsPlumbInstance);
+
+    // Make undo/redo functions globally available
+    window.undoRedoManager = undoRedoManager;
+
+    console.log('Undo/Redo system initialized');
+}
+
+/**
  * Initialize FSA serialization system with menu bar
  */
 function initializeFSASerialization() {
     // Initialize file UI manager with JSPlumb instance
     fsaFileUIManager.initialize(jsPlumbInstance);
 
-    // Setup simple menu debug for testing
+    // Setup simple menu debug for testing (FILE MENU ONLY - undo/redo handled by undoRedoManager)
     setupSimpleMenuDebug();
-
-    // Setup auto-save (saves every 30 seconds)
-//     fsaFileUIManager.setupAutoSave(30000);
 
     // Setup drag and drop for file import (minimal visual feedback)
     setupFileDragAndDrop();
 
     // Integrate with control lock manager
     integrateWithControlLockManager();
-
-    // Setup auto-save triggers
-//     setupAutoSaveTriggers();
 
     // Setup unsaved changes warning
     setupUnsavedChangesWarning();
@@ -258,7 +269,8 @@ function initializeFSASerialization() {
 }
 
 /**
- * Simple debug menu setup to ensure dropdown works
+ * Simple debug menu setup to ensure dropdown works (FILE MENU ONLY)
+ * NOTE: Undo/Redo is handled entirely by undoRedoManager.js
  */
 function setupSimpleMenuDebug() {
     console.log('Setting up menu functionality...');
@@ -346,6 +358,54 @@ function setupSimpleMenuDebug() {
             console.log('Save menu clicked - calling exportFSA');
             fsaFileUIManager.exportFSA();
         });
+    }
+
+    // Edit menu setup (DROPDOWN ONLY - actual undo/redo handled by undoRedoManager)
+    const editMenuButton = document.getElementById('edit-menu-button');
+    const editDropdown = document.getElementById('edit-dropdown');
+
+    if (!editMenuButton || !editDropdown) {
+        console.error('Edit menu elements not found:', {
+            button: !!editMenuButton,
+            dropdown: !!editDropdown
+        });
+    } else {
+        // Remove any existing event listeners by cloning the button
+        const newEditMenuButton = editMenuButton.cloneNode(true);
+        editMenuButton.parentNode.replaceChild(newEditMenuButton, editMenuButton);
+
+        newEditMenuButton.addEventListener('click', function(e) {
+            console.log('Edit menu clicked');
+            e.stopPropagation();
+
+            // Use the existing fsaFileUIManager method to close other menus
+            if (window.fsaFileUIManager) {
+                window.fsaFileUIManager.closeAllMenus();
+            }
+
+            // Toggle edit dropdown
+            const isOpen = editDropdown.classList.contains('show');
+
+            if (isOpen) {
+                editDropdown.classList.remove('show');
+                newEditMenuButton.classList.remove('active');
+            } else {
+                editDropdown.classList.add('show');
+                newEditMenuButton.classList.add('active');
+            }
+        });
+
+        // Add edit menu to the global close menu handler
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#edit-menu')) {
+                editDropdown.classList.remove('show');
+                newEditMenuButton.classList.remove('active');
+            }
+        });
+
+        // IMPORTANT: Do NOT set up undo/redo click handlers here!
+        // They are handled entirely by undoRedoManager.js
+        console.log('Edit menu dropdown setup complete - undo/redo handled by undoRedoManager');
     }
 }
 
@@ -572,7 +632,7 @@ export function setupEventListeners() {
         selectTool('delete');
     });
 
-    // Edge style buttons with performance optimizations
+    // Edge style buttons with
     document.getElementById('straight-edges-btn').addEventListener('click', function() {
         if (controlLockManager.isControlsLocked()) return;
 
@@ -583,26 +643,44 @@ export function setupEventListeners() {
 
         console.log("Setting all edges to straight");
 
-        // Add performance mode during edge style changes
-        document.body.classList.add('performance-mode');
+        // Create snapshot before bulk edge style change for undo/redo
+        if (undoRedoManager && !undoRedoManager.isProcessing()) {
+            const snapshotCommand = undoRedoManager.createSnapshotCommand('Set all edges to straight');
 
-        // Apply straight edges to all connections with our improved function
-        setAllEdgeStyles(jsPlumbInstance, false);
+            // Add performance mode during edge style changes
+            document.body.classList.add('performance-mode');
 
-        // Clear stored NFA results since FSA structure changed
-        clearNFAStoredResults();
+            // Apply straight edges to all connections with our improved function
+            setAllEdgeStyles(jsPlumbInstance, false);
 
-        // Update FSA properties display
-        updateFSAPropertiesDisplay(jsPlumbInstance);
+            // Clear stored NFA results since FSA structure changed
+            clearNFAStoredResults();
 
-        // Update button styling
-        this.classList.add('active');
-        document.getElementById('curved-edges-btn').classList.remove('active');
+            // Update FSA properties display
+            updateFSAPropertiesDisplay(jsPlumbInstance);
 
-        // Remove performance mode after a brief delay
-        setTimeout(() => {
-            document.body.classList.remove('performance-mode');
-        }, 100);
+            // Update button styling
+            this.classList.add('active');
+            document.getElementById('curved-edges-btn').classList.remove('active');
+
+            // Remove performance mode after a brief delay
+            setTimeout(() => {
+                document.body.classList.remove('performance-mode');
+            }, 100);
+
+            undoRedoManager.finishSnapshotCommand(snapshotCommand);
+        } else {
+            // Fallback without undo/redo
+            document.body.classList.add('performance-mode');
+            setAllEdgeStyles(jsPlumbInstance, false);
+            clearNFAStoredResults();
+            updateFSAPropertiesDisplay(jsPlumbInstance);
+            this.classList.add('active');
+            document.getElementById('curved-edges-btn').classList.remove('active');
+            setTimeout(() => {
+                document.body.classList.remove('performance-mode');
+            }, 100);
+        }
     });
 
     document.getElementById('curved-edges-btn').addEventListener('click', function() {
@@ -615,26 +693,44 @@ export function setupEventListeners() {
 
         console.log("Setting all edges to curved");
 
-        // Add performance mode during edge style changes
-        document.body.classList.add('performance-mode');
+        // Create snapshot before bulk edge style change for undo/redo
+        if (undoRedoManager && !undoRedoManager.isProcessing()) {
+            const snapshotCommand = undoRedoManager.createSnapshotCommand('Set all edges to curved');
 
-        // Apply curved edges to all connections with our improved function
-        setAllEdgeStyles(jsPlumbInstance, true);
+            // Add performance mode during edge style changes
+            document.body.classList.add('performance-mode');
 
-        // Clear stored NFA results since FSA structure changed
-        clearNFAStoredResults();
+            // Apply curved edges to all connections with our improved function
+            setAllEdgeStyles(jsPlumbInstance, true);
 
-        // Update FSA properties display
-        updateFSAPropertiesDisplay(jsPlumbInstance);
+            // Clear stored NFA results since FSA structure changed
+            clearNFAStoredResults();
 
-        // Update button styling
-        this.classList.add('active');
-        document.getElementById('straight-edges-btn').classList.remove('active');
+            // Update FSA properties display
+            updateFSAPropertiesDisplay(jsPlumbInstance);
 
-        // Remove performance mode after a brief delay
-        setTimeout(() => {
-            document.body.classList.remove('performance-mode');
-        }, 100);
+            // Update button styling
+            this.classList.add('active');
+            document.getElementById('straight-edges-btn').classList.remove('active');
+
+            // Remove performance mode after a brief delay
+            setTimeout(() => {
+                document.body.classList.remove('performance-mode');
+            }, 100);
+
+            undoRedoManager.finishSnapshotCommand(snapshotCommand);
+        } else {
+            // Fallback without undo/redo
+            document.body.classList.add('performance-mode');
+            setAllEdgeStyles(jsPlumbInstance, true);
+            clearNFAStoredResults();
+            updateFSAPropertiesDisplay(jsPlumbInstance);
+            this.classList.add('active');
+            document.getElementById('straight-edges-btn').classList.remove('active');
+            setTimeout(() => {
+                document.body.classList.remove('performance-mode');
+            }, 100);
+        }
     });
 
     // Set initial active state for straight edges (default)
@@ -710,7 +806,7 @@ export function setupEventListeners() {
     // Make tools draggable
     setupDraggableTools();
 
-    // Window resize event with performance optimization
+    // Window resize event
     window.addEventListener('resize', function() {
         if (!controlLockManager.isControlsLocked()) {
             // Throttle resize events to avoid excessive repaints
@@ -834,7 +930,13 @@ function handleStateCreation(x, y, isAccepting) {
         onStateClick: handleStateClick,
         onStateDrag: handleStateDrag
     };
-    createState(jsPlumbInstance, x, y, isAccepting, callbacks);
+
+    const stateElement = createState(jsPlumbInstance, x, y, isAccepting, callbacks);
+
+    // Record state creation for undo/redo
+    if (stateElement && undoRedoManager) {
+        undoRedoManager.recordStateCreation(stateElement.id, x, y, isAccepting);
+    }
 
     // Clear stored NFA results since FSA structure changed
     clearNFAStoredResults();
@@ -855,9 +957,18 @@ function handleStateClick(stateElement, e) {
 
     if (currentTool === 'delete') {
         if (stateElement.classList.contains('state') || stateElement.classList.contains('accepting-state')) {
-            deleteState(jsPlumbInstance, stateElement, getEdgeSymbolMap());
-            clearNFAStoredResults();
-            updateFSAPropertiesDisplay(jsPlumbInstance);
+            // Create snapshot before deletion for undo/redo
+            if (undoRedoManager && !undoRedoManager.isProcessing()) {
+                const snapshotCommand = undoRedoManager.createSnapshotCommand(`Delete state ${stateElement.id}`);
+                deleteState(jsPlumbInstance, stateElement, getEdgeSymbolMap());
+                clearNFAStoredResults();
+                updateFSAPropertiesDisplay(jsPlumbInstance);
+                undoRedoManager.finishSnapshotCommand(snapshotCommand);
+            } else {
+                deleteState(jsPlumbInstance, stateElement, getEdgeSymbolMap());
+                clearNFAStoredResults();
+                updateFSAPropertiesDisplay(jsPlumbInstance);
+            }
         }
     }
     else if (currentTool === 'edge') {
@@ -880,11 +991,22 @@ function handleStateClick(stateElement, e) {
                         } else {
                             // Open edge symbol modal for new connection
                             openEdgeSymbolModal(sourceId, targetId, (source, target, symbolsString, hasEpsilon, isCurved) => {
-                                createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
-                                    onEdgeClick: handleEdgeClick
-                                });
-                                clearNFAStoredResults();
-                                updateFSAPropertiesDisplay(jsPlumbInstance);
+                                // Create snapshot before edge creation for undo/redo
+                                if (undoRedoManager && !undoRedoManager.isProcessing()) {
+                                    const snapshotCommand = undoRedoManager.createSnapshotCommand(`Create edge ${source} → ${target}`);
+                                    createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
+                                        onEdgeClick: handleEdgeClick
+                                    });
+                                    clearNFAStoredResults();
+                                    updateFSAPropertiesDisplay(jsPlumbInstance);
+                                    undoRedoManager.finishSnapshotCommand(snapshotCommand);
+                                } else {
+                                    createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
+                                        onEdgeClick: handleEdgeClick
+                                    });
+                                    clearNFAStoredResults();
+                                    updateFSAPropertiesDisplay(jsPlumbInstance);
+                                }
 
                                 if (isCurved !== undefined) {
                                     deselectEdgeStyleButtons();
@@ -903,11 +1025,22 @@ function handleStateClick(stateElement, e) {
                         } else {
                             // No existing self-loop → create a new curved one
                             openEdgeSymbolModal(sourceId, targetId, (source, target, symbolsString, hasEpsilon) => {
-                                createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, true, {  // Self-loops are always curved
-                                    onEdgeClick: handleEdgeClick
-                                });
-                                clearNFAStoredResults();
-                                updateFSAPropertiesDisplay(jsPlumbInstance);
+                                // Create snapshot before edge creation for undo/redo
+                                if (undoRedoManager && !undoRedoManager.isProcessing()) {
+                                    const snapshotCommand = undoRedoManager.createSnapshotCommand(`Create self-loop on ${source}`);
+                                    createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, true, {  // Self-loops are always curved
+                                        onEdgeClick: handleEdgeClick
+                                    });
+                                    clearNFAStoredResults();
+                                    updateFSAPropertiesDisplay(jsPlumbInstance);
+                                    undoRedoManager.finishSnapshotCommand(snapshotCommand);
+                                } else {
+                                    createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, true, {  // Self-loops are always curved
+                                        onEdgeClick: handleEdgeClick
+                                    });
+                                    clearNFAStoredResults();
+                                    updateFSAPropertiesDisplay(jsPlumbInstance);
+                                }
                             });
                         }
                     });
@@ -922,7 +1055,7 @@ function handleStateClick(stateElement, e) {
 }
 
 /**
- * Handle drag events on states with performance optimization
+ * Handle drag events on states with
  * @param {HTMLElement} stateElement - The dragged state
  * @param {Event} event - The drag event
  * @param {Object} ui - The drag UI object
@@ -954,7 +1087,14 @@ function handleEdgeClick(connection, e) {
 
     const currentTool = getCurrentTool();
     if (currentTool === 'delete') {
-        deleteEdge(jsPlumbInstance, connection);
+        // Create snapshot before edge deletion for undo/redo
+        if (undoRedoManager && !undoRedoManager.isProcessing()) {
+            const snapshotCommand = undoRedoManager.createSnapshotCommand(`Delete edge ${connection.sourceId} → ${connection.targetId}`);
+            deleteEdge(jsPlumbInstance, connection);
+            undoRedoManager.finishSnapshotCommand(snapshotCommand);
+        } else {
+            deleteEdge(jsPlumbInstance, connection);
+        }
         // Clear stored NFA results since FSA structure changed (deleteEdge already handles this)
         // Update properties display is called inside deleteEdge
     } else {
@@ -1113,7 +1253,7 @@ function setupFunctionalButtons() {
 }
 
 /**
- * Setup draggable tools with performance optimizations
+ * Setup draggable tools
  */
 function setupDraggableTools() {
     $('.tool').draggable({
@@ -1136,13 +1276,13 @@ function setupDraggableTools() {
                 return false; // Cancel the drag
             }
 
-            // Add performance optimization class during tool drag
+            // Add performance optimisation class during tool drag
             document.body.classList.add('no-animation');
         },
         stop: function(event, ui) {
             if (controlLockManager.isControlsLocked()) return;
 
-            // Remove performance optimization class
+            // Remove performance optimisation class
             document.body.classList.remove('no-animation');
 
             const tool = $(this).attr('id');

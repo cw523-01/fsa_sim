@@ -36,9 +36,14 @@ class VisualSimulationManager {
      * @param {boolean} isAccepted - Whether the input is accepted
      */
     async startVisualSimulation(executionPath, inputString, isAccepted) {
+
+        const newInputValue = this.inputField ? this.inputField.value : '';
+
         if (this.isRunning) {
             this.stopSimulation();
         }
+
+        this.originalInputValue = newInputValue;
 
         this.isRunning = true;
         this.currentStep = 0;

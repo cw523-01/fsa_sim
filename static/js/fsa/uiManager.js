@@ -18,6 +18,7 @@ import { notificationManager } from './notificationManager.js';
 import { nfaResultsManager } from './nfaResultsManager.js';
 import { edgeCreationManager } from './edgeCreationManager.js';
 import { toolManager } from './toolManager.js';
+import { undoRedoManager } from './undoRedoManager.js';
 
 // UI state
 let currentEditingState = null;
@@ -426,7 +427,7 @@ export function addSymbolInput(container) {
     removeBtn.className = 'remove-symbol-btn';
     removeBtn.type = 'button';
 
-    // MODIFIED: Check if this would be the only input left and if epsilon is checked
+    // Check if this would be the only input left and if epsilon is checked
     removeBtn.onclick = () => {
         const inputsCount = container.querySelectorAll('.symbol-input-wrapper').length;
         const epsilonCheckbox = document.getElementById('epsilon-transition-checkbox');
@@ -517,19 +518,34 @@ function updateEdgeCurveStyleChange() {
     const curveStyleCheckbox = document.getElementById('edge-curve-checkbox');
     const isCurved = curveStyleCheckbox.checked;
 
-    // Update the curve style for the edge - will return a new connection
-    const newConnection = updateEdgeCurveStyle(editorJsPlumbInstance, currentEditingEdge, isCurved);
+    // Create snapshot before edge curve style change for undo/redo
+    if (undoRedoManager && !undoRedoManager.isProcessing()) {
+        const snapshotCommand = undoRedoManager.createSnapshotCommand(`Change edge curve style`);
 
-    // Update the current editing edge reference to the new connection
-    if (newConnection) {
-        currentEditingEdge = newConnection;
+        // Update the curve style for the edge - will return a new connection
+        const newConnection = updateEdgeCurveStyle(editorJsPlumbInstance, currentEditingEdge, isCurved);
+
+        // Update the current editing edge reference to the new connection
+        if (newConnection) {
+            currentEditingEdge = newConnection;
+        }
+
+        // Clear stored NFA results since FSA structure changed
+        clearNFAStoredResults();
+
+        // Deselect both edge style buttons since we now have a mix of styles
+        deselectEdgeStyleButtons();
+
+        undoRedoManager.finishSnapshotCommand(snapshotCommand);
+    } else {
+        // Fallback without undo/redo
+        const newConnection = updateEdgeCurveStyle(editorJsPlumbInstance, currentEditingEdge, isCurved);
+        if (newConnection) {
+            currentEditingEdge = newConnection;
+        }
+        clearNFAStoredResults();
+        deselectEdgeStyleButtons();
     }
-
-    // Clear stored NFA results since FSA structure changed
-    clearNFAStoredResults();
-
-    // Deselect both edge style buttons since we now have a mix of styles
-    deselectEdgeStyleButtons();
 }
 
 // Remove live update event listeners for edge editor
@@ -585,6 +601,20 @@ function updateStateLabel(jsPlumbInstance) {
         return;
     }
 
+    // Create snapshot before state label change for undo/redo
+    if (undoRedoManager && !undoRedoManager.isProcessing()) {
+        const snapshotCommand = undoRedoManager.createSnapshotCommand(`Rename state ${oldId} to ${newLabel}`);
+
+        performStateLabelUpdate(jsPlumbInstance, newLabel, oldId);
+
+        undoRedoManager.finishSnapshotCommand(snapshotCommand);
+    } else {
+        // Fallback without undo/redo
+        performStateLabelUpdate(jsPlumbInstance, newLabel, oldId);
+    }
+}
+
+function performStateLabelUpdate(jsPlumbInstance, newLabel, oldId) {
     // Store all connections that need to be recreated
     const connectionsToRecreate = [];
     const edgeSymbolMap = getEdgeSymbolMap();
@@ -713,6 +743,20 @@ function updateStateType(jsPlumbInstance) {
     if (!currentEditingState) return;
     const isAccepting = document.getElementById('inline-accepting-state-checkbox').checked;
 
+    // Create snapshot before state type change for undo/redo
+    if (undoRedoManager && !undoRedoManager.isProcessing()) {
+        const snapshotCommand = undoRedoManager.createSnapshotCommand(`Change state ${currentEditingState.id} to ${isAccepting ? 'accepting' : 'non-accepting'}`);
+
+        performStateTypeUpdate(isAccepting);
+
+        undoRedoManager.finishSnapshotCommand(snapshotCommand);
+    } else {
+        // Fallback without undo/redo
+        performStateTypeUpdate(isAccepting);
+    }
+}
+
+function performStateTypeUpdate(isAccepting) {
     if (isAccepting && !currentEditingState.classList.contains('accepting-state')) {
         currentEditingState.classList.remove('state');
         currentEditingState.classList.add('accepting-state');
@@ -729,6 +773,20 @@ function updateStartingState(jsPlumbInstance) {
     if (!currentEditingState) return;
     const isStarting = document.getElementById('inline-starting-state-checkbox').checked;
 
+    // Create snapshot before starting state change for undo/redo
+    if (undoRedoManager && !undoRedoManager.isProcessing()) {
+        const snapshotCommand = undoRedoManager.createSnapshotCommand(`${isStarting ? 'Set' : 'Unset'} ${currentEditingState.id} as starting state`);
+
+        performStartingStateUpdate(jsPlumbInstance, isStarting);
+
+        undoRedoManager.finishSnapshotCommand(snapshotCommand);
+    } else {
+        // Fallback without undo/redo
+        performStartingStateUpdate(jsPlumbInstance, isStarting);
+    }
+}
+
+function performStartingStateUpdate(jsPlumbInstance, isStarting) {
     if (isStarting) {
         // Set this state as the new starting state
         createStartingStateIndicator(jsPlumbInstance, currentEditingState.id);
@@ -775,12 +833,24 @@ function updateCurrentEdgeLabel() {
     });
 
     if (!hasDuplicates && (symbols.length > 0 || hasEpsilon)) {
-        updateEdgeSymbols(currentEditingEdge, symbols, hasEpsilon, editorJsPlumbInstance);
+        // Create snapshot before edge symbols update for undo/redo
+        if (undoRedoManager && !undoRedoManager.isProcessing()) {
+            const snapshotCommand = undoRedoManager.createSnapshotCommand(`Update edge symbols ${currentEditingEdge.sourceId} → ${currentEditingEdge.targetId}`);
 
-        // Clear stored NFA results since FSA structure changed
-        clearNFAStoredResults();
+            updateEdgeSymbols(currentEditingEdge, symbols, hasEpsilon, editorJsPlumbInstance);
 
-        editorJsPlumbInstance.repaintEverything();
+            // Clear stored NFA results since FSA structure changed
+            clearNFAStoredResults();
+
+            editorJsPlumbInstance.repaintEverything();
+
+            undoRedoManager.finishSnapshotCommand(snapshotCommand);
+        } else {
+            // Fallback without undo/redo
+            updateEdgeSymbols(currentEditingEdge, symbols, hasEpsilon, editorJsPlumbInstance);
+            clearNFAStoredResults();
+            editorJsPlumbInstance.repaintEverything();
+        }
     }
 }
 

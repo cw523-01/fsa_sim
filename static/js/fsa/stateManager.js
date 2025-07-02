@@ -27,17 +27,50 @@ function getNextAvailableStateId() {
 }
 
 /**
+ * Updates the state counter to ensure it doesn't conflict with an existing state ID
+ * @param {string} stateId - The state ID to check against
+ */
+function ensureCounterIsUpToDate(stateId) {
+    // Extract the numeric part from the state ID (e.g., "S0" -> 0, "S12" -> 12)
+    const match = stateId.match(/^S(\d+)$/);
+    if (match) {
+        const stateNumber = parseInt(match[1], 10);
+        // Ensure our counter is at least one higher than this state number
+        if (stateCounter <= stateNumber) {
+            stateCounter = stateNumber + 1;
+        }
+    }
+}
+
+/**
  * Creates a state element on the canvas
  * @param {Object} jsPlumbInstance - The JSPlumb instance
  * @param {number} x - X position
  * @param {number} y - Y position
  * @param {boolean} isAccepting - Whether the state is an accepting state
  * @param {Object} callbacks - Object with callback functions
+ * @param {string|null} explicitStateId - Optional explicit state ID to use (for undo/redo)
  * @returns {HTMLElement} - The created state element
  */
-export function createState(jsPlumbInstance, x, y, isAccepting, callbacks) {
-    // Use the smart state ID generation
-    const stateId = getNextAvailableStateId();
+export function createState(jsPlumbInstance, x, y, isAccepting, callbacks, explicitStateId = null) {
+    let stateId;
+
+    if (explicitStateId) {
+        // Use the provided explicit state ID
+        stateId = explicitStateId;
+
+        // Check if a state with this ID already exists
+        if (document.getElementById(stateId)) {
+            console.error(`State with ID ${stateId} already exists!`);
+            return null;
+        }
+
+        // Update the counter to avoid future conflicts
+        ensureCounterIsUpToDate(stateId);
+    } else {
+        // Use the smart state ID generation
+        stateId = getNextAvailableStateId();
+    }
 
     const state = document.createElement('div');
     state.id = stateId;

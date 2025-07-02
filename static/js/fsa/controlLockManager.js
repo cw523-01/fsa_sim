@@ -57,7 +57,10 @@ class ControlLockManager {
         // 7. Update button states
         this.updateButtonStates(true);
 
-        // 8. Add visual indicator that controls are locked
+        // 8. Lock undo/redo functionality
+        this.lockUndoRedo();
+
+        // 9. Add visual indicator that controls are locked
         this.addLockedIndicator();
     }
 
@@ -88,7 +91,10 @@ class ControlLockManager {
         // 6. Update button states
         this.updateButtonStates(false);
 
-        // 7. Remove visual indicator
+        // 7. Unlock undo/redo functionality
+        this.unlockUndoRedo();
+
+        // 8. Remove visual indicator
         this.removeLockedIndicator();
     }
 
@@ -98,6 +104,58 @@ class ControlLockManager {
      */
     isControlsLocked() {
         return this.isLocked;
+    }
+
+    /**
+     * Lock undo/redo functionality during simulation
+     */
+    lockUndoRedo() {
+        const menuUndo = document.getElementById('menu-undo');
+        const menuRedo = document.getElementById('menu-redo');
+
+        if (menuUndo) {
+            menuUndo.classList.add('simulation-disabled');
+            menuUndo.title = 'Undo disabled during simulation';
+        }
+
+        if (menuRedo) {
+            menuRedo.classList.add('simulation-disabled');
+            menuRedo.title = 'Redo disabled during simulation';
+        }
+
+        console.log('Undo/Redo functionality locked during simulation');
+    }
+
+    /**
+     * Unlock undo/redo functionality after simulation
+     */
+    unlockUndoRedo() {
+        const menuUndo = document.getElementById('menu-undo');
+        const menuRedo = document.getElementById('menu-redo');
+
+        if (menuUndo) {
+            menuUndo.classList.remove('simulation-disabled');
+            // Restore original title from undo/redo manager
+            if (window.undoRedoManager) {
+                const nextUndoDescription = window.undoRedoManager.getNextUndoDescription();
+                menuUndo.title = nextUndoDescription ? `Undo: ${nextUndoDescription}` : 'Nothing to undo';
+            } else {
+                menuUndo.title = 'Undo last action';
+            }
+        }
+
+        if (menuRedo) {
+            menuRedo.classList.remove('simulation-disabled');
+            // Restore original title from undo/redo manager
+            if (window.undoRedoManager) {
+                const nextRedoDescription = window.undoRedoManager.getNextRedoDescription();
+                menuRedo.title = nextRedoDescription ? `Redo: ${nextRedoDescription}` : 'Nothing to redo';
+            } else {
+                menuRedo.title = 'Redo last action';
+            }
+        }
+
+        console.log('Undo/Redo functionality unlocked after simulation');
     }
 
     // Private methods for locking specific components

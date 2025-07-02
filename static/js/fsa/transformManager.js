@@ -1,6 +1,7 @@
 import { fsaSerializationManager } from './fsaSerializationManager.js';
 import { notificationManager } from './notificationManager.js';
 import { controlLockManager } from './controlLockManager.js';
+import { undoRedoManager } from './undoRedoManager.js';
 import {
     convertFSAToBackendFormat,
     checkFSAProperties
@@ -449,6 +450,12 @@ class FSATransformManager {
         confirmBtn.disabled = true;
 
         try {
+            // Create snapshot before minimization for undo/redo
+            let snapshotCommand = null;
+            if (undoRedoManager && !undoRedoManager.isProcessing()) {
+                snapshotCommand = undoRedoManager.createSnapshotCommand('Minimize DFA');
+            }
+
             // Call backend minimization API
             const response = await fetch('/api/minimise-dfa/', {
                 method: 'POST',
@@ -474,6 +481,11 @@ class FSATransformManager {
             // Show success message with statistics
             this.showMinimizationResults(result);
 
+            // Finish undo/redo snapshot
+            if (snapshotCommand) {
+                undoRedoManager.finishSnapshotCommand(snapshotCommand);
+            }
+
         } catch (error) {
             console.error('Minimization error:', error);
             notificationManager.showError('Minimization Failed', error.message);
@@ -496,6 +508,12 @@ class FSATransformManager {
         confirmBtn.disabled = true;
 
         try {
+            // Create snapshot before conversion for undo/redo
+            let snapshotCommand = null;
+            if (undoRedoManager && !undoRedoManager.isProcessing()) {
+                snapshotCommand = undoRedoManager.createSnapshotCommand('Convert NFA to DFA');
+            }
+
             // Call backend conversion API
             const response = await fetch('/api/nfa-to-dfa/', {
                 method: 'POST',
@@ -520,6 +538,11 @@ class FSATransformManager {
 
             // Show success message with statistics
             this.showConversionResults(result);
+
+            // Finish undo/redo snapshot
+            if (snapshotCommand) {
+                undoRedoManager.finishSnapshotCommand(snapshotCommand);
+            }
 
         } catch (error) {
             console.error('Conversion error:', error);
