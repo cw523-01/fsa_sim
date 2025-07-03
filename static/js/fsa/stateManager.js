@@ -8,6 +8,95 @@ let startingStateId = null;
 let startingStateConnection = null;
 
 /**
+ * JSPlumb cleanup utilities to handle ID reuse issues
+ */
+const jsPlumbCleanup = {
+    /**
+     * Completely remove all traces of an element from JSPlumb
+     * @param {Object} jsPlumbInstance - The JSPlumb instance
+     * @param {string} elementId - The ID of the element to clean up
+     * @returns {boolean} - Success status
+     */
+    completelyRemoveElement(jsPlumbInstance, elementId) {
+        if (!jsPlumbInstance || !elementId) return false;
+
+        try {
+            console.log(`Starting complete JSPlumb removal of element: ${elementId}`);
+
+            // 1. Remove all connections involving this element
+            const connections = jsPlumbInstance.getConnections({
+                source: elementId
+            }).concat(jsPlumbInstance.getConnections({
+                target: elementId
+            }));
+
+            connections.forEach(conn => {
+                try {
+                    jsPlumbInstance.deleteConnection(conn);
+                } catch (error) {
+                    console.warn(`Error deleting connection:`, error);
+                }
+            });
+
+            // 2. Remove all endpoints for this element
+            try {
+                jsPlumbInstance.removeAllEndpoints(elementId);
+            } catch (error) {
+                console.warn(`Error removing endpoints for ${elementId}:`, error);
+            }
+
+            // 3. Remove the element from JSPlumb's management
+            try {
+                jsPlumbInstance.remove(elementId);
+            } catch (error) {
+                console.warn(`Error removing element ${elementId} from JSPlumb:`, error);
+            }
+
+            // 4. CRITICAL: Clean up managed elements cache manually
+            // This is the key fix for ID reuse issues
+            try {
+                const managedElements = jsPlumbInstance.getManagedElements();
+                if (managedElements && managedElements[elementId]) {
+                    delete managedElements[elementId];
+                    console.log(`Manually deleted ${elementId} from JSPlumb managed elements cache`);
+                }
+            } catch (error) {
+                console.warn(`Error cleaning managed elements cache for ${elementId}:`, error);
+            }
+
+            console.log(`Successfully completed JSPlumb removal of element: ${elementId}`);
+            return true;
+
+        } catch (error) {
+            console.error(`Error during complete element removal for ${elementId}:`, error);
+            return false;
+        }
+    },
+
+    /**
+     * Prepare an element ID for safe reuse
+     * @param {Object} jsPlumbInstance - The JSPlumb instance
+     * @param {string} elementId - The ID that will be reused
+     */
+    prepareForIdReuse(jsPlumbInstance, elementId) {
+        console.log(`Preparing JSPlumb for ID reuse: ${elementId}`);
+
+        if (!jsPlumbInstance) return;
+
+        // Suspend drawing during cleanup for performance
+        jsPlumbInstance.setSuspendDrawing(true);
+
+        try {
+            this.completelyRemoveElement(jsPlumbInstance, elementId);
+        } finally {
+            jsPlumbInstance.setSuspendDrawing(false);
+        }
+
+        console.log(`ID ${elementId} is now safe for reuse`);
+    }
+};
+
+/**
  * Gets the next available state ID that doesn't conflict with existing states
  * Always starts from S0 and finds the first available gap
  * @returns {string} - The next available state ID
@@ -74,6 +163,10 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks, expli
         // Update the counter for backward compatibility
         ensureCounterIsUpToDate(stateId);
     }
+
+    // CRITICAL: Ensure JSPlumb has no lingering references to this ID
+    // This prevents the connection issue when IDs are reused
+    jsPlumbCleanup.prepareForIdReuse(jsPlumbInstance, stateId);
 
     const state = document.createElement('div');
     state.id = stateId;
@@ -165,18 +258,71 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks, expli
         }
     });
 
-    // Make state a connection source and target
-    jsPlumbInstance.makeSource(state, {
-        filter: ".edge-source",
-        anchor: "Continuous",
-        connectorStyle: { stroke: "black", strokeWidth: 2 },
-        connectionType: "basic"
-    });
+    // CRITICAL: Use a more robust approach to JSPlumb registration
+    // This ensures proper registration especially after ID reuse
+    setTimeout(() => {
+        // Force revalidation before registration
+        jsPlumbInstance.revalidate(state.id);
 
-    jsPlumbInstance.makeTarget(state, {
-        anchor: "Continuous",
-        connectionType: "basic"
-    });
+        // Make state a connection source and target with enhanced error handling
+        try {
+            jsPlumbInstance.makeSource(state, {
+                filter: ".edge-source",
+                anchor: "Continuous",
+                connectorStyle: { stroke: "black", strokeWidth: 2 },
+                connectionType: "basic"
+            });
+
+            jsPlumbInstance.makeTarget(state, {
+                anchor: "Continuous",
+                connectionType: "basic"
+            });
+
+            console.log(`State ${stateId} successfully registered with JSPlumb`);
+
+            // Force a repaint to ensure everything is visually correct
+            jsPlumbInstance.repaintEverything();
+
+        } catch (error) {
+            console.error(`Error registering state ${stateId} with JSPlumb:`, error);
+
+            // Retry registration after cleanup
+            setTimeout(() => {
+                console.log(`Retrying JSPlumb registration for state ${stateId}`);
+
+                // Clean up any partial registration
+                jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, stateId);
+
+                // Wait a bit for cleanup to complete
+                setTimeout(() => {
+                    try {
+                        jsPlumbInstance.revalidate(state.id);
+
+                        jsPlumbInstance.makeSource(state, {
+                            filter: ".edge-source",
+                            anchor: "Continuous",
+                            connectorStyle: { stroke: "black", strokeWidth: 2 },
+                            connectionType: "basic"
+                        });
+
+                        jsPlumbInstance.makeTarget(state, {
+                            anchor: "Continuous",
+                            connectionType: "basic"
+                        });
+
+                        jsPlumbInstance.repaintEverything();
+                        console.log(`State ${stateId} successfully registered with JSPlumb on retry`);
+
+                    } catch (retryError) {
+                        console.error(`Failed to register state ${stateId} with JSPlumb on retry:`, retryError);
+
+                        // Last resort: suggest manual intervention
+                        console.warn(`Manual intervention may be required for state ${stateId}. Consider calling window.fixStateConnectionIssues(jsPlumbInstance)`);
+                    }
+                }, 50);
+            }, 100);
+        }
+    }, 25); // Slightly longer delay to ensure DOM is fully settled
 
     // Add click event handler
     state.addEventListener('click', function(e) {
@@ -219,11 +365,8 @@ export function deleteState(jsPlumbInstance, stateElement, edgeSymbolMap) {
         epsilonTransitionMap.delete(conn.id);
     });
 
-    // Remove the state and its endpoints - this is critical for cleaning up JSPlumb references
-    jsPlumbInstance.removeAllEndpoints(stateId);
-
-    // Force JSPlumb to completely forget about this element
-    jsPlumbInstance.remove(stateElement);
+    // Use enhanced cleanup to completely remove state from JSPlumb
+    jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, stateId);
 
     // Remove from DOM
     stateElement.remove();
@@ -257,21 +400,33 @@ export function createStartingStateIndicator(jsPlumbInstance, stateId) {
     const stateElement = document.getElementById(stateId);
     if (!stateElement) {
         console.error(`Target state ${stateId} not found in DOM`);
+        startingStateId = null; // Reset since the state doesn't exist
         return;
     }
 
-    // Create or get the hidden source for the starting arrow
-    const startSource = ensureStartSource(jsPlumbInstance);
+    // Ensure the state is properly registered with JSPlumb before creating connection
+    setTimeout(() => {
+        // Double-check the state still exists (in case it was deleted during the timeout)
+        const currentStateElement = document.getElementById(stateId);
+        if (!currentStateElement) {
+            console.warn(`State ${stateId} was removed before starting state indicator could be created`);
+            startingStateId = null;
+            return;
+        }
 
-    // Position the start source relative to the target state
-    positionStartSource(startSource, stateElement);
+        // Create or get the hidden source for the starting arrow
+        const startSource = ensureStartSource(jsPlumbInstance);
 
-    // Force JSPlumb to recognize both elements
-    jsPlumbInstance.revalidate('start-source');
-    jsPlumbInstance.revalidate(stateId);
+        // Position the start source relative to the target state
+        positionStartSource(startSource, currentStateElement);
 
-    // Create the connection with multiple fallback attempts
-    createStartingConnection(jsPlumbInstance, startSource, stateId);
+        // Force JSPlumb to recognize both elements
+        jsPlumbInstance.revalidate('start-source');
+        jsPlumbInstance.revalidate(stateId);
+
+        // Create the connection with multiple fallback attempts
+        createStartingConnection(jsPlumbInstance, startSource, stateId);
+    }, 50); // Small delay to ensure DOM and JSPlumb are synchronized
 }
 
 /**
@@ -510,4 +665,273 @@ export function validateStateName(proposedName, currentStateId = null) {
 
     // Check if an element with this ID already exists
     return !document.getElementById(proposedName);
+}
+
+/**
+ * Force cleanup of JSPlumb references for a specific state ID
+ * This helps prevent issues when reusing state IDs after renames
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @param {string} stateId - The state ID to clean up
+ */
+export function forceCleanupStateReferences(jsPlumbInstance, stateId) {
+    if (!jsPlumbInstance || !stateId) return;
+
+    console.log(`Force cleaning up JSPlumb references for state: ${stateId}`);
+    return jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, stateId);
+}
+
+/**
+ * Reinitialize JSPlumb registration for an existing state element
+ * Useful after state renames or when registration fails
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @param {HTMLElement} stateElement - The state element to reinitialize
+ * @returns {boolean} - True if successful
+ */
+export function reinitializeStateWithJSPlumb(jsPlumbInstance, stateElement) {
+    if (!jsPlumbInstance || !stateElement) return false;
+
+    const stateId = stateElement.id;
+
+    try {
+        console.log(`Reinitializing JSPlumb registration for state: ${stateId}`);
+
+        // First, clean up any existing registration using our enhanced cleanup
+        jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, stateId);
+
+        // Force revalidation
+        jsPlumbInstance.revalidate(stateElement);
+
+        // Re-register as source and target
+        jsPlumbInstance.makeSource(stateElement, {
+            filter: ".edge-source",
+            anchor: "Continuous",
+            connectorStyle: { stroke: "black", strokeWidth: 2 },
+            connectionType: "basic"
+        });
+
+        jsPlumbInstance.makeTarget(stateElement, {
+            anchor: "Continuous",
+            connectionType: "basic"
+        });
+
+        console.log(`Successfully reinitialized JSPlumb registration for state: ${stateId}`);
+        return true;
+
+    } catch (error) {
+        console.error(`Failed to reinitialize JSPlumb registration for state ${stateId}:`, error);
+        return false;
+    }
+}
+
+/**
+ * Handle state ID changes (renames) by updating internal references
+ * This should be called when a state is renamed to ensure consistency
+ * @param {string} oldStateId - The old state ID
+ * @param {string} newStateId - The new state ID
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ */
+export function handleStateIdChange(oldStateId, newStateId, jsPlumbInstance) {
+    console.log(`Handling state ID change: ${oldStateId} -> ${newStateId}`);
+
+    // Update starting state reference if necessary
+    if (startingStateId === oldStateId) {
+        console.log(`Updating starting state reference from ${oldStateId} to ${newStateId}`);
+        startingStateId = newStateId;
+
+        // Recreate the starting state indicator with the new ID
+        // Use a timeout to ensure the state element has been fully updated
+        setTimeout(() => {
+            createStartingStateIndicator(jsPlumbInstance, newStateId);
+        }, 100);
+    }
+
+    // CRITICAL: Use enhanced cleanup for the old ID to prevent connection issues
+    jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, oldStateId);
+
+    // Ensure the new state element is properly registered
+    const newStateElement = document.getElementById(newStateId);
+    if (newStateElement) {
+        setTimeout(() => {
+            reinitializeStateWithJSPlumb(jsPlumbInstance, newStateElement);
+        }, 150);
+    }
+
+    console.log(`State ID change handling completed: ${oldStateId} -> ${newStateId}`);
+}
+
+/**
+ * Diagnostic function to check for inconsistencies in state management
+ * Useful for troubleshooting issues like states not accepting connections
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @returns {Object} - Diagnostic report
+ */
+export function diagnoseStateManagement(jsPlumbInstance) {
+    const report = {
+        startingStateId: startingStateId,
+        statesInDOM: [],
+        jsPlumbEndpoints: [],
+        inconsistencies: [],
+        recommendations: [],
+        jsPlumbManagedElements: []
+    };
+
+    // Check JSPlumb managed elements
+    try {
+        const managedElements = jsPlumbInstance.getManagedElements();
+        report.jsPlumbManagedElements = Object.keys(managedElements || {});
+    } catch (error) {
+        report.inconsistencies.push(`Error accessing JSPlumb managed elements: ${error.message}`);
+    }
+
+    // Check all states in DOM
+    const stateElements = document.querySelectorAll('.state, .accepting-state');
+    stateElements.forEach(element => {
+        const hasJSPlumbEndpoints = jsPlumbInstance.getEndpoints(element.id).length > 0;
+        report.statesInDOM.push({
+            id: element.id,
+            className: element.className,
+            hasJSPlumbEndpoints: hasJSPlumbEndpoints
+        });
+
+        // Check for orphaned JSPlumb references
+        if (report.jsPlumbManagedElements.includes(element.id) && !hasJSPlumbEndpoints) {
+            report.inconsistencies.push(`State ${element.id} is in JSPlumb managed elements but has no endpoints`);
+            report.recommendations.push(`Call jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, '${element.id}') and recreate state`);
+        }
+    });
+
+    // Check for JSPlumb references to non-existent states
+    report.jsPlumbManagedElements.forEach(managedId => {
+        if (!document.getElementById(managedId)) {
+            report.inconsistencies.push(`JSPlumb manages element '${managedId}' but it doesn't exist in DOM`);
+            report.recommendations.push(`Call jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, '${managedId}') to clean up`);
+        }
+    });
+
+    // Check starting state consistency
+    if (startingStateId) {
+        const startingStateElement = document.getElementById(startingStateId);
+        if (!startingStateElement) {
+            report.inconsistencies.push(`Starting state ${startingStateId} not found in DOM`);
+            report.recommendations.push(`Call createStartingStateIndicator(jsPlumbInstance, null) to reset starting state`);
+        }
+    }
+
+    // Check for states without JSPlumb endpoints
+    report.statesInDOM.forEach(state => {
+        if (!state.hasJSPlumbEndpoints) {
+            report.inconsistencies.push(`State ${state.id} has no JSPlumb endpoints`);
+            report.recommendations.push(`Call reinitializeStateWithJSPlumb(jsPlumbInstance, document.getElementById('${state.id}')) to fix`);
+        }
+    });
+
+    console.log('State Management Diagnostic Report:', report);
+    return report;
+}
+
+/**
+ * Auto-fix common state management issues
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @returns {Object} - Results of the auto-fix
+ */
+export function autoFixStateManagement(jsPlumbInstance) {
+    console.log('Starting auto-fix for state management issues...');
+
+    const results = {
+        fixed: [],
+        failed: [],
+        summary: ''
+    };
+
+    // First, run diagnostics
+    const report = diagnoseStateManagement(jsPlumbInstance);
+
+    // Fix orphaned JSPlumb references
+    report.jsPlumbManagedElements.forEach(managedId => {
+        if (!document.getElementById(managedId)) {
+            if (jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, managedId)) {
+                results.fixed.push(`Cleaned up orphaned JSPlumb reference: ${managedId}`);
+            } else {
+                results.failed.push(`Failed to clean up orphaned JSPlumb reference: ${managedId}`);
+            }
+        }
+    });
+
+    // Fix states without JSPlumb endpoints
+    report.statesInDOM.forEach(state => {
+        if (!state.hasJSPlumbEndpoints) {
+            const element = document.getElementById(state.id);
+            if (element && reinitializeStateWithJSPlumb(jsPlumbInstance, element)) {
+                results.fixed.push(`Reinitialized JSPlumb for state ${state.id}`);
+            } else {
+                results.failed.push(`Failed to reinitialize JSPlumb for state ${state.id}`);
+            }
+        }
+    });
+
+    // Fix starting state inconsistencies
+    if (startingStateId && !document.getElementById(startingStateId)) {
+        // Reset starting state to first available state or null
+        const firstState = report.statesInDOM[0];
+        if (firstState) {
+            createStartingStateIndicator(jsPlumbInstance, firstState.id);
+            results.fixed.push(`Reset starting state to ${firstState.id}`);
+        } else {
+            createStartingStateIndicator(jsPlumbInstance, null);
+            results.fixed.push('Reset starting state to null (no states available)');
+        }
+    }
+
+    // Force a complete repaint after all fixes
+    setTimeout(() => {
+        jsPlumbInstance.repaintEverything();
+    }, 100);
+
+    results.summary = `Fixed ${results.fixed.length} issues, ${results.failed.length} failures`;
+    console.log('Auto-fix completed:', results);
+
+    return results;
+}
+
+// Make utility functions available globally for debugging and uiManager integration
+if (typeof window !== 'undefined') {
+    window.stateManagerDiagnostics = {
+        diagnose: diagnoseStateManagement,
+        autoFix: autoFixStateManagement,
+        forceCleanup: forceCleanupStateReferences,
+        reinitialize: reinitializeStateWithJSPlumb,
+        handleIdChange: handleStateIdChange,
+        jsPlumbCleanup: jsPlumbCleanup
+    };
+
+    // Add a convenience function for emergency fixes
+    window.fixStateConnectionIssues = function(jsPlumbInstance) {
+        console.log('🚨 EMERGENCY STATE FIX: Running comprehensive repair...');
+
+        // Step 1: Run diagnostics
+        const report = diagnoseStateManagement(jsPlumbInstance);
+        console.log('Diagnostic report:', report);
+
+        // Step 2: Run auto-fix
+        const fixResults = autoFixStateManagement(jsPlumbInstance);
+        console.log('Auto-fix results:', fixResults);
+
+        // Step 3: Force repaint everything
+        jsPlumbInstance.repaintEverything();
+
+        // Step 4: Run diagnostics again to see if issues are resolved
+        setTimeout(() => {
+            const postFixReport = diagnoseStateManagement(jsPlumbInstance);
+            console.log('Post-fix diagnostic report:', postFixReport);
+
+            if (postFixReport.inconsistencies.length === 0) {
+                console.log('✅ All state connection issues have been resolved!');
+            } else {
+                console.log('⚠️ Some issues remain. You may need to manually recreate problematic states.');
+                console.log('Remaining issues:', postFixReport.inconsistencies);
+            }
+        }, 200);
+
+        return { report, fixResults };
+    };
 }
