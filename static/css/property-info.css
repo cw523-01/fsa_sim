@@ -1,0 +1,373 @@
+/* Property Info Icons */
+.property-info-icon {
+    width: 16px;
+    height: 16px;
+    margin-left: var(--spacing-sm);
+    cursor: pointer;
+    opacity: 0.6;
+    transition: var(--transition-fast);
+    /* Make the white icon black */
+    filter: brightness(0);
+}
+
+.property-info-icon:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* Alphabet section styling */
+.alphabet-info h3 {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.alphabet-info .property-info-icon {
+    margin-left: var(--spacing-xs);
+}
+
+/* Epsilon info icon in modals */
+.epsilon-info-icon {
+    margin-left: var(--spacing-sm) !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    vertical-align: middle;
+}
+
+/* Epsilon transition checkbox group styling */
+.epsilon-transition {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.epsilon-transition label {
+    margin-right: 0;
+    font-weight: var(--font-weight-medium);
+}
+.table-section {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+#show-table-btn {
+    margin: 0;
+    padding: var(--spacing-sm) var(--spacing-md);
+    line-height: normal;
+}
+
+.table-info-icon {
+    margin: 0 !important;
+    padding: 0 !important;
+    vertical-align: middle;
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    flex-shrink: 0;
+    height: 16px;
+}
+
+/* Property row styling updates */
+.property {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-xs) 0;
+    position: relative;
+}
+
+.property span:first-child {
+    flex: 1;
+}
+
+.checkmark {
+    margin-right: var(--spacing-xs);
+}
+
+/* Property Info Backdrop */
+.property-info-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: calc(var(--z-modals) + 100);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.property-info-backdrop.show {
+    display: flex;
+}
+
+/* Property Info Popup */
+.property-info-popup {
+    background: linear-gradient(135deg, var(--white) 0%, var(--light-gray) 100%);
+    border-radius: var(--spacing-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--spacing-lg);
+    min-width: 300px;
+    max-width: 400px;
+    border-left: 4px solid var(--secondary-color);
+    font-family: var(--font-family-ui);
+    transform: scale(0.9);
+    opacity: 0;
+    transition: var(--transition-normal);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.property-info-backdrop.show .property-info-popup {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* Popup Header */
+.property-info-popup .popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: var(--spacing-sm);
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.property-info-popup #property-info-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--secondary-color);
+    margin: 0;
+    flex: 1;
+}
+
+.property-info-popup .popup-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: var(--text-gray);
+    cursor: pointer;
+    padding: 4px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    transition: var(--transition-fast);
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.property-info-popup .popup-close:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: var(--dark-gray);
+}
+
+/* Popup Content */
+.property-info-popup .popup-content {
+    line-height: var(--line-height);
+    flex: 1;
+    width: 100%;
+}
+
+.property-info-popup #property-info-description {
+    margin: 0;
+    font-size: var(--font-size-md);
+    color: var(--text-color);
+    width: 100%;
+    display: block;
+}
+
+/* Positioning for different property types */
+.property-info-popup.connected {
+    border-left-color: var(--primary-color);
+}
+
+.property-info-popup.connected #property-info-title {
+    color: var(--primary-color);
+}
+
+.property-info-popup.deterministic {
+    border-left-color: var(--secondary-color);
+}
+
+.property-info-popup.deterministic #property-info-title {
+    color: var(--secondary-color);
+}
+
+.property-info-popup.complete {
+    border-left-color: var(--accent-color);
+}
+
+.property-info-popup.complete #property-info-title {
+    color: var(--accent-color);
+}
+
+.property-info-popup.alphabet {
+    border-left-color: #9c27b0;
+}
+
+.property-info-popup.alphabet #property-info-title {
+    color: #9c27b0;
+}
+
+.property-info-popup.transition-table {
+    border-left-color: var(--error-color);
+}
+
+.property-info-popup.transition-table #property-info-title {
+    color: var(--error-color);
+}
+
+.property-info-popup.epsilon-transition {
+    border-left-color: #ff6b35;
+}
+
+.property-info-popup.epsilon-transition #property-info-title {
+    color: #ff6b35;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .property-info-icon {
+        width: 14px;
+        height: 14px;
+        margin-left: var(--spacing-xs);
+    }
+
+    .property-info-popup {
+        min-width: 280px;
+        max-width: 350px;
+        padding: var(--spacing-md);
+        margin: var(--spacing-md);
+    }
+
+    .property-info-popup #property-info-title {
+        font-size: var(--font-size-md);
+        padding-right: var(--spacing-lg);
+    }
+
+    .property-info-popup #property-info-description {
+        font-size: var(--font-size-sm);
+    }
+
+    .property-info-popup .popup-close {
+        font-size: 18px;
+        width: 24px;
+        height: 24px;
+        top: -2px;
+        right: -2px;
+    }
+
+    .alphabet-info h3 {
+        font-size: var(--font-size-md);
+    }
+
+    .table-section {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--spacing-sm);
+    }
+
+    .table-info-icon {
+        align-self: center;
+        margin-top: 0 !important;
+    }
+
+    .epsilon-transition {
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+    }
+
+    .epsilon-info-icon {
+        width: 14px;
+        height: 14px;
+    }
+}
+
+/* Small Mobile Styles */
+@media (max-width: 480px) {
+    .property-info-icon {
+        width: 12px;
+        height: 12px;
+    }
+
+    .property-info-popup {
+        min-width: 250px;
+        max-width: 300px;
+        padding: var(--spacing-sm);
+        margin: var(--spacing-md);
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .property-info-popup #property-info-title {
+        font-size: var(--font-size-sm);
+    }
+
+    .property-info-popup #property-info-description {
+        font-size: var(--font-size-xs);
+    }
+
+    .property-info-popup .popup-close {
+        font-size: 16px;
+        width: 22px;
+        height: 22px;
+    }
+
+    .alphabet-info h3 {
+        font-size: var(--font-size-sm);
+    }
+
+    .table-section {
+        margin-top: var(--spacing-sm);
+        align-items: center;
+    }
+
+    .table-info-icon {
+        margin-top: 0 !important;
+        align-self: center;
+    }
+
+    #show-table-btn {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .epsilon-transition {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+
+    .epsilon-info-icon {
+        width: 12px;
+        height: 12px;
+        align-self: flex-end;
+    }
+}
+
+/* Smooth entrance animation */
+@keyframes propertyInfoFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.property-info-backdrop.show .property-info-popup {
+    animation: propertyInfoFadeIn var(--transition-normal) ease-out;
+}

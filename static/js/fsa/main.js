@@ -52,6 +52,7 @@ import { fsaTransformManager } from './transformManager.js';
 import { edgeCreationManager } from './edgeCreationManager.js';
 import { toolManager } from './toolManager.js';
 import { undoRedoManager } from './undoRedoManager.js';
+import { propertyInfoManager } from './propertyInfoManager.js';
 
 // Make managers globally available
 window.nfaResultsManager = nfaResultsManager;
@@ -101,6 +102,9 @@ export function initialiseSimulator() {
 
     // Initialise FSA transformation system
     initializeFSATransformation();
+
+    // Initialise property info manager
+    initialisePropertyInfoManager();
 
     // Setup performance monitoring
     setupPerformanceMonitoring();
@@ -222,6 +226,19 @@ function initializeFSATransformation() {
     window.fsaTransformManager = fsaTransformManager;
 
     console.log('FSA transformation system initialized');
+}
+
+/**
+ * Initialize property info manager
+ */
+function initialisePropertyInfoManager() {
+    // Initialize property info manager
+    propertyInfoManager.initialize();
+
+    // Make property info manager globally available
+    window.propertyInfoManager = propertyInfoManager;
+
+    console.log('Property info system initialized');
 }
 
 /**
@@ -1323,6 +1340,11 @@ function cleanupEnhancedManagers() {
     if (toolManager) {
         toolManager.destroy();
         console.log('Tool manager cleaned up');
+    }
+
+    if (propertyInfoManager) {
+        propertyInfoManager.destroy();
+        console.log('Property info manager cleaned up');
     }
 }
 

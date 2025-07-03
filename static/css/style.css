@@ -51,7 +51,10 @@
 /* 17. Alphabet Display */
 @import url('alphabet-display.css');
 
-/* 18. Responsive Styles - Must be last */
+/* 18. Property Info Popups */
+@import url('property-info.css');
+
+/* 19. Responsive Styles - Must be last */
 @import url('responsive.css');
 
 /* Hide drag‑and‑drop overlay unless actively dragging a file */

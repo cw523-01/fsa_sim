@@ -130,7 +130,7 @@
             
             <!-- Delete Tool Section -->
             <div class="tools-section">
-                <h5 class="tools-header">Actions</h5>
+                <h5 class="tools-header">Delete</h5>
                 <div class="action-tools">
                     <!-- Delete tool -->
                     <div class="tool" id="delete-tool" title="Delete Element">
@@ -159,26 +159,48 @@
         
         <div class="info-panel">
             <div class="alphabet-info">
-                <h3>Alphabet:</h3>
+                <h3>
+                    Alphabet:
+                    <img src="{% static 'img/info.png' %}" alt="Info" class="property-info-icon" data-property="alphabet">
+                </h3>
                 <p>Σ = { }</p>
             </div>
             <div class="fsa-properties">
                 <div class="property">
                     <span>Connected:</span>
                     <span class="checkmark">✓</span>
+                    <img src="{% static 'img/info.png' %}" alt="Info" class="property-info-icon" data-property="connected">
                 </div>
                 <div class="property">
                     <span>Deterministic:</span>
                     <span class="checkmark">✓</span>
+                    <img src="{% static 'img/info.png' %}" alt="Info" class="property-info-icon" data-property="deterministic">
                 </div>
                 <div class="property">
                     <span>Complete:</span>
                     <span class="checkmark">✓</span>
+                    <img src="{% static 'img/info.png' %}" alt="Info" class="property-info-icon" data-property="complete">
                 </div>
             </div>
-            <button id="show-table-btn">Show T table</button>
+            <div class="table-section">
+                <button id="show-table-btn">Show T-table</button>
+                <img src="{% static 'img/info.png' %}" alt="Info" class="property-info-icon table-info-icon" data-property="transition-table">
+            </div>
         </div>
     </main>
+    
+    <!-- Property Info Popup -->
+    <div id="property-info-backdrop" class="property-info-backdrop">
+        <div id="property-info-popup" class="property-info-popup">
+            <div class="popup-header">
+                <h4 id="property-info-title"></h4>
+                <button class="popup-close" id="close-property-info">&times;</button>
+            </div>
+            <div class="popup-content">
+                <p id="property-info-description"></p>
+            </div>
+        </div>
+    </div>
     
     <!-- Modal for setting edge symbol -->
     <div id="edge-symbol-modal" class="modal">
@@ -192,13 +214,14 @@
             <div class="checkbox-group epsilon-transition">
                 <label for="epsilon-transition-checkbox">Include ε transition</label>
                 <input type="checkbox" id="epsilon-transition-checkbox">
+                <img src="{% static 'img/info.png' %}" alt="Info" class="property-info-icon epsilon-info-icon" data-property="epsilon-transition">
             </div>
-            
+
             <div class="checkbox-group curve-style-transition">
                 <label for="curve-transition-checkbox">Curved transition</label>
                 <input type="checkbox" id="curve-transition-checkbox">
             </div>
-            
+
             <div class="modal-buttons">
                 <button id="confirm-symbol-btn">Confirm</button>
                 <button id="cancel-symbol-btn">Cancel</button>
@@ -242,10 +265,11 @@
                     <!-- Inputs will be added dynamically -->
                 </div>
                 <button id="add-symbol-edit-btn">+ Add Symbol</button>
-                
+
                 <div class="checkbox-group epsilon-transition">
                     <label for="edge-epsilon-checkbox">Include ε transition</label>
                     <input type="checkbox" id="edge-epsilon-checkbox">
+                    <img src="{% static 'img/info.png' %}" alt="Info" class="property-info-icon epsilon-info-icon" data-property="epsilon-transition">
                 </div>
                 
                 <div class="checkbox-group curve-style-transition">

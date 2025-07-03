@@ -3,31 +3,31 @@ import { updateAlphabetDisplay } from './alphabetManager.js';
 import { getEpsilonTransitionMap } from "./edgeManager.js";
 
 // State management
-let stateCounter = 0;
+let stateCounter = 0; // Keep for backward compatibility
 let startingStateId = null;
 let startingStateConnection = null;
 
 /**
  * Gets the next available state ID that doesn't conflict with existing states
+ * Always starts from S0 and finds the first available gap
  * @returns {string} - The next available state ID
  */
 function getNextAvailableStateId() {
+    let counter = 0;
     let candidateId;
-    let counter = stateCounter;
 
+    // Always start from 0 and find the first available ID
     do {
         candidateId = createStateId(counter);
         counter++;
     } while (document.getElementById(candidateId));
-
-    // Update the state counter to be one past the ID we're using
-    stateCounter = counter;
 
     return candidateId;
 }
 
 /**
  * Updates the state counter to ensure it doesn't conflict with an existing state ID
+ * This is kept for backward compatibility but not used in ID generation
  * @param {string} stateId - The state ID to check against
  */
 function ensureCounterIsUpToDate(stateId) {
@@ -65,11 +65,14 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks, expli
             return null;
         }
 
-        // Update the counter to avoid future conflicts
+        // Update the counter for backward compatibility (but don't use it for generation)
         ensureCounterIsUpToDate(stateId);
     } else {
-        // Use the smart state ID generation
+        // Always find the next available ID starting from S0
         stateId = getNextAvailableStateId();
+
+        // Update the counter for backward compatibility
+        ensureCounterIsUpToDate(stateId);
     }
 
     const state = document.createElement('div');
@@ -474,7 +477,7 @@ export function getStartingStateId() {
 }
 
 /**
- * Get the current state counter value
+ * Get the current state counter value (kept for backward compatibility)
  * @returns {number} - The current state counter
  */
 export function getStateCounter() {
