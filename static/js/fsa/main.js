@@ -277,10 +277,6 @@ function initializeFSASerialization() {
     window.fsaSerializationManager = fsaSerializationManager;
     window.fsaFileUIManager = fsaFileUIManager;
 
-    // Show auto-save restore prompt if available (delayed to ensure UI is ready)
-    setTimeout(() => {
-//         fsaFileUIManager.showAutoSavePrompt();
-    }, 1000);
 
     console.log('FSA serialization system with menu bar initialized');
 }
