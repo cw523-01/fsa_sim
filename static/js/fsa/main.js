@@ -54,6 +54,8 @@ import { toolManager } from './toolManager.js';
 import { undoRedoManager } from './undoRedoManager.js';
 import { propertyInfoManager } from './propertyInfoManager.js';
 
+import { tutorialModalManager } from './tutorialModalManager.js';
+
 // Make managers globally available
 window.nfaResultsManager = nfaResultsManager;
 window.toolManager = toolManager;

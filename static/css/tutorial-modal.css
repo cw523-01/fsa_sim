@@ -1,0 +1,287 @@
+.tutorial-modal {
+    z-index: 2000;
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    align-items: center;
+    justify-content: center;
+}
+
+.tutorial-modal-content {
+    width: 90%;
+    max-width: 1000px;
+    height: 80vh;
+    max-height: 700px;
+    padding: 0;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--white);
+    box-shadow: var(--shadow-lg);
+    margin: auto;
+}
+
+.tutorial-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.tutorial-header h2 {
+    margin: 0;
+    color: var(--text-color);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+}
+
+.tutorial-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Sidebar */
+.tutorial-sidebar {
+    width: 280px;
+    background: var(--light-gray);
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.tutorial-category {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tutorial-category h3 {
+    margin: 0;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    background: var(--medium-gray);
+    color: var(--text-color);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    user-select: none;
+}
+
+.tutorial-category:hover h3,
+.tutorial-category.active h3 {
+    background: var(--primary-color);
+    color: var(--white);
+}
+
+.tutorial-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: none;
+}
+
+.tutorial-category.active .tutorial-list {
+    display: block;
+}
+
+.tutorial-item {
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-xl);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.tutorial-item:hover {
+    background: var(--hover-bg);
+}
+
+.tutorial-item.active {
+    background: var(--primary-color);
+    color: var(--white);
+}
+
+.tutorial-icon {
+    display: inline-block;
+    width: 20px;
+    margin-right: var(--spacing-md);
+    text-align: center;
+    font-size: var(--font-size-md);
+}
+
+/* Content Area */
+.tutorial-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.tutorial-header-info {
+    padding: var(--spacing-xl);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.tutorial-header-info h3 {
+    margin: 0 0 var(--spacing-sm) 0;
+    color: var(--text-color);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-medium);
+}
+
+.tutorial-header-info p {
+    margin: 0;
+    color: var(--muted-text);
+    font-size: var(--font-size-md);
+    line-height: var(--line-height);
+}
+
+.tutorial-gif-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+    background: #f9f9f9;
+    position: relative;
+    overflow: hidden;
+}
+
+.tutorial-gif {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    object-fit: contain;
+}
+
+.tutorial-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--muted-text);
+    font-size: var(--font-size-md);
+    display: none;
+}
+
+.tutorial-gif[src=""], .tutorial-gif:not([src]) {
+    display: none;
+}
+
+.tutorial-gif[src=""]+.tutorial-loading,
+.tutorial-gif:not([src])+.tutorial-loading {
+    display: block;
+}
+
+/* Navigation */
+.tutorial-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    background: var(--header-bg);
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.tutorial-nav-btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border: 1px solid var(--border-color);
+    background: var(--white);
+    color: var(--text-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: var(--font-size-sm);
+}
+
+.tutorial-nav-btn:hover:not(:disabled) {
+    background: var(--primary-color);
+    color: var(--white);
+    border-color: var(--primary-color);
+}
+
+.tutorial-nav-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.tutorial-counter {
+    color: var(--muted-text);
+    font-size: var(--font-size-sm);
+}
+
+header h1 {
+    margin-bottom: 0;
+}
+
+.input-controls-container {
+    margin-top: 0;
+}
+
+/* Help Button Styles */
+.help-btn {
+    background: var(--secondary-color) !important;
+    border: none;
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-circle) !important;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+
+    margin-left: auto !important;
+    margin-right: 0 !important;
+
+    width: var(--control-btn-size) !important;
+    height: var(--control-btn-size) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.help-btn:hover {
+    background: var(--secondary-hover) !important;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.help-btn img {
+    filter: brightness(0) invert(1);
+    width: 18px;
+    height: 18px;
+}
+
+/* Responsive adjustments for help button */
+@media (max-width: 768px) {
+    .help-btn {
+        width: 35px !important;
+        height: 35px !important;
+    }
+
+    .help-btn img {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .help-btn {
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    .help-btn img {
+        width: 14px;
+        height: 14px;
+    }
+}

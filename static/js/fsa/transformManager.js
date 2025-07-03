@@ -408,7 +408,7 @@ class FSATransformManager {
             </div>
             <div class="file-operation-content">
                 <div class="file-operation-description">
-                    Minimizing the DFA will replace the current automaton with an equivalent minimal DFA.
+                    Minimizing the DFA will replace the current automaton with an equivalent minimal DFA using Hopcroft's algorithm.
                 </div>
                 
                 <div class="states-info">

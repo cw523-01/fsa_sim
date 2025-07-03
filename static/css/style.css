@@ -1,5 +1,3 @@
-/* Import all component stylesheets */
-
 /* 1. CSS Variables - Must be first */
 @import url('variables.css');
 
@@ -54,7 +52,10 @@
 /* 18. Property Info Popups */
 @import url('property-info.css');
 
-/* 19. Responsive Styles - Must be last */
+/* 19. Tutorial Modal */
+@import url('tutorial-modal.css');
+
+/* 20. Responsive Styles - Must be last */
 @import url('responsive.css');
 
 /* Hide drag‑and‑drop overlay unless actively dragging a file */

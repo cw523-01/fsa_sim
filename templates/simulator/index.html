@@ -5,25 +5,28 @@
 <div class="fsa-simulator">
     <header>
         <h1>FSA SIM</h1>
-        <div class="header-row">
-            <div class="input-controls-container">
-                <div class="input-container">
-                    <label for="fsa-input">Input:</label>
-                    <input type="text" id="fsa-input" name="fsa-input">
-                </div>
-                <div class="controls">
-                    <button id="play-btn" class="control-btn">
-                        <img src="{% static 'img/play.svg' %}" alt="Play">
-                    </button>
-                    <button id="stop-btn" class="control-btn">
-                        <img src="{% static 'img/stop.svg' %}" alt="Stop">
-                    </button>
-                    <button id="fast-forward-btn" class="control-btn">
-                        <img src="{% static 'img/fast_forward.svg' %}" alt="Fast Forward">
-                    </button>
-                </div>
+        
+        <div class="input-controls-container">
+            <div class="input-container">
+                <label for="fsa-input">Input:</label>
+                <input type="text" id="fsa-input" name="fsa-input">
+            </div>
+            <div class="controls">
+                <button id="play-btn" class="control-btn">
+                    <img src="{% static 'img/play.svg' %}" alt="Play">
+                </button>
+                <button id="stop-btn" class="control-btn">
+                    <img src="{% static 'img/stop.svg' %}" alt="Stop">
+                </button>
+                <button id="fast-forward-btn" class="control-btn">
+                    <img src="{% static 'img/fast_forward.svg' %}" alt="Fast Forward">
+                </button>
             </div>
         </div>
+        
+        <button id="help-btn" class="control-btn help-btn" title="Quick Guide">
+            <img src="{% static 'img/help.png' %}" alt="Help">
+        </button>
     </header>
     
     <nav class="menu-bar">
@@ -225,6 +228,126 @@
             <div class="modal-buttons">
                 <button id="confirm-symbol-btn">Confirm</button>
                 <button id="cancel-symbol-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Guide Modal -->
+    <div id="tutorial-modal" class="modal tutorial-modal">
+        <div class="modal-content tutorial-modal-content">
+            <div class="tutorial-header">
+                <h2>Quick Guide</h2>
+                <span id="close-tutorial-modal" class="close-btn">&times;</span>
+            </div>
+            
+            <div class="tutorial-body">
+                <!-- Tutorial Categories -->
+                <div class="tutorial-sidebar">
+                    <div class="tutorial-category active" data-category="states">
+                        <h3>States</h3>
+                        <ul class="tutorial-list">
+                            <li class="tutorial-item active" data-tutorial="add_state">
+                                <span class="tutorial-icon">▶</span>
+                                Add State
+                            </li>
+                            <li class="tutorial-item" data-tutorial="add_state_via_drag">
+                                <span class="tutorial-icon">▶</span>
+                                Add State (Drag)
+                            </li>
+                            <li class="tutorial-item" data-tutorial="add_accepting_state">
+                                <span class="tutorial-icon">▶</span>
+                                Add Accepting State
+                            </li>
+                            <li class="tutorial-item" data-tutorial="add_accepting_state_via_drag">
+                                <span class="tutorial-icon">▶</span>
+                                Add Accepting (Drag)
+                            </li>
+                            <li class="tutorial-item" data-tutorial="rename_state">
+                                <span class="tutorial-icon">▶</span>
+                                Rename State
+                            </li>
+                            <li class="tutorial-item" data-tutorial="starting_state">
+                                <span class="tutorial-icon">▶</span>
+                                Starting State
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tutorial-category" data-category="transitions">
+                        <h3>Transitions</h3>
+                        <ul class="tutorial-list">
+                            <li class="tutorial-item" data-tutorial="add_transitions">
+                                <span class="tutorial-icon">▶</span>
+                                Add Transition
+                            </li>
+                            <li class="tutorial-item" data-tutorial="add_self_loop">
+                                <span class="tutorial-icon">▶</span>
+                                Add Self Loop
+                            </li>
+                            <li class="tutorial-item" data-tutorial="add_symbol_to_transition">
+                                <span class="tutorial-icon">▶</span>
+                                Add Symbol
+                            </li>
+                            <li class="tutorial-item" data-tutorial="add_epsilon_transition">
+                                <span class="tutorial-icon">▶</span>
+                                Add Epsilon Transition
+                            </li>
+                            <li class="tutorial-item" data-tutorial="edge_styles">
+                                <span class="tutorial-icon">▶</span>
+                                Edge Styles
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tutorial-category" data-category="delete">
+                        <h3>Delete</h3>
+                        <ul class="tutorial-list">
+                            <li class="tutorial-item" data-tutorial="delete_elements">
+                                <span class="tutorial-icon">▶</span>
+                                Delete Elements
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tutorial-category" data-category="simulation">
+                        <h3>Simulation</h3>
+                        <ul class="tutorial-list">
+                            <li class="tutorial-item" data-tutorial="simulating_dfa">
+                                <span class="tutorial-icon">▶</span>
+                                Simulate DFA
+                            </li>
+                            <li class="tutorial-item" data-tutorial="simulating_nfa">
+                                <span class="tutorial-icon">▶</span>
+                                Simulate NFA
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Tutorial Content -->
+                <div class="tutorial-content">
+                    <div class="tutorial-header-info">
+                        <h3 id="tutorial-title">Add State</h3>
+                        <p id="tutorial-description">Click on the canvas to create a new state.</p>
+                    </div>
+                    
+                    <div class="tutorial-gif-container">
+                        <img id="tutorial-gif" src="" alt="Tutorial" class="tutorial-gif">
+                        <div class="tutorial-loading">Loading...</div>
+                    </div>
+                    
+                    <div class="tutorial-navigation">
+                        <button id="prev-tutorial" class="tutorial-nav-btn" disabled>
+                            ← Previous
+                        </button>
+                        <span class="tutorial-counter">
+                            <span id="current-tutorial">1</span> of <span id="total-tutorials">11</span>
+                        </span>
+                        <button id="next-tutorial" class="tutorial-nav-btn">
+                            Next →
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
