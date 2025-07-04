@@ -1,5 +1,3 @@
-// transitionTableManager.js - Manages the generation and display of transition tables
-
 import { getStartingStateId } from './stateManager.js';
 import { getEdgeSymbolMap, getEpsilonTransitionMap, getEpsilonSymbol } from './edgeManager.js';
 
@@ -122,11 +120,21 @@ export function createTransitionTableElement(tableData) {
     const container = document.createElement('div');
     container.className = 'transition-table-container';
 
+    // Add a title
+    const title = document.createElement('h3');
+    title.textContent = 'Transition Table';
+    container.appendChild(title);
+
+    // Create scrollable wrapper for the table
+    const tableWrapper = document.createElement('div');
+    tableWrapper.className = 'transition-table-wrapper';
+
     // Create the table element
     const table = document.createElement('table');
     table.className = 'transition-table';
 
-    // Create the header row
+    // Create the header section
+    const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
 
     // Add empty cell for state column
@@ -148,8 +156,12 @@ export function createTransitionTableElement(tableData) {
         headerRow.appendChild(epsilonTh);
     }
 
-    // Add the header row to the table
-    table.appendChild(headerRow);
+    // Add the header row to thead and thead to table
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Create the body section
+    const tbody = document.createElement('tbody');
 
     // Add rows for each state
     tableData.states.forEach(stateId => {
@@ -157,23 +169,31 @@ export function createTransitionTableElement(tableData) {
 
         // Add the state cell with appropriate styling
         const stateCell = document.createElement('td');
-        stateCell.textContent = stateId;
+
+        // Start with the base state ID
+        let stateCellContent = stateId;
 
         // Mark starting state
         if (stateId === tableData.startingState) {
             stateCell.classList.add('starting-state-cell');
-            // Add an arrow or other indicator
+            // Add an arrow indicator
             const startingIndicator = document.createElement('span');
             startingIndicator.textContent = '→ ';
             startingIndicator.className = 'starting-indicator';
-            stateCell.prepend(startingIndicator);
+            stateCell.appendChild(startingIndicator);
         }
 
-        // Mark accepting state
+        // Add the state ID text
+        const stateText = document.createElement('span');
+        stateText.textContent = stateCellContent;
+        stateCell.appendChild(stateText);
+
+        // Mark accepting state (add the symbol after the text)
         if (tableData.acceptingStates.includes(stateId)) {
             stateCell.classList.add('accepting-state-cell');
-            // Add double circle or other indicator
-            stateCell.textContent = `${stateId} ⊛`;
+            const acceptingIndicator = document.createElement('span');
+            acceptingIndicator.textContent = ' ⊛';
+            stateCell.appendChild(acceptingIndicator);
         }
 
         row.appendChild(stateCell);
@@ -211,22 +231,22 @@ export function createTransitionTableElement(tableData) {
             row.appendChild(epsilonCell);
         }
 
-        // Add the row to the table
-        table.appendChild(row);
+        // Add the row to tbody
+        tbody.appendChild(row);
     });
 
-    // Add the table to the container
-    container.appendChild(table);
+    // Add tbody to table
+    table.appendChild(tbody);
 
-    // Add a title
-    const title = document.createElement('h3');
-    title.textContent = 'Transition Table';
-    container.prepend(title);
+    // Add the table to the wrapper
+    tableWrapper.appendChild(table);
 
-    // Add a button container with clearfix
+    // Add the wrapper to the container
+    container.appendChild(tableWrapper);
+
+    // Add a button container
     const buttonContainer = document.createElement('div');
-    buttonContainer.style.marginTop = '15px';
-    buttonContainer.style.overflow = 'hidden'; // Clearfix
+    buttonContainer.className = 'transition-table-button-container';
 
     // Create close button
     const closeButton = document.createElement('button');

@@ -16,16 +16,38 @@
     padding: var(--spacing-xl);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-md);
-    width: 80%;
-    max-width: 800px;
+    width: 90%;
+    max-width: 1200px; /* Increased max-width */
+    max-height: 80vh; /* Limit height to viewport */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.transition-table-container h3 {
+    margin: 0 0 var(--spacing-md) 0;
+    flex-shrink: 0; /* Prevent title from shrinking */
+}
+
+/* Scrollable wrapper for the table */
+.transition-table-wrapper {
+    overflow: auto;
+    flex: 1;
+    min-height: 0; /* Allow flexbox to shrink */
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-lg);
+    /* Prevent this container from creating its own stacking context */
+    isolation: auto;
     position: relative;
 }
 
 .transition-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: var(--spacing-md);
-    margin-bottom: var(--spacing-xl);
+    width: auto; /* Let table size naturally */
+    min-width: 100%; /* Ensure minimum width */
+    border-collapse: separate; /* CRITICAL: collapse breaks sticky positioning */
+    border-spacing: 0; /* Remove spacing between cells */
+    margin: 0; /* Remove margins since wrapper handles spacing */
 }
 
 .transition-table th,
@@ -33,18 +55,61 @@
     border: 1px solid var(--border-color);
     padding: var(--spacing-sm) var(--spacing-md);
     text-align: center;
+    white-space: nowrap; /* Prevent text wrapping */
+    min-width: 60px; /* Minimum column width */
 }
 
-.transition-table th {
+/* Sticky header styling - NUCLEAR APPROACH */
+.transition-table thead {
+    z-index: 99999 !important;
+    position: relative;
+}
+
+.transition-table thead th {
     background-color: #f2f2f2;
     font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 99999 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    background-clip: padding-box;
 }
 
-.transition-table tr:nth-child(even) {
+/* Force tbody to have lower z-index */
+.transition-table tbody {
+    z-index: 1 !important;
+    position: relative;
+}
+
+/* Remove any z-index from tbody content */
+.transition-table tbody td {
+    /* Remove position and z-index completely */
+}
+
+/* First column (State) should also be sticky and above header row */
+.transition-table th:first-child,
+.transition-table td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: #f9f9f9;
+    z-index: 100000 !important; /* Higher than header row */
+    border-right: 2px solid var(--border-color);
+    box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+    background-clip: padding-box;
+}
+
+.transition-table thead th:first-child {
+    background-color: #f2f2f2;
+    z-index: 100001 !important; /* Highest - top-left cell always visible */
+    box-shadow: 2px 2px 4px rgba(0,0,0,0.15);
+    background-clip: padding-box;
+}
+
+.transition-table tbody tr:nth-child(even) td:not(:first-child) {
     background-color: #f9f9f9;
 }
 
-.transition-table tr:hover {
+.transition-table tbody tr:hover td:not(:first-child) {
     background-color: var(--hover-bg);
 }
 
@@ -64,6 +129,13 @@
     margin-right: var(--spacing-xs);
 }
 
+/* Button container */
+.transition-table-button-container {
+    flex-shrink: 0; /* Prevent button container from shrinking */
+    margin-top: var(--spacing-lg);
+    overflow: hidden; /* Clearfix */
+}
+
 .close-table-btn {
     padding: var(--spacing-sm) var(--spacing-md);
     background-color: var(--error-color);
@@ -72,10 +144,55 @@
     border-radius: var(--radius-md);
     cursor: pointer;
     font-size: var(--font-size-md);
-    margin-top: var(--spacing-lg);
     float: right;
 }
 
 .close-table-btn:hover {
     background-color: var(--error-hover);
+}
+
+/* Scrollbar styling for better UX */
+.transition-table-wrapper::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.transition-table-wrapper::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: var(--radius-md);
+}
+
+.transition-table-wrapper::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: var(--radius-md);
+}
+
+.transition-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Instructions for users */
+.scroll-instructions {
+    font-size: var(--font-size-sm);
+    color: var(--muted-text);
+    text-align: center;
+    margin-bottom: var(--spacing-sm);
+    font-style: italic;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .transition-table-container {
+        width: 95%;
+        margin: 2% auto;
+        padding: var(--spacing-lg);
+        max-height: 90vh;
+    }
+
+    .transition-table th,
+    .transition-table td {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        min-width: 50px;
+        font-size: var(--font-size-sm);
+    }
 }

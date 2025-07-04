@@ -93,13 +93,13 @@ class TutorialModalManager {
                 {
                     id: 'simulating_dfa',
                     title: 'Simulate DFA',
-                    description: 'Enter an input string and press play to see step-by-step execution through your DFA.',
+                    description: 'Enter an input string and press play to see step-by-step execution through your DFA. Click fast-forward to instantly see if the input is accepted.',
                     gif: 'simulation/simulating_dfa.gif'
                 },
                 {
                     id: 'simulating_nfa',
                     title: 'Simulate NFA',
-                    description: 'Simulate non-deterministic finite automata with multiple possible paths.',
+                    description: 'Simulate non-deterministic finite automata with multiple possible paths. Click fast-forward to instantly see if the input is accepted.',
                     gif: 'simulation/simulating_nfa.gif'
                 }
             ]
