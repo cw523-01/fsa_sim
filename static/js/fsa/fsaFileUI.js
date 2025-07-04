@@ -1,19 +1,16 @@
-// fsaFileUI.js - UI integration for FSA file management with menu bar
-
 import { fsaSerializationManager } from './fsaSerializationManager.js';
 import { notificationManager } from './notificationManager.js';
 import { controlLockManager } from './controlLockManager.js';
 import { undoRedoManager } from './undoRedoManager.js';
+import { menuManager } from './menuManager.js';
 
 /**
- * FSA File UI Manager - handles file operations UI with menu bar
+ * FSA File UI Manager - handles file operations UI with unified menu system
  */
 class FSAFileUIManager {
     constructor() {
         this.jsPlumbInstance = null;
-        this.currentOpenMenu = null;
         this.autoSaveInterval = null;
-        this.eventListenersSetup = false; // Track if event listeners are already set up
         this.setupFileInput();
     }
 
@@ -23,7 +20,19 @@ class FSAFileUIManager {
      */
     initialize(jsPlumbInstance) {
         this.jsPlumbInstance = jsPlumbInstance;
-        this.setupMenuEventListeners();
+
+        // Initialize menu manager first (if not already done)
+        if (!menuManager.initialized) {
+            menuManager.initialize();
+        }
+
+        // Register file menu with the universal menu manager
+        menuManager.registerMenu('file', {
+            buttonId: 'file-menu-button',
+            dropdownId: 'file-dropdown'
+        });
+
+        this.setupMenuOptions();
         this.setupKeyboardShortcuts();
     }
 
@@ -39,71 +48,49 @@ class FSAFileUIManager {
     }
 
     /**
-     * Setup menu event listeners (only once)
+     * Setup menu option event listeners
      */
-    setupMenuEventListeners() {
-        // Prevent duplicate event listeners
-        if (this.eventListenersSetup) {
-            return;
-        }
-        this.eventListenersSetup = true;
-
-        // File menu button
-        const fileMenuButton = document.getElementById('file-menu-button');
-        if (fileMenuButton) {
-            fileMenuButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleMenu('file-dropdown');
-            });
-        }
-
-        // Menu options
+    setupMenuOptions() {
+        // Menu option handlers
         const menuNew = document.getElementById('menu-new');
         const menuOpen = document.getElementById('menu-open');
         const menuSave = document.getElementById('menu-save');
 
         if (menuNew) {
-            menuNew.addEventListener('click', () => {
-                this.closeAllMenus();
+            // Clone to remove existing handlers
+            const newMenuNew = menuNew.cloneNode(true);
+            menuNew.parentNode.replaceChild(newMenuNew, menuNew);
+
+            newMenuNew.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menuManager.closeAllMenus();
                 this.newFSA();
             });
         }
 
         if (menuOpen) {
-            menuOpen.addEventListener('click', () => {
-                this.closeAllMenus();
+            // Clone to remove existing handlers
+            const newMenuOpen = menuOpen.cloneNode(true);
+            menuOpen.parentNode.replaceChild(newMenuOpen, menuOpen);
+
+            newMenuOpen.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menuManager.closeAllMenus();
                 this.importFSA();
             });
         }
 
         if (menuSave) {
-            menuSave.addEventListener('click', () => {
-                this.closeAllMenus();
+            // Clone to remove existing handlers
+            const newMenuSave = menuSave.cloneNode(true);
+            menuSave.parentNode.replaceChild(newMenuSave, menuSave);
+
+            newMenuSave.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menuManager.closeAllMenus();
                 this.exportFSA();
             });
         }
-
-        // Close menus when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.menu-item')) {
-                this.closeAllMenus();
-            }
-        });
-
-        // Close menus on escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closeAllMenus();
-                // Also close file operation popups
-                this.hideSavePopup();
-                this.hideNewFilePopup();
-                this.hideImportConfirmPopup();
-                // Close transform popups if available
-                if (window.fsaTransformManager) {
-                    window.fsaTransformManager.hideMinimizePopup();
-                }
-            }
-        });
     }
 
     /**
@@ -136,93 +123,6 @@ class FSAFileUIManager {
                 this.newFSA();
             }
         });
-    }
-
-    /**
-     * Toggle menu dropdown
-     * @param {string} menuId - ID of menu dropdown to toggle
-     */
-    toggleMenu(menuId) {
-        const menu = document.getElementById(menuId);
-        const button = document.getElementById(menuId.replace('-dropdown', '-button'));
-
-        if (!menu || !button) return;
-
-        // Close other menus first
-        if (this.currentOpenMenu && this.currentOpenMenu !== menuId) {
-            this.closeAllMenus();
-        }
-
-        // Toggle current menu
-        const isOpen = menu.classList.contains('show');
-
-        if (isOpen) {
-            this.closeMenu(menuId);
-        } else {
-            this.openMenu(menuId);
-        }
-    }
-
-    /**
-     * Open a specific menu
-     * @param {string} menuId - ID of menu dropdown to open
-     */
-    openMenu(menuId) {
-        const menu = document.getElementById(menuId);
-        const button = document.getElementById(menuId.replace('-dropdown', '-button'));
-
-        if (!menu || !button) return;
-
-        menu.classList.add('show');
-        button.classList.add('active');
-        this.currentOpenMenu = menuId;
-    }
-
-    /**
-     * Close a specific menu
-     * @param {string} menuId - ID of menu dropdown to close
-     */
-    closeMenu(menuId) {
-        const menu = document.getElementById(menuId);
-        const button = document.getElementById(menuId.replace('-dropdown', '-button'));
-
-        if (!menu || !button) return;
-
-        menu.classList.remove('show');
-        button.classList.remove('active');
-
-        if (this.currentOpenMenu === menuId) {
-            this.currentOpenMenu = null;
-        }
-    }
-
-    /**
-     * Close all open menus
-     */
-    closeAllMenus() {
-        const allDropdowns = document.querySelectorAll('.menu-dropdown');
-        const allButtons = document.querySelectorAll('.menu-button');
-
-        allDropdowns.forEach(menu => menu.classList.remove('show'));
-        allButtons.forEach(button => button.classList.remove('active'));
-
-        this.currentOpenMenu = null;
-
-        // Also close transform menu if available
-        if (window.fsaTransformManager) {
-            window.fsaTransformManager.closeTransformMenu();
-        }
-
-        // Close edit menu dropdown
-        const editDropdown = document.getElementById('edit-dropdown');
-        const editButton = document.getElementById('edit-menu-button');
-
-        if (editDropdown) {
-            editDropdown.classList.remove('show');
-        }
-        if (editButton) {
-            editButton.classList.remove('active');
-        }
     }
 
     /**
@@ -347,7 +247,6 @@ class FSAFileUIManager {
                     <div class="input-error" id="save-filename-error">Filename cannot be empty</div>
                     <div class="auto-filename-note">Leave empty for auto-generated timestamp filename</div>
                 </div>
-
 
                 <div class="filename-preview">
                     <div class="filename-preview-label">File will be saved as:</div>
@@ -793,15 +692,8 @@ class FSAFileUIManager {
      * @param {boolean} locked - Whether controls are locked
      */
     updateMenuStates(locked) {
-        const menuOptions = document.querySelectorAll('#file-dropdown .menu-option');
-
-        menuOptions.forEach(option => {
-            if (locked) {
-                option.classList.add('disabled');
-            } else {
-                option.classList.remove('disabled');
-            }
-        });
+        // Use the universal menu manager
+        menuManager.updateMenuStates(locked);
     }
 }
 

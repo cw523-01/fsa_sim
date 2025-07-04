@@ -2,6 +2,7 @@ import { fsaSerializationManager } from './fsaSerializationManager.js';
 import { notificationManager } from './notificationManager.js';
 import { controlLockManager } from './controlLockManager.js';
 import { undoRedoManager } from './undoRedoManager.js';
+import { menuManager } from './menuManager.js';
 import {
     convertFSAToBackendFormat,
     checkFSAProperties
@@ -9,12 +10,11 @@ import {
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 
 /**
- * FSA Transform Manager - handles FSA transformation operations
+ * FSA Transform Manager - handles FSA transformation operations with unified menu system
  */
 class FSATransformManager {
     constructor() {
         this.jsPlumbInstance = null;
-        this.eventListenersSetup = false;
         this.currentFSAForMinimization = null;
         this.currentFSAForConversion = null;
         this.currentFSAForCompletion = null;
@@ -27,6 +27,18 @@ class FSATransformManager {
      */
     initialize(jsPlumbInstance) {
         this.jsPlumbInstance = jsPlumbInstance;
+
+        // Initialize menu manager first (if not already done)
+        if (!menuManager.initialized) {
+            menuManager.initialize();
+        }
+
+        // Register transform menu with the universal menu manager
+        menuManager.registerMenu('transform', {
+            buttonId: 'transform-menu-button',
+            dropdownId: 'transform-dropdown'
+        });
+
         this.setupTransformEventListeners();
         this.setupKeyboardShortcuts();
     }
@@ -35,59 +47,58 @@ class FSATransformManager {
      * Setup Transform menu event listeners
      */
     setupTransformEventListeners() {
-        if (this.eventListenersSetup) {
-            return;
-        }
-        this.eventListenersSetup = true;
-
-        // Transform menu button
-        const transformMenuButton = document.getElementById('transform-menu-button');
-        if (transformMenuButton) {
-            transformMenuButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleTransformMenu();
-            });
-        }
-
         // Menu options
         const menuMinimiseDFA = document.getElementById('menu-minimise-dfa');
         if (menuMinimiseDFA) {
-            menuMinimiseDFA.addEventListener('click', () => {
-                this.closeTransformMenu();
+            // Clone to remove existing handlers
+            const newMenuMinimiseDFA = menuMinimiseDFA.cloneNode(true);
+            menuMinimiseDFA.parentNode.replaceChild(newMenuMinimiseDFA, menuMinimiseDFA);
+
+            newMenuMinimiseDFA.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menuManager.closeAllMenus();
                 this.minimiseDFA();
             });
         }
 
         const menuNFAToDFA = document.getElementById('menu-nfa-to-dfa');
         if (menuNFAToDFA) {
-            menuNFAToDFA.addEventListener('click', () => {
-                this.closeTransformMenu();
+            // Clone to remove existing handlers
+            const newMenuNFAToDFA = menuNFAToDFA.cloneNode(true);
+            menuNFAToDFA.parentNode.replaceChild(newMenuNFAToDFA, menuNFAToDFA);
+
+            newMenuNFAToDFA.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menuManager.closeAllMenus();
                 this.convertNFAToDFA();
             });
         }
 
         const menuCompleteDFA = document.getElementById('menu-complete-dfa');
         if (menuCompleteDFA) {
-            menuCompleteDFA.addEventListener('click', () => {
-                this.closeTransformMenu();
+            // Clone to remove existing handlers
+            const newMenuCompleteDFA = menuCompleteDFA.cloneNode(true);
+            menuCompleteDFA.parentNode.replaceChild(newMenuCompleteDFA, menuCompleteDFA);
+
+            newMenuCompleteDFA.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menuManager.closeAllMenus();
                 this.completeDFA();
             });
         }
 
         const menuComplementDFA = document.getElementById('menu-complement-dfa');
         if (menuComplementDFA) {
-            menuComplementDFA.addEventListener('click', () => {
-                this.closeTransformMenu();
+            // Clone to remove existing handlers
+            const newMenuComplementDFA = menuComplementDFA.cloneNode(true);
+            menuComplementDFA.parentNode.replaceChild(newMenuComplementDFA, menuComplementDFA);
+
+            newMenuComplementDFA.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menuManager.closeAllMenus();
                 this.complementDFA();
             });
         }
-
-        // Close menus when clicking outside (integrate with existing system)
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('#transform-menu')) {
-                this.closeTransformMenu();
-            }
-        });
     }
 
     /**
@@ -114,50 +125,6 @@ class FSATransformManager {
                 this.convertNFAToDFA();
             }
         });
-    }
-
-    /**
-     * Toggle Transform menu dropdown
-     */
-    toggleTransformMenu() {
-        const dropdown = document.getElementById('transform-dropdown');
-        const button = document.getElementById('transform-menu-button');
-
-        if (!dropdown || !button) return;
-
-        const isOpen = dropdown.classList.contains('show');
-
-        if (isOpen) {
-            this.closeTransformMenu();
-        } else {
-            this.openTransformMenu();
-        }
-    }
-
-    /**
-     * Open Transform menu
-     */
-    openTransformMenu() {
-        const dropdown = document.getElementById('transform-dropdown');
-        const button = document.getElementById('transform-menu-button');
-
-        if (!dropdown || !button) return;
-
-        dropdown.classList.add('show');
-        button.classList.add('active');
-    }
-
-    /**
-     * Close Transform menu
-     */
-    closeTransformMenu() {
-        const dropdown = document.getElementById('transform-dropdown');
-        const button = document.getElementById('transform-menu-button');
-
-        if (!dropdown || !button) return;
-
-        dropdown.classList.remove('show');
-        button.classList.remove('active');
     }
 
     /**
@@ -1684,15 +1651,9 @@ class FSATransformManager {
      * @param {boolean} locked - Whether controls are locked
      */
     updateMenuStates(locked) {
-        const transformOptions = document.querySelectorAll('#transform-dropdown .menu-option');
-
-        transformOptions.forEach(option => {
-            if (locked) {
-                option.classList.add('disabled');
-            } else {
-                option.classList.remove('disabled');
-            }
-        });
+        // This is now handled by the universal menu manager
+        // The method exists for backwards compatibility
+        menuManager.updateMenuStates(locked);
     }
 }
 

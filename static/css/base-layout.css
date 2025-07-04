@@ -50,14 +50,54 @@ main {
     gap: var(--spacing-xl);
     align-items: center;
     border-right: 1px solid var(--border-color);
+
+    /* Scrolling capability */
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 100vh; /* Ensure it doesn't exceed viewport height */
+
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
+
+    /* Custom scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
 }
 
+/* Webkit scrollbar styling for tools panel */
+.tools-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tools-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.tools-panel::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 3px;
+    transition: background-color var(--transition-fast);
+}
+
+.tools-panel::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-gray);
+}
+
+/* Ensure tools sections don't shrink when scrolling */
 .tools-section {
     width: 100%;
     margin-bottom: var(--spacing-xl);
     text-align: center;
+    flex-shrink: 0; /* Prevent shrinking */
 }
 
+/* Padding at the bottom for better scrolling */
+.tools-panel .tools-section:last-child {
+    margin-bottom: calc(var(--spacing-xl) * 2);
+}
+
+/* Ensure state tools maintain proper layout when scrolling */
 .state-tools,
 .edge-tools,
 .action-tools,
@@ -66,18 +106,20 @@ main {
     flex-direction: column;
     align-items: center;
     width: 100%;
+    gap: var(--spacing-sm);
 }
 
-.tools-header {
-    font-size: 0.9rem;
-    font-weight: var(--font-weight-bold);
-    margin: 0 auto var(--spacing-md) auto;
-    text-align: center;
-    color: #495057;
-    padding: var(--spacing-xs) 0;
-    border-bottom: 1px solid #dee2e6;
-    width: 100%;
+/* Edge style buttons specific adjustments for scrolling */
+.edge-style-buttons {
+    gap: var(--spacing-xs);
 }
+
+.edge-style-buttons button {
+    margin-bottom: var(--spacing-xs);
+    flex-shrink: 0;
+}
+
+
 
 /* Canvas Layout */
 #fsa-canvas {

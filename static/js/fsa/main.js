@@ -53,6 +53,7 @@ import { edgeCreationManager } from './edgeCreationManager.js';
 import { toolManager } from './toolManager.js';
 import { undoRedoManager } from './undoRedoManager.js';
 import { propertyInfoManager } from './propertyInfoManager.js';
+import { menuManager } from './menuManager.js';
 
 import { tutorialModalManager } from './tutorialModalManager.js';
 
@@ -99,7 +100,7 @@ export function initialiseSimulator() {
     // Initialise undo/redo system FIRST (before any menu setup)
     initialiseUndoRedoSystem();
 
-    // Initialise FSA serialization system with menu bar
+    // Initialise FSA serialization system with unified menu bar
     initializeFSASerialization();
 
     // Initialise FSA transformation system
@@ -257,14 +258,20 @@ function initialiseUndoRedoSystem() {
 }
 
 /**
- * Initialize FSA serialization system with menu bar
+ * Initialize FSA serialization system with unified menu bar
  */
 function initializeFSASerialization() {
+    // Initialize menu manager first
+    menuManager.initialize();
+
     // Initialize file UI manager with JSPlumb instance
     fsaFileUIManager.initialize(jsPlumbInstance);
 
-    // Setup simple menu debug for testing (FILE MENU ONLY - undo/redo handled by undoRedoManager)
-    setupSimpleMenuDebug();
+    // Setup edit menu with universal menu manager
+    setupEditMenu();
+
+    // Setup unified menu system - replaces setupSimpleMenuDebug
+    setupUnifiedMenuSystem();
 
     // Setup drag and drop for file import (minimal visual feedback)
     setupFileDragAndDrop();
@@ -278,150 +285,76 @@ function initializeFSASerialization() {
     // Make serialization functions globally available
     window.fsaSerializationManager = fsaSerializationManager;
     window.fsaFileUIManager = fsaFileUIManager;
+    window.menuManager = menuManager;
 
-
-    console.log('FSA serialization system with menu bar initialized');
+    console.log('FSA serialization system with unified menu bar initialized');
 }
 
 /**
- * Simple debug menu setup to ensure dropdown works (FILE MENU ONLY)
- * NOTE: Undo/Redo is handled entirely by undoRedoManager.js
+ * Setup edit menu with universal menu manager
  */
-function setupSimpleMenuDebug() {
-    console.log('Setting up menu functionality...');
-
-    // File menu button
-    const fileMenuButton = document.getElementById('file-menu-button');
-    const fileDropdown = document.getElementById('file-dropdown');
-
-    if (!fileMenuButton || !fileDropdown) {
-        console.error('Menu elements not found:', {
-            button: !!fileMenuButton,
-            dropdown: !!fileDropdown
-        });
-        return;
-    }
-
-    // Remove any existing event listeners by cloning the button
-    const newFileMenuButton = fileMenuButton.cloneNode(true);
-    fileMenuButton.parentNode.replaceChild(newFileMenuButton, fileMenuButton);
-
-    newFileMenuButton.addEventListener('click', function(e) {
-        console.log('File menu clicked');
-        e.stopPropagation();
-
-        // Toggle dropdown
-        const isOpen = fileDropdown.classList.contains('show');
-
-        if (isOpen) {
-            fileDropdown.classList.remove('show');
-            newFileMenuButton.classList.remove('active');
-        } else {
-            fileDropdown.classList.add('show');
-            newFileMenuButton.classList.add('active');
-        }
+function setupEditMenu() {
+    // Register edit menu with the universal menu manager
+    menuManager.registerMenu('edit', {
+        buttonId: 'edit-menu-button',
+        dropdownId: 'edit-dropdown'
     });
 
-    // Close menu when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('#file-menu')) {
-            fileDropdown.classList.remove('show');
-            newFileMenuButton.classList.remove('active');
-        }
-    });
+    // Setup edit menu items
+    setupEditMenuItems();
 
-    // Menu option handlers - ensure only one handler per element
-    const menuNew = document.getElementById('menu-new');
-    const menuOpen = document.getElementById('menu-open');
-    const menuSave = document.getElementById('menu-save');
+    console.log('Edit menu registered with universal menu manager');
+}
 
-    if (menuNew) {
+/**
+ * Setup edit menu items (undo/redo)
+ */
+function setupEditMenuItems() {
+    const menuUndo = document.getElementById('menu-undo');
+    const menuRedo = document.getElementById('menu-redo');
+
+    if (menuUndo) {
         // Clone to remove existing handlers
-        const newMenuNew = menuNew.cloneNode(true);
-        menuNew.parentNode.replaceChild(newMenuNew, menuNew);
+        const newMenuUndo = menuUndo.cloneNode(true);
+        menuUndo.parentNode.replaceChild(newMenuUndo, menuUndo);
 
-        newMenuNew.addEventListener('click', function(e) {
+        newMenuUndo.addEventListener('click', (e) => {
             e.stopPropagation();
-            fileDropdown.classList.remove('show');
-            newFileMenuButton.classList.remove('active');
-            fsaFileUIManager.newFSA();
-        });
-    }
-
-    if (menuOpen) {
-        // Clone to remove existing handlers
-        const newMenuOpen = menuOpen.cloneNode(true);
-        menuOpen.parentNode.replaceChild(newMenuOpen, menuOpen);
-
-        newMenuOpen.addEventListener('click', function(e) {
-            e.stopPropagation();
-            fileDropdown.classList.remove('show');
-            newFileMenuButton.classList.remove('active');
-            fsaFileUIManager.importFSA();
-        });
-    }
-
-    if (menuSave) {
-        // Clone to remove existing handlers
-        const newMenuSave = menuSave.cloneNode(true);
-        menuSave.parentNode.replaceChild(newMenuSave, menuSave);
-
-        newMenuSave.addEventListener('click', function(e) {
-            e.stopPropagation();
-            fileDropdown.classList.remove('show');
-            newFileMenuButton.classList.remove('active');
-            console.log('Save menu clicked - calling exportFSA');
-            fsaFileUIManager.exportFSA();
-        });
-    }
-
-    // Edit menu setup (DROPDOWN ONLY - actual undo/redo handled by undoRedoManager)
-    const editMenuButton = document.getElementById('edit-menu-button');
-    const editDropdown = document.getElementById('edit-dropdown');
-
-    if (!editMenuButton || !editDropdown) {
-        console.error('Edit menu elements not found:', {
-            button: !!editMenuButton,
-            dropdown: !!editDropdown
-        });
-    } else {
-        // Remove any existing event listeners by cloning the button
-        const newEditMenuButton = editMenuButton.cloneNode(true);
-        editMenuButton.parentNode.replaceChild(newEditMenuButton, editMenuButton);
-
-        newEditMenuButton.addEventListener('click', function(e) {
-            console.log('Edit menu clicked');
-            e.stopPropagation();
-
-            // Use the existing fsaFileUIManager method to close other menus
-            if (window.fsaFileUIManager) {
-                window.fsaFileUIManager.closeAllMenus();
-            }
-
-            // Toggle edit dropdown
-            const isOpen = editDropdown.classList.contains('show');
-
-            if (isOpen) {
-                editDropdown.classList.remove('show');
-                newEditMenuButton.classList.remove('active');
-            } else {
-                editDropdown.classList.add('show');
-                newEditMenuButton.classList.add('active');
+            menuManager.closeAllMenus();
+            if (undoRedoManager) {
+                undoRedoManager.undo();
             }
         });
+    }
 
-        // Add edit menu to the global close menu handler
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('#edit-menu')) {
-                editDropdown.classList.remove('show');
-                newEditMenuButton.classList.remove('active');
+    if (menuRedo) {
+        // Clone to remove existing handlers
+        const newMenuRedo = menuRedo.cloneNode(true);
+        menuRedo.parentNode.replaceChild(newMenuRedo, menuRedo);
+
+        newMenuRedo.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menuManager.closeAllMenus();
+            if (undoRedoManager) {
+                undoRedoManager.redo();
             }
         });
-
-        // IMPORTANT: Do NOT set up undo/redo click handlers here!
-        // They are handled entirely by undoRedoManager.js
-        console.log('Edit menu dropdown setup complete - undo/redo handled by undoRedoManager');
     }
+}
+
+/**
+ * Setup unified menu system - replaces setupSimpleMenuDebug
+ */
+function setupUnifiedMenuSystem() {
+    console.log('Setting up unified menu system...');
+
+    // The menu manager now handles all the dropdown behavior
+    // Individual menu items are handled by their respective managers:
+    // - File menu items: handled by fsaFileUIManager
+    // - Edit menu items: handled by undoRedoManager (setup above)
+    // - Transform menu items: handled by fsaTransformManager
+
+    console.log('Unified menu system setup complete');
 }
 
 /**
@@ -533,24 +466,22 @@ function setupFileDragAndDrop() {
 }
 
 /**
- * Integrate with control lock manager for menu states
+ * Integrate with control lock manager for menu states using universal menu manager
  */
 function integrateWithControlLockManager() {
     // Store original lock/unlock methods
     const originalLockControls = controlLockManager.lockControls.bind(controlLockManager);
     const originalUnlockControls = controlLockManager.unlockControls.bind(controlLockManager);
 
-    // Override to also handle menu option states
+    // Override to also handle menu option states using the universal menu manager
     controlLockManager.lockControls = function() {
         originalLockControls();
-        fsaFileUIManager.updateMenuStates(true);
-        fsaTransformManager.updateMenuStates(true);
+        menuManager.updateMenuStates(true);
     };
 
     controlLockManager.unlockControls = function() {
         originalUnlockControls();
-        fsaFileUIManager.updateMenuStates(false);
-        fsaTransformManager.updateMenuStates(false);
+        menuManager.updateMenuStates(false);
     };
 }
 
@@ -1343,6 +1274,11 @@ function cleanupEnhancedManagers() {
     if (propertyInfoManager) {
         propertyInfoManager.destroy();
         console.log('Property info manager cleaned up');
+    }
+
+    if (menuManager) {
+        menuManager.destroy();
+        console.log('Menu manager cleaned up');
     }
 }
 

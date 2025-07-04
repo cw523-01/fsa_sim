@@ -3,10 +3,15 @@
     .tools-panel {
         width: 80px;
         padding: var(--spacing-md) var(--spacing-sm);
+        /* Add scrolling for smaller heights */
+        overflow-y: auto;
+        overflow-x: hidden;
+        max-height: calc(100vh - 120px);
     }
 
     .tools-header {
         font-size: 0.8rem;
+        margin-bottom: var(--spacing-lg);
     }
 
     .edge-style-buttons button {
@@ -17,6 +22,64 @@
     .info-panel {
         width: 180px;
         padding: var(--spacing-lg);
+    }
+}
+
+/* Medium Screen Styles - Add intermediate breakpoint */
+@media (max-width: 900px) {
+    .tools-panel {
+        width: 75px;
+        padding: var(--spacing-sm);
+        overflow-y: auto;
+        overflow-x: hidden;
+        max-height: calc(100vh - 100px);
+        /* Add smooth scrolling */
+        scroll-behavior: smooth;
+        /* Hide scrollbar for cleaner look */
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-color) transparent;
+    }
+
+    /* Webkit scrollbar styling */
+    .tools-panel::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .tools-panel::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .tools-panel::-webkit-scrollbar-thumb {
+        background-color: var(--border-color);
+        border-radius: 2px;
+    }
+
+    .tools-panel::-webkit-scrollbar-thumb:hover {
+        background-color: var(--text-gray);
+    }
+
+    .tools-section {
+        margin-bottom: var(--spacing-md);
+        flex-shrink: 0; /* Prevent sections from shrinking */
+    }
+
+    .tools-header {
+        font-size: 0.75rem;
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .tool {
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .edge-style-buttons {
+        gap: var(--spacing-xs);
+    }
+
+    .edge-style-buttons button {
+        font-size: 0.7rem;
+        padding: var(--spacing-xs);
+        margin-bottom: var(--spacing-xs);
     }
 }
 
@@ -71,16 +134,22 @@
         border-right: none;
         border-bottom: 1px solid var(--border-color);
         overflow-x: auto;
+        overflow-y: hidden;
+        max-height: none; /* Reset max-height for horizontal layout */
+        /* Smooth horizontal scrolling */
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch; /* iOS momentum scrolling */
     }
 
     .tools-section {
         margin-bottom: 0;
         min-width: fit-content;
+        flex-shrink: 0; /* Prevent sections from shrinking */
     }
 
     .tools-header {
         font-size: 0.7rem;
-        margin-bottom: var(--spacing-xs);
+        margin-bottom: var(--spacing-md);
     }
 
     .edge-style-buttons {
@@ -168,6 +237,13 @@
     .tools-panel {
         padding: var(--spacing-sm);
         gap: var(--spacing-sm);
+        /* Enhance horizontal scrolling on very small screens */
+        scroll-snap-type: x mandatory;
+    }
+
+    .tools-section {
+        scroll-snap-align: start;
+        min-width: 70px; /* Ensure minimum width for touch targets */
     }
 
     .tool {
@@ -192,6 +268,7 @@
 
     .tools-header {
         font-size: 0.6rem;
+        margin-bottom: var(--spacing-md);
     }
 
     #fsa-canvas {
@@ -259,6 +336,16 @@
         flex-direction: column;
         border-right: 1px solid var(--border-color);
         border-bottom: none;
+        /* Re-enable vertical scrolling in landscape */
+        overflow-y: auto;
+        overflow-x: hidden;
+        max-height: calc(100vh - 80px);
+        justify-content: flex-start;
+    }
+
+    .tools-section {
+        margin-bottom: var(--spacing-lg);
+        min-width: auto;
     }
 
     #fsa-canvas {
@@ -272,6 +359,17 @@
         border-left: 1px solid var(--border-color);
         border-top: none;
         order: 0;
+    }
+}
+
+/* Ultra-wide screens - prevent tools panel from being too wide */
+@media (min-width: 1400px) {
+    .tools-panel {
+        width: 120px;
+    }
+
+    .info-panel {
+        width: 240px;
     }
 }
 
@@ -341,4 +439,40 @@
         --font-size-lg: 13px;
         --font-size-md: 11px;
     }
+}
+
+/* Additional styles for better scrolling experience */
+.tools-panel {
+    /* Ensure smooth scrolling transitions */
+    transition: all var(--transition-fast);
+}
+
+/* Focus styles for better accessibility when scrolling */
+.tools-panel:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+
+/* Better spacing for scrollable content */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .tools-section:last-child {
+        margin-bottom: var(--spacing-lg);
+    }
+}
+
+/* Ensure tools remain clickable even when scrolling */
+.tools-panel .tool {
+    position: relative;
+    z-index: var(--z-states);
+}
+
+.tools-header {
+    font-size: 0.9rem;
+    font-weight: var(--font-weight-bold);
+    margin: 0 auto var(--spacing-xl) auto !important;
+    text-align: center;
+    color: #495057;
+    padding: var(--spacing-xs) 0;
+    border-bottom: 1px solid #dee2e6;
+    width: 100%;
 }
