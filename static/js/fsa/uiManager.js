@@ -39,68 +39,22 @@ function clearNFAStoredResults() {
 }
 
 /**
- * Enhanced select tool function with unified tool management
+ * Select tool using the unified tool manager
  * @param {string} toolName - The name of the tool to select
  */
 export function selectTool(toolName) {
-    // Use the unified tool manager
     if (toolManager) {
         toolManager.selectTool(toolName);
-    } else {
-        // Fallback to legacy behavior if toolManager not available
-        legacySelectTool(toolName);
     }
 }
 
 /**
- * Legacy select tool function for backward compatibility
- * @param {string} toolName - The name of the tool to select
- */
-function legacySelectTool(toolName) {
-    // If switching away from edge tool, deactivate edge creation mode
-    if (getCurrentTool() === 'edge' && toolName !== 'edge' && edgeCreationManager) {
-        edgeCreationManager.deactivateEdgeCreationMode();
-    }
-
-    resetToolSelection();
-
-    // Set border for selected tool
-    const toolElement = document.getElementById(toolName + '-tool');
-    if (toolElement) {
-        toolElement.style.border = '2px solid red';
-    }
-
-    // If selecting edge tool, activate edge creation mode
-    if (toolName === 'edge' && edgeCreationManager) {
-        edgeCreationManager.activateEdgeCreationMode();
-    }
-}
-
-/**
- * Enhanced reset tool selection with unified tool management
+ * Reset tool selection using the unified tool manager
  */
 export function resetToolSelection() {
-    // Use the unified tool manager
     if (toolManager) {
         toolManager.deselectTool();
-    } else {
-        // Fallback to legacy behavior
-        legacyResetToolSelection();
     }
-}
-
-/**
- * Legacy reset tool selection for backward compatibility
- */
-function legacyResetToolSelection() {
-    // Deactivate edge creation mode if active
-    if (edgeCreationManager && edgeCreationManager.isActive()) {
-        edgeCreationManager.deactivateEdgeCreationMode();
-    }
-
-    document.querySelectorAll('.tool').forEach(tool => {
-        tool.style.border = 'none';
-    });
 }
 
 /**
@@ -108,19 +62,9 @@ function legacyResetToolSelection() {
  * @returns {string} - The current tool
  */
 export function getCurrentTool() {
-    // Use the unified tool manager if available
     if (toolManager) {
         return toolManager.getCurrentTool();
     }
-
-    // Fallback: check which tool has the red border (legacy method)
-    const tools = document.querySelectorAll('.tool');
-    for (const tool of tools) {
-        if (tool.style.border.includes('red')) {
-            return tool.id.replace('-tool', '');
-        }
-    }
-
     return null;
 }
 

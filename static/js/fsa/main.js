@@ -1,5 +1,4 @@
-import { getConnectionBetween } from './utils.js';
-import { updateAlphabetDisplay } from './alphabetManager.js';
+import { updateFSADisplays } from './fsaUpdateUtils.js';
 import {
     createState,
     deleteState,
@@ -66,6 +65,20 @@ window.isStateDragging = false; // Make dragging state available globally
 let jsPlumbInstance;
 
 /**
+ * Returns a connection between two states if it exists
+ * @param {Object} jsPlumbInstance - The JSPlumb instance
+ * @param {string} sourceId - Source state ID
+ * @param {string} targetId - Target state ID
+ * @returns {Object|null} - The connection object or null
+ */
+function getConnectionBetween(jsPlumbInstance, sourceId, targetId) {
+    const allConnections = jsPlumbInstance.getAllConnections();
+    return allConnections.find(conn =>
+        conn.sourceId === sourceId && conn.targetId === targetId
+    );
+}
+
+/**
  * Initialise the FSA simulator
  */
 export function initialiseSimulator() {
@@ -112,14 +125,11 @@ export function initialiseSimulator() {
     // Setup performance monitoring
     setupPerformanceMonitoring();
 
-    // Initial alphabet display
-    updateAlphabetDisplay(getEdgeSymbolMap(), getEpsilonTransitionMap());
+    // Initial displays update using centralized function
+    updateFSADisplays(jsPlumbInstance);
 
     // Setup JSPlumb connection event binding
     setupConnectionEvents();
-
-    // Initial properties display update
-    updateFSAPropertiesDisplay(jsPlumbInstance);
 
     // Make sure the correct button is highlighted (Straight is default)
     document.getElementById('straight-edges-btn').classList.add('active');
@@ -456,7 +466,9 @@ function setupFileDragAndDrop() {
 
                 if (success) {
                     // Clear any existing NFA results since FSA changed
-                    clearNFAStoredResults();
+                    if (nfaResultsManager) {
+                        nfaResultsManager.clearStoredPaths();
+                    }
                 }
             } catch (error) {
                 console.error('Drop import error:', error);
@@ -531,16 +543,6 @@ function setupUnsavedChangesWarning() {
 }
 
 /**
- * Clear stored NFA results when FSA structure changes
- */
-function clearNFAStoredResults() {
-    if (window.nfaResultsManager) {
-        window.nfaResultsManager.clearStoredPaths();
-        console.log('Cleared NFA stored results due to FSA structure change');
-    }
-}
-
-/**
  * Setup all event listeners
  */
 export function setupEventListeners() {
@@ -578,7 +580,7 @@ export function setupEventListeners() {
         selectTool('delete');
     });
 
-    // Edge style buttons with
+    // Edge style buttons with centralized updates
     document.getElementById('straight-edges-btn').addEventListener('click', function() {
         if (controlLockManager.isControlsLocked()) return;
 
@@ -599,12 +601,6 @@ export function setupEventListeners() {
             // Apply straight edges to all connections with our improved function
             setAllEdgeStyles(jsPlumbInstance, false);
 
-            // Clear stored NFA results since FSA structure changed
-            clearNFAStoredResults();
-
-            // Update FSA properties display
-            updateFSAPropertiesDisplay(jsPlumbInstance);
-
             // Update button styling
             this.classList.add('active');
             document.getElementById('curved-edges-btn').classList.remove('active');
@@ -619,8 +615,6 @@ export function setupEventListeners() {
             // Fallback without undo/redo
             document.body.classList.add('performance-mode');
             setAllEdgeStyles(jsPlumbInstance, false);
-            clearNFAStoredResults();
-            updateFSAPropertiesDisplay(jsPlumbInstance);
             this.classList.add('active');
             document.getElementById('curved-edges-btn').classList.remove('active');
             setTimeout(() => {
@@ -649,12 +643,6 @@ export function setupEventListeners() {
             // Apply curved edges to all connections with our improved function
             setAllEdgeStyles(jsPlumbInstance, true);
 
-            // Clear stored NFA results since FSA structure changed
-            clearNFAStoredResults();
-
-            // Update FSA properties display
-            updateFSAPropertiesDisplay(jsPlumbInstance);
-
             // Update button styling
             this.classList.add('active');
             document.getElementById('straight-edges-btn').classList.remove('active');
@@ -669,8 +657,6 @@ export function setupEventListeners() {
             // Fallback without undo/redo
             document.body.classList.add('performance-mode');
             setAllEdgeStyles(jsPlumbInstance, true);
-            clearNFAStoredResults();
-            updateFSAPropertiesDisplay(jsPlumbInstance);
             this.classList.add('active');
             document.getElementById('straight-edges-btn').classList.remove('active');
             setTimeout(() => {
@@ -855,11 +841,8 @@ function setupConnectionEvents() {
             });
         }
 
-        // Clear stored NFA results since FSA structure changed
-        clearNFAStoredResults();
-
-        // Update properties display
-        updateFSAPropertiesDisplay(jsPlumbInstance);
+        // Use centralized update function
+        updateFSADisplays(jsPlumbInstance);
     });
 }
 
@@ -884,11 +867,8 @@ function handleStateCreation(x, y, isAccepting) {
         undoRedoManager.recordStateCreation(stateElement.id, x, y, isAccepting);
     }
 
-    // Clear stored NFA results since FSA structure changed
-    clearNFAStoredResults();
-
-    // Update properties display
-    updateFSAPropertiesDisplay(jsPlumbInstance);
+    // Use centralized update function
+    updateFSADisplays(jsPlumbInstance);
 }
 
 /**
@@ -907,13 +887,9 @@ function handleStateClick(stateElement, e) {
             if (undoRedoManager && !undoRedoManager.isProcessing()) {
                 const snapshotCommand = undoRedoManager.createSnapshotCommand(`Delete state ${stateElement.id}`);
                 deleteState(jsPlumbInstance, stateElement, getEdgeSymbolMap());
-                clearNFAStoredResults();
-                updateFSAPropertiesDisplay(jsPlumbInstance);
                 undoRedoManager.finishSnapshotCommand(snapshotCommand);
             } else {
                 deleteState(jsPlumbInstance, stateElement, getEdgeSymbolMap());
-                clearNFAStoredResults();
-                updateFSAPropertiesDisplay(jsPlumbInstance);
             }
         }
     }
@@ -943,15 +919,11 @@ function handleStateClick(stateElement, e) {
                                     createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
                                         onEdgeClick: handleEdgeClick
                                     });
-                                    clearNFAStoredResults();
-                                    updateFSAPropertiesDisplay(jsPlumbInstance);
                                     undoRedoManager.finishSnapshotCommand(snapshotCommand);
                                 } else {
                                     createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
                                         onEdgeClick: handleEdgeClick
                                     });
-                                    clearNFAStoredResults();
-                                    updateFSAPropertiesDisplay(jsPlumbInstance);
                                 }
 
                                 if (isCurved !== undefined) {
@@ -977,15 +949,11 @@ function handleStateClick(stateElement, e) {
                                     createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, true, {  // Self-loops are always curved
                                         onEdgeClick: handleEdgeClick
                                     });
-                                    clearNFAStoredResults();
-                                    updateFSAPropertiesDisplay(jsPlumbInstance);
                                     undoRedoManager.finishSnapshotCommand(snapshotCommand);
                                 } else {
                                     createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, true, {  // Self-loops are always curved
                                         onEdgeClick: handleEdgeClick
                                     });
-                                    clearNFAStoredResults();
-                                    updateFSAPropertiesDisplay(jsPlumbInstance);
                                 }
                             });
                         }
@@ -1041,8 +1009,6 @@ function handleEdgeClick(connection, e) {
         } else {
             deleteEdge(jsPlumbInstance, connection);
         }
-        // Clear stored NFA results since FSA structure changed (deleteEdge already handles this)
-        // Update properties display is called inside deleteEdge
     } else {
         openInlineEdgeEditor(connection, jsPlumbInstance);
     }

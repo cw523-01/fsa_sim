@@ -1,5 +1,4 @@
-import { updateAlphabetDisplay } from './alphabetManager.js';
-import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
+import { updateFSADisplays } from './fsaUpdateUtils.js';
 
 window.openInlineEdgeEditor = function(connection, jsPlumbInstance) {
     // Import from uiManager.js if available
@@ -95,11 +94,8 @@ export function createConnection(jsPlumbInstance, source, target, symbolsString,
         });
     }
 
-    // Update the alphabet display with the new symbols
-    updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap);
-
-    // Update FSA properties display
-    updateFSAPropertiesDisplay(jsPlumbInstance);
+    // Use centralized update function
+    updateFSADisplays(jsPlumbInstance);
 
     return connection;
 }
@@ -146,11 +142,8 @@ export function deleteEdge(jsPlumbInstance, connection) {
 
     jsPlumbInstance.deleteConnection(connection);
 
-    // Update alphabet display after removing an edge
-    updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap);
-
-    // Update FSA properties display
-    updateFSAPropertiesDisplay(jsPlumbInstance);
+    // Use centralized update function
+    updateFSADisplays(jsPlumbInstance);
 }
 
 /**
@@ -178,12 +171,9 @@ export function updateEdgeSymbols(connection, symbols, hasEpsilon, jsPlumbInstan
         }
     }
 
-    // Update alphabet display
-    updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap);
-
-    // Update FSA properties display if jsPlumbInstance is provided
+    // Use centralized update function if jsPlumbInstance is provided
     if (jsPlumbInstance) {
-        updateFSAPropertiesDisplay(jsPlumbInstance);
+        updateFSADisplays(jsPlumbInstance);
     }
 }
 
@@ -310,7 +300,7 @@ export function updateEdgeCurveStyle(jsPlumbInstance, connection, curved) {
 
     jsPlumbInstance.repaintEverything();
 
-    updateFSAPropertiesDisplay(jsPlumbInstance);
+    updateFSADisplays(jsPlumbInstance);
 
     return newConnection;
 }
@@ -443,7 +433,7 @@ export function setAllEdgeStyles(jsPlumbInstance, curved) {
     // Force a complete repaint
     jsPlumbInstance.repaintEverything();
 
-    updateFSAPropertiesDisplay(jsPlumbInstance);
+    updateFSADisplays(jsPlumbInstance);
 
 }
 

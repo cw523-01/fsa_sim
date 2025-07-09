@@ -1,11 +1,19 @@
-import { createStateId } from './utils.js';
-import { updateAlphabetDisplay } from './alphabetManager.js';
 import { getEpsilonTransitionMap } from "./edgeManager.js";
+import { updateFSADisplays } from './fsaUpdateUtils.js';
 
 // State management
-let stateCounter = 0; // Keep for backward compatibility
+let stateCounter = 0;
 let startingStateId = null;
 let startingStateConnection = null;
+
+/**
+ * Creates a unique ID for a state
+ * @param {number} counter - The current state counter
+ * @returns {string} - The state ID
+ */
+function createStateId(counter) {
+    return 'S' + counter;
+}
 
 /**
  * JSPlumb cleanup utilities to handle ID reuse issues
@@ -371,8 +379,8 @@ export function deleteState(jsPlumbInstance, stateElement, edgeSymbolMap) {
     // Remove from DOM
     stateElement.remove();
 
-    // Update the alphabet display after removing connections
-    updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap);
+    // Use centralized update function
+    updateFSADisplays(jsPlumbInstance);
 
     console.log(`State ${stateId} completely removed from JSPlumb and DOM`);
 }
@@ -757,181 +765,4 @@ export function handleStateIdChange(oldStateId, newStateId, jsPlumbInstance) {
     }
 
     console.log(`State ID change handling completed: ${oldStateId} -> ${newStateId}`);
-}
-
-/**
- * Diagnostic function to check for inconsistencies in state management
- * Useful for troubleshooting issues like states not accepting connections
- * @param {Object} jsPlumbInstance - The JSPlumb instance
- * @returns {Object} - Diagnostic report
- */
-export function diagnoseStateManagement(jsPlumbInstance) {
-    const report = {
-        startingStateId: startingStateId,
-        statesInDOM: [],
-        jsPlumbEndpoints: [],
-        inconsistencies: [],
-        recommendations: [],
-        jsPlumbManagedElements: []
-    };
-
-    // Check JSPlumb managed elements
-    try {
-        const managedElements = jsPlumbInstance.getManagedElements();
-        report.jsPlumbManagedElements = Object.keys(managedElements || {});
-    } catch (error) {
-        report.inconsistencies.push(`Error accessing JSPlumb managed elements: ${error.message}`);
-    }
-
-    // Check all states in DOM
-    const stateElements = document.querySelectorAll('.state, .accepting-state');
-    stateElements.forEach(element => {
-        const hasJSPlumbEndpoints = jsPlumbInstance.getEndpoints(element.id).length > 0;
-        report.statesInDOM.push({
-            id: element.id,
-            className: element.className,
-            hasJSPlumbEndpoints: hasJSPlumbEndpoints
-        });
-
-        // Check for orphaned JSPlumb references
-        if (report.jsPlumbManagedElements.includes(element.id) && !hasJSPlumbEndpoints) {
-            report.inconsistencies.push(`State ${element.id} is in JSPlumb managed elements but has no endpoints`);
-            report.recommendations.push(`Call jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, '${element.id}') and recreate state`);
-        }
-    });
-
-    // Check for JSPlumb references to non-existent states
-    report.jsPlumbManagedElements.forEach(managedId => {
-        if (!document.getElementById(managedId)) {
-            report.inconsistencies.push(`JSPlumb manages element '${managedId}' but it doesn't exist in DOM`);
-            report.recommendations.push(`Call jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, '${managedId}') to clean up`);
-        }
-    });
-
-    // Check starting state consistency
-    if (startingStateId) {
-        const startingStateElement = document.getElementById(startingStateId);
-        if (!startingStateElement) {
-            report.inconsistencies.push(`Starting state ${startingStateId} not found in DOM`);
-            report.recommendations.push(`Call createStartingStateIndicator(jsPlumbInstance, null) to reset starting state`);
-        }
-    }
-
-    // Check for states without JSPlumb endpoints
-    report.statesInDOM.forEach(state => {
-        if (!state.hasJSPlumbEndpoints) {
-            report.inconsistencies.push(`State ${state.id} has no JSPlumb endpoints`);
-            report.recommendations.push(`Call reinitializeStateWithJSPlumb(jsPlumbInstance, document.getElementById('${state.id}')) to fix`);
-        }
-    });
-
-    console.log('State Management Diagnostic Report:', report);
-    return report;
-}
-
-/**
- * Auto-fix common state management issues
- * @param {Object} jsPlumbInstance - The JSPlumb instance
- * @returns {Object} - Results of the auto-fix
- */
-export function autoFixStateManagement(jsPlumbInstance) {
-    console.log('Starting auto-fix for state management issues...');
-
-    const results = {
-        fixed: [],
-        failed: [],
-        summary: ''
-    };
-
-    // First, run diagnostics
-    const report = diagnoseStateManagement(jsPlumbInstance);
-
-    // Fix orphaned JSPlumb references
-    report.jsPlumbManagedElements.forEach(managedId => {
-        if (!document.getElementById(managedId)) {
-            if (jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, managedId)) {
-                results.fixed.push(`Cleaned up orphaned JSPlumb reference: ${managedId}`);
-            } else {
-                results.failed.push(`Failed to clean up orphaned JSPlumb reference: ${managedId}`);
-            }
-        }
-    });
-
-    // Fix states without JSPlumb endpoints
-    report.statesInDOM.forEach(state => {
-        if (!state.hasJSPlumbEndpoints) {
-            const element = document.getElementById(state.id);
-            if (element && reinitializeStateWithJSPlumb(jsPlumbInstance, element)) {
-                results.fixed.push(`Reinitialized JSPlumb for state ${state.id}`);
-            } else {
-                results.failed.push(`Failed to reinitialize JSPlumb for state ${state.id}`);
-            }
-        }
-    });
-
-    // Fix starting state inconsistencies
-    if (startingStateId && !document.getElementById(startingStateId)) {
-        // Reset starting state to first available state or null
-        const firstState = report.statesInDOM[0];
-        if (firstState) {
-            createStartingStateIndicator(jsPlumbInstance, firstState.id);
-            results.fixed.push(`Reset starting state to ${firstState.id}`);
-        } else {
-            createStartingStateIndicator(jsPlumbInstance, null);
-            results.fixed.push('Reset starting state to null (no states available)');
-        }
-    }
-
-    // Force a complete repaint after all fixes
-    setTimeout(() => {
-        jsPlumbInstance.repaintEverything();
-    }, 100);
-
-    results.summary = `Fixed ${results.fixed.length} issues, ${results.failed.length} failures`;
-    console.log('Auto-fix completed:', results);
-
-    return results;
-}
-
-// Make utility functions available globally for debugging and uiManager integration
-if (typeof window !== 'undefined') {
-    window.stateManagerDiagnostics = {
-        diagnose: diagnoseStateManagement,
-        autoFix: autoFixStateManagement,
-        forceCleanup: forceCleanupStateReferences,
-        reinitialize: reinitializeStateWithJSPlumb,
-        handleIdChange: handleStateIdChange,
-        jsPlumbCleanup: jsPlumbCleanup
-    };
-
-    // Add a convenience function for emergency fixes
-    window.fixStateConnectionIssues = function(jsPlumbInstance) {
-        console.log('🚨 EMERGENCY STATE FIX: Running comprehensive repair...');
-
-        // Step 1: Run diagnostics
-        const report = diagnoseStateManagement(jsPlumbInstance);
-        console.log('Diagnostic report:', report);
-
-        // Step 2: Run auto-fix
-        const fixResults = autoFixStateManagement(jsPlumbInstance);
-        console.log('Auto-fix results:', fixResults);
-
-        // Step 3: Force repaint everything
-        jsPlumbInstance.repaintEverything();
-
-        // Step 4: Run diagnostics again to see if issues are resolved
-        setTimeout(() => {
-            const postFixReport = diagnoseStateManagement(jsPlumbInstance);
-            console.log('Post-fix diagnostic report:', postFixReport);
-
-            if (postFixReport.inconsistencies.length === 0) {
-                console.log('✅ All state connection issues have been resolved!');
-            } else {
-                console.log('⚠️ Some issues remain. You may need to manually recreate problematic states.');
-                console.log('Remaining issues:', postFixReport.inconsistencies);
-            }
-        }, 200);
-
-        return { report, fixResults };
-    };
 }
