@@ -20,7 +20,7 @@ from .fsa_properties import (
     is_nondeterministic
 )
 from .fsa_transformations import minimise_dfa, nfa_to_dfa, complete_dfa, complement_dfa
-
+from .regex_conversions import regex_to_epsilon_nfa
 
 def index(request):
     return render(request, 'simulator/index.html')
@@ -1098,3 +1098,53 @@ def dfa_to_complement(request):
     except Exception as e:
         return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
 
+
+@csrf_exempt
+@require_POST
+def regex_to_epsilon_nfa(request):
+    """
+    Django view to handle **regex → ε‑NFA** conversion requests.
+
+    Expects a POST request with a JSON body containing:
+    - regex: The regular expression to convert.
+
+    Returns a JSON response with the generated NFA plus some useful
+    statistics so the client can display summary information.
+    """
+    try:
+        # Parse request body
+        data = json.loads(request.body)
+        regex = data.get('regex')
+
+        if regex is None:
+            return JsonResponse({'error': 'Missing regex parameter'}, status=400)
+
+        # Perform the conversion
+        epsilon_nfa = regex_to_epsilon_nfa(regex)
+
+        # Collect simple stats for the response payload
+        stats = {
+            'states_count': len(epsilon_nfa['states']),
+            'alphabet_size': len(epsilon_nfa['alphabet']),
+            'transitions_count': sum(
+                len(transitions)
+                for state_transitions in epsilon_nfa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(epsilon_nfa['acceptingStates'])
+        }
+
+        return JsonResponse({
+            'success': True,
+            'regex': regex,
+            'epsilon_nfa': epsilon_nfa,
+            'statistics': stats,
+            'message': 'Regex converted to ε‑NFA successfully'
+        })
+
+    except ValueError as e:
+        # Validation / parsing error in the regex
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        # Unexpected server‑side error
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
