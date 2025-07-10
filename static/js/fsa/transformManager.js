@@ -47,58 +47,12 @@ class FSATransformManager {
      * Setup Transform menu event listeners
      */
     setupTransformEventListeners() {
-        // Menu options
-        const menuMinimiseDFA = document.getElementById('menu-minimise-dfa');
-        if (menuMinimiseDFA) {
-            // Clone to remove existing handlers
-            const newMenuMinimiseDFA = menuMinimiseDFA.cloneNode(true);
-            menuMinimiseDFA.parentNode.replaceChild(newMenuMinimiseDFA, menuMinimiseDFA);
-
-            newMenuMinimiseDFA.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menuManager.closeAllMenus();
-                this.minimiseDFA();
-            });
-        }
-
-        const menuNFAToDFA = document.getElementById('menu-nfa-to-dfa');
-        if (menuNFAToDFA) {
-            // Clone to remove existing handlers
-            const newMenuNFAToDFA = menuNFAToDFA.cloneNode(true);
-            menuNFAToDFA.parentNode.replaceChild(newMenuNFAToDFA, menuNFAToDFA);
-
-            newMenuNFAToDFA.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menuManager.closeAllMenus();
-                this.convertNFAToDFA();
-            });
-        }
-
-        const menuCompleteDFA = document.getElementById('menu-complete-dfa');
-        if (menuCompleteDFA) {
-            // Clone to remove existing handlers
-            const newMenuCompleteDFA = menuCompleteDFA.cloneNode(true);
-            menuCompleteDFA.parentNode.replaceChild(newMenuCompleteDFA, menuCompleteDFA);
-
-            newMenuCompleteDFA.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menuManager.closeAllMenus();
-                this.completeDFA();
-            });
-        }
-
-        const menuComplementDFA = document.getElementById('menu-complement-dfa');
-        if (menuComplementDFA) {
-            // Clone to remove existing handlers
-            const newMenuComplementDFA = menuComplementDFA.cloneNode(true);
-            menuComplementDFA.parentNode.replaceChild(newMenuComplementDFA, menuComplementDFA);
-
-            newMenuComplementDFA.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menuManager.closeAllMenus();
-                this.complementDFA();
-            });
-        }
+        menuManager.registerMenuItems({
+            'menu-minimise-dfa': () => this.minimiseDFA(),
+            'menu-nfa-to-dfa': () => this.convertNFAToDFA(),
+            'menu-complete-dfa': () => this.completeDFA(),
+            'menu-complement-dfa': () => this.complementDFA()
+        });
     }
 
     /**

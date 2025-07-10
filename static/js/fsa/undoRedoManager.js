@@ -247,48 +247,13 @@ class UndoRedoManager {
      * Setup menu event listeners with proper dropdown integration
      */
     setupMenuEventListeners() {
-        const menuUndo = document.getElementById('menu-undo');
-        const menuRedo = document.getElementById('menu-redo');
-
-        if (menuUndo) {
-            menuUndo.addEventListener('click', (e) => {
-                e.stopPropagation();
-
-                // Close the edit dropdown
-                this.closeEditDropdown();
-
-                // Check if controls are locked
-                if (window.controlLockManager && window.controlLockManager.isControlsLocked()) {
-                    console.log('Cannot undo while simulation is running');
-                    return;
-                }
-
-                // Perform undo
-                console.log('Undo menu clicked');
-                this.undo();
-            });
-        }
-
-        if (menuRedo) {
-            menuRedo.addEventListener('click', (e) => {
-                e.stopPropagation();
-
-                // Close the edit dropdown
-                this.closeEditDropdown();
-
-                // Check if controls are locked
-                if (window.controlLockManager && window.controlLockManager.isControlsLocked()) {
-                    console.log('Cannot redo while simulation is running');
-                    return;
-                }
-
-                // Perform redo
-                console.log('Redo menu clicked');
-                this.redo();
-            });
-        }
-
-        console.log('Undo/Redo menu event listeners setup complete');
+        menuManager.registerMenuItems({
+            'menu-undo': () => this.undo(),
+            'menu-redo': () => this.redo()
+        }, {
+            validateUnlocked: true, // Enable control lock validation
+            clone: false // Don't clone these specific items
+        });
     }
 
     /**

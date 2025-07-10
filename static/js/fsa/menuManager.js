@@ -251,6 +251,60 @@ class MenuManager {
         this.initialized = false;
         console.log('Menu Manager destroyed');
     }
+
+    /**
+     * Register a menu item with automatic event handling
+     * @param {string} menuItemId - ID of the menu item element
+     * @param {Function} handler - Function to call when clicked
+     * @param {Object} options - Additional options
+     */
+    registerMenuItem(menuItemId, handler, options = {}) {
+        let menuItem = document.getElementById(menuItemId);
+        if (!menuItem) {
+            console.warn(`Menu item not found: ${menuItemId}`);
+            return;
+        }
+
+        // Clone to remove existing handlers if needed
+        if (options.clone !== false) {
+            const newMenuItem = menuItem.cloneNode(true);
+            menuItem.parentNode.replaceChild(newMenuItem, menuItem);
+            menuItem = newMenuItem;
+        }
+
+        menuItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+
+            // Close all menus
+            this.closeAllMenus();
+
+            // Check if controls are locked (if validation function provided)
+            if (options.validateUnlocked && window.controlLockManager?.isControlsLocked()) {
+                console.log(`Cannot execute ${menuItemId} while controls are locked`);
+                return;
+            }
+
+            // Call the handler
+            try {
+                handler(e);
+            } catch (error) {
+                console.error(`Error in menu handler for ${menuItemId}:`, error);
+            }
+        });
+
+        console.log(`Registered menu item: ${menuItemId}`);
+    }
+
+    /**
+     * Register multiple menu items at once
+     * @param {Object} menuItems - Object mapping IDs to handlers
+     * @param {Object} commonOptions - Options applied to all items
+     */
+    registerMenuItems(menuItems, commonOptions = {}) {
+        Object.entries(menuItems).forEach(([menuItemId, handler]) => {
+            this.registerMenuItem(menuItemId, handler, commonOptions);
+        });
+    }
 }
 
 // Create and export singleton instance

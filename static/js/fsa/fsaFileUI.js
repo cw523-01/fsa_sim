@@ -51,46 +51,11 @@ class FSAFileUIManager {
      * Setup menu option event listeners
      */
     setupMenuOptions() {
-        // Menu option handlers
-        const menuNew = document.getElementById('menu-new');
-        const menuOpen = document.getElementById('menu-open');
-        const menuSave = document.getElementById('menu-save');
-
-        if (menuNew) {
-            // Clone to remove existing handlers
-            const newMenuNew = menuNew.cloneNode(true);
-            menuNew.parentNode.replaceChild(newMenuNew, menuNew);
-
-            newMenuNew.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menuManager.closeAllMenus();
-                this.newFSA();
-            });
-        }
-
-        if (menuOpen) {
-            // Clone to remove existing handlers
-            const newMenuOpen = menuOpen.cloneNode(true);
-            menuOpen.parentNode.replaceChild(newMenuOpen, menuOpen);
-
-            newMenuOpen.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menuManager.closeAllMenus();
-                this.importFSA();
-            });
-        }
-
-        if (menuSave) {
-            // Clone to remove existing handlers
-            const newMenuSave = menuSave.cloneNode(true);
-            menuSave.parentNode.replaceChild(newMenuSave, menuSave);
-
-            newMenuSave.addEventListener('click', (e) => {
-                e.stopPropagation();
-                menuManager.closeAllMenus();
-                this.exportFSA();
-            });
-        }
+        menuManager.registerMenuItems({
+            'menu-new': () => this.newFSA(),
+            'menu-open': () => this.importFSA(),
+            'menu-save': () => this.exportFSA()
+        });
     }
 
     /**
