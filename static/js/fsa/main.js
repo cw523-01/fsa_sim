@@ -289,9 +289,6 @@ function initializeFSASerialization() {
     // Integrate with control lock manager
     integrateWithControlLockManager();
 
-    // Setup unsaved changes warning
-    setupUnsavedChangesWarning();
-
     // Make serialization functions globally available
     window.fsaSerializationManager = fsaSerializationManager;
     window.fsaFileUIManager = fsaFileUIManager;
@@ -495,51 +492,6 @@ function integrateWithControlLockManager() {
         originalUnlockControls();
         menuManager.updateMenuStates(false);
     };
-}
-
-/**
- * Setup unsaved changes warning
- */
-function setupUnsavedChangesWarning() {
-    let hasUnsavedChanges = false;
-
-    // Track changes through existing event system
-    function markAsChanged() {
-        hasUnsavedChanges = true;
-    }
-
-    // Reset when saved
-    function markAsSaved() {
-        hasUnsavedChanges = false;
-    }
-
-    // Override export functions to mark as saved
-    const originalExportFSA = fsaFileUIManager.exportFSA.bind(fsaFileUIManager);
-    fsaFileUIManager.exportFSA = function(...args) {
-        const result = originalExportFSA.apply(this, args);
-        markAsSaved();
-        return result;
-    };
-
-    // Warn before leaving page with unsaved changes
-    window.addEventListener('beforeunload', (e) => {
-        const states = document.querySelectorAll('.state, .accepting-state');
-        if (states.length > 0 && hasUnsavedChanges) {
-            const message = 'You have unsaved changes. Are you sure you want to leave?';
-            e.returnValue = message;
-            return message;
-        }
-    });
-
-    // Make functions available globally
-    window.markFSAAsChanged = markAsChanged;
-    window.markFSAAsSaved = markAsSaved;
-
-    // Connect to existing change events
-    if (jsPlumbInstance) {
-        jsPlumbInstance.bind('connection', markAsChanged);
-        jsPlumbInstance.bind('connectionDetached', markAsChanged);
-    }
 }
 
 /**
