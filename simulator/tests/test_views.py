@@ -1592,9 +1592,10 @@ class CombinedTransformationTests(FSAViewTestCase):
 class ComprehensiveErrorTests(FSAViewTestCase):
     """Comprehensive error testing for all endpoints"""
 
-    def test_all_endpoints_handle_missing_fsa(self):
-        """Test that all endpoints properly handle missing FSA"""
-        endpoints = [
+    def test_all_endpoints_handle_missing_fsa_or_regex(self):
+        """Test that all endpoints properly handle missing required parameters"""
+        # FSA endpoints
+        fsa_endpoints = [
             '/api/simulate-fsa/',
             '/api/simulate-dfa/',
             '/api/simulate-nfa/',
@@ -1610,13 +1611,20 @@ class ComprehensiveErrorTests(FSAViewTestCase):
             '/api/complement-dfa/',
         ]
 
-        for endpoint in endpoints:
+        for endpoint in fsa_endpoints:
             with self.subTest(endpoint=endpoint):
                 response = self.post_json(endpoint, {})
                 self.assertEqual(response.status_code, 400)
                 data = response.json()
                 self.assertIn('error', data)
                 self.assertIn('Missing FSA definition', data['error'])
+
+        # Regex endpoint
+        response = self.post_json('/api/regex-to-epsilon-nfa/', {})
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing regex parameter', data['error'])
 
     def test_all_endpoints_handle_invalid_fsa(self):
         """Test that all endpoints properly handle invalid FSA"""
@@ -1662,6 +1670,7 @@ class ComprehensiveErrorTests(FSAViewTestCase):
             '/api/nfa-to-dfa/',
             '/api/complete-dfa/',
             '/api/complement-dfa/',
+            '/api/regex-to-epsilon-nfa/',
         ]
 
         for endpoint in endpoints:
@@ -2313,3 +2322,477 @@ class ComplementDFAViewTests(FSAViewTestCase):
         self.assertGreaterEqual(complement_stats['accepting_states_count'], 2)
         self.assertEqual(analysis['original_accepting_became_non_accepting'], 1)
         self.assertEqual(analysis['original_non_accepting_became_accepting'], 2)
+
+
+class RegexConversionViewTests(FSAViewTestCase):
+    """Tests for the regex to epsilon-NFA conversion endpoint"""
+
+    def test_regex_to_epsilon_nfa_successful(self):
+        """Test successful regex conversion"""
+        response = self.post_json('/api/regex-to-epsilon-nfa/', {
+            'regex': 'a*b'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertTrue(data['success'])
+        self.assertIn('epsilon_nfa', data)
+        self.assertIn('statistics', data)
+        self.assertIn('message', data)
+        self.assertEqual(data['regex'], 'a*b')
+
+        # Check that we got a valid NFA structure
+        nfa = data['epsilon_nfa']
+        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
+        for key in required_keys:
+            self.assertIn(key, nfa)
+
+        # Check statistics are present
+        stats = data['statistics']
+        required_stats = ['states_count', 'alphabet_size', 'transitions_count', 'accepting_states_count']
+        for stat in required_stats:
+            self.assertIn(stat, stats)
+            self.assertIsInstance(stats[stat], int)
+
+    def test_regex_to_epsilon_nfa_missing_regex(self):
+        """Test conversion without regex parameter"""
+        response = self.post_json('/api/regex-to-epsilon-nfa/', {})
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing regex parameter', data['error'])
+
+    def test_regex_to_epsilon_nfa_invalid_syntax(self):
+        """Test conversion with invalid regex syntax"""
+        response = self.post_json('/api/regex-to-epsilon-nfa/', {
+            'regex': '((('  # Unbalanced parentheses
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Invalid regex syntax', data['error'])
+
+    def test_regex_to_epsilon_nfa_empty_regex(self):
+        """Test conversion with empty regex"""
+        response = self.post_json('/api/regex-to-epsilon-nfa/', {
+            'regex': ''
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['regex'], '')
+
+        # Empty regex should produce NFA that accepts empty string
+        nfa = data['epsilon_nfa']
+        self.assertTrue(len(nfa['states']) > 0)
+
+    def test_regex_to_epsilon_nfa_complex_regex(self):
+        """Test conversion with complex regex"""
+        complex_regex = '(a|b)*abb'
+
+        response = self.post_json('/api/regex-to-epsilon-nfa/', {
+            'regex': complex_regex
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['regex'], complex_regex)
+
+        # Check that complex regex produces reasonable number of states
+        stats = data['statistics']
+        self.assertGreater(stats['states_count'], 1)
+        self.assertGreater(stats['transitions_count'], 0)
+
+    def test_regex_to_epsilon_nfa_with_epsilon(self):
+        """Test conversion with explicit epsilon in regex"""
+        response = self.post_json('/api/regex-to-epsilon-nfa/', {
+            'regex': 'aεb'  # Using epsilon symbol
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+
+    def test_regex_to_epsilon_nfa_kleene_star(self):
+        """Test conversion with Kleene star operations"""
+        test_regexes = ['a*', 'a*b*', '(ab)*']
+
+        for regex in test_regexes:
+            with self.subTest(regex=regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data['success'])
+                self.assertEqual(data['regex'], regex)
+
+    def test_regex_to_epsilon_nfa_plus_operations(self):
+        """Test conversion with plus (+) operations - one or more"""
+        test_regexes = ['a+', 'a+b+', '(ab)+', 'a+b*', '(a|b)+']
+
+        for regex in test_regexes:
+            with self.subTest(regex=regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data['success'])
+                self.assertEqual(data['regex'], regex)
+
+                # Plus operations should create more states than simple characters
+                stats = data['statistics']
+                self.assertGreater(stats['states_count'], 2)
+
+    def test_regex_to_epsilon_nfa_mixed_operators(self):
+        """Test conversion with mixed * and + operators"""
+        test_regexes = ['a*b+', 'a+b*', '(a*b)+', '(a+b)*', 'a*b+c*']
+
+        for regex in test_regexes:
+            with self.subTest(regex=regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data['success'])
+                self.assertEqual(data['regex'], regex)
+
+    def test_regex_to_epsilon_nfa_union_operations(self):
+        """Test conversion with union (|) operations"""
+        test_regexes = ['a|b', 'a|b|c', '(a|b)c', 'a+|b*', '(a+|b)*']
+
+        for regex in test_regexes:
+            with self.subTest(regex=regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data['success'])
+
+    def test_regex_to_epsilon_nfa_concatenation(self):
+        """Test conversion with concatenation operations"""
+        test_regexes = ['ab', 'abc', 'a(bc)', 'a+b', 'ab+', 'a+b+']
+
+        for regex in test_regexes:
+            with self.subTest(regex=regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data['success'])
+
+    def test_regex_to_epsilon_nfa_nested_parentheses(self):
+        """Test conversion with nested parentheses"""
+        test_regexes = ['((a|b)*c)', '((a+|b)*c)+', '(a+(b|c)*)+']
+
+        for regex in test_regexes:
+            with self.subTest(regex=regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data['success'])
+
+    def test_regex_to_epsilon_nfa_single_characters(self):
+        """Test conversion with single character regexes"""
+        test_regexes = ['a', 'b', '0', '1']
+
+        for regex in test_regexes:
+            with self.subTest(regex=regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data['success'])
+
+                # Single character should have minimal states
+                stats = data['statistics']
+                self.assertGreaterEqual(stats['states_count'], 2)  # At least start and accept
+                self.assertEqual(stats['alphabet_size'], 1)
+
+    def test_regex_validation_before_conversion(self):
+        """Test that regex validation occurs before conversion attempt"""
+        # Test various invalid regex patterns (updated to exclude consecutive operators)
+        invalid_regexes = [
+            'a(b',      # Unmatched opening parenthesis
+            'ab)',      # Unmatched closing parenthesis
+            '*a',       # * at start (no preceding element)
+            '+a',       # + at start (no preceding element)
+            '|*',       # * immediately after |
+            '|+',       # + immediately after |
+        ]
+
+        for invalid_regex in invalid_regexes:
+            with self.subTest(regex=invalid_regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': invalid_regex
+                })
+
+                self.assertEqual(response.status_code, 400)
+                data = response.json()
+                self.assertIn('error', data)
+                self.assertIn('Invalid regex syntax', data['error'])
+
+    def test_regex_to_epsilon_nfa_statistics_completeness(self):
+        """Test that all expected statistics are provided"""
+        response = self.post_json('/api/regex-to-epsilon-nfa/', {
+            'regex': 'a+b*'  # Now valid with + support
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        stats = data['statistics']
+
+        # Check all expected statistics are non-negative integers
+        for key in ['states_count', 'alphabet_size', 'transitions_count', 'accepting_states_count']:
+            self.assertIn(key, stats)
+            self.assertIsInstance(stats[key], int)
+            self.assertGreaterEqual(stats[key], 0)
+
+        # Verify specific values make sense for this regex
+        self.assertEqual(stats['alphabet_size'], 2)  # 'a' and 'b'
+        self.assertEqual(stats['accepting_states_count'], 1)  # Single accept state
+        self.assertGreater(stats['states_count'], 4)  # Should have multiple states for a+b*
+
+    def test_regex_to_epsilon_nfa_malformed_json(self):
+        """Test endpoint with malformed JSON"""
+        response = self.client.post(
+            '/api/regex-to-epsilon-nfa/',
+            data='{"regex": invalid json}',
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_regex_conversion_function_exception(self):
+        """Test exception in regex conversion function"""
+        # Mock validation to pass first, then make conversion fail
+        with patch('simulator.regex_conversions.validate_regex_syntax') as mock_validate, \
+                patch('simulator.regex_conversions.regex_to_epsilon_nfa') as mock_convert:
+            mock_validate.return_value = {'valid': True}  # Pass validation
+            mock_convert.side_effect = Exception("Conversion error")
+
+            response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                'regex': 'a*'
+            })
+
+            self.assertEqual(response.status_code, 500)
+            data = response.json()
+            self.assertIn('error', data)
+            self.assertIn('Server error', data['error'])
+
+    def test_regex_validation_function_exception(self):
+        """Test exception in regex validation function"""
+        # Test with a regex that will cause the validation function to fail
+        with patch('simulator.regex_conversions.validate_regex_syntax') as mock_validate:
+            mock_validate.side_effect = Exception("Validation error")
+
+            response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                'regex': 'a*'
+            })
+
+            self.assertEqual(response.status_code, 500)
+            data = response.json()
+            self.assertIn('error', data)
+            self.assertIn('Server error', data['error'])
+
+    def test_regex_to_epsilon_nfa_none_regex(self):
+        """Test with None as regex value"""
+        response = self.post_json('/api/regex-to-epsilon-nfa/', {
+            'regex': None
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing regex parameter', data['error'])
+
+    def test_regex_to_epsilon_nfa_plus_vs_star_behavior(self):
+        """Test that + and * operators behave differently"""
+        # Test a+ (one or more 'a')
+        response_plus = self.post_json('/api/regex-to-epsilon-nfa/', {
+            'regex': 'a+'
+        })
+        self.assertEqual(response_plus.status_code, 200)
+
+        # Test a* (zero or more 'a')
+        response_star = self.post_json('/api/regex-to-epsilon-nfa/', {
+            'regex': 'a*'
+        })
+        self.assertEqual(response_star.status_code, 200)
+
+        # Both should succeed but may have different structures
+        plus_nfa = response_plus.json()['epsilon_nfa']
+        star_nfa = response_star.json()['epsilon_nfa']
+
+        # Both should be valid NFAs
+        for nfa in [plus_nfa, star_nfa]:
+            self.assertIn('states', nfa)
+            self.assertIn('alphabet', nfa)
+            self.assertIn('transitions', nfa)
+            self.assertIn('startingState', nfa)
+            self.assertIn('acceptingStates', nfa)
+
+    def test_regex_to_epsilon_nfa_multiple_postfix_operators(self):
+        """Test regexes with multiple postfix operators (mathematically valid but redundant)"""
+        # These are now syntactically and mathematically valid
+        test_regexes = ['a*+', 'a+*', '(ab)*+', '(ab)+*']
+
+        for regex in test_regexes:
+            with self.subTest(regex=regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                # These should now be accepted as mathematically valid
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data['success'])
+                self.assertEqual(data['regex'], regex)
+
+                # Should produce reasonable NFA structure
+                stats = data['statistics']
+                self.assertGreater(stats['states_count'], 2)
+                self.assertGreater(stats['transitions_count'], 0)
+
+    def test_regex_to_epsilon_nfa_real_world_examples(self):
+        """Test conversion with realistic regex examples"""
+        real_world_regexes = [
+            'a+b+',           # One or more a's followed by one or more b's
+            '(a|b)+',         # One or more of either a or b
+            'a*b+a*',         # Zero or more a's, one or more b's, zero or more a's
+            '(ab)+|(ba)+',    # One or more ab's or one or more ba's
+            '((a+b)*c)+',     # Complex nested expression
+        ]
+
+        for regex in real_world_regexes:
+            with self.subTest(regex=regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data['success'])
+                self.assertEqual(data['regex'], regex)
+
+                # Should produce reasonable NFA structure
+                stats = data['statistics']
+                self.assertGreater(stats['states_count'], 2)
+                self.assertGreater(stats['transitions_count'], 0)
+
+    def test_regex_to_epsilon_nfa_edge_cases_with_plus(self):
+        """Test edge cases specifically related to the + operator"""
+        # These patterns are actually mathematically valid (corrected understanding)
+        valid_edge_cases = [
+            ('()+', 'One or more empty strings = empty string'),
+            ('(a|)+', 'One or more of (a or empty) = accepts "", "a", "aa", etc.'),
+        ]
+
+        for regex, description in valid_edge_cases:
+            with self.subTest(regex=regex, description=description):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                # These should now be accepted as valid (they are mathematically sound)
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data['success'])
+                self.assertEqual(data['regex'], regex)
+
+        # Test some genuinely problematic patterns
+        invalid_edge_cases = [
+            '+',        # Just a plus with nothing
+            '++',       # Multiple pluses with nothing
+            '((',       # Unmatched opening parentheses
+            '))',       # Unmatched closing parentheses
+        ]
+
+        for regex in invalid_edge_cases:
+            with self.subTest(regex=regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                # These should fail
+                self.assertEqual(response.status_code, 400)
+                data = response.json()
+                self.assertIn('error', data)
+
+    def test_regex_conversion_validates_plus_operator(self):
+        """Test that plus operator validation works correctly"""
+        # Valid plus usage (including consecutive operators)
+        valid_plus_regexes = ['a+', '(ab)+', '(a|b)+', 'a+b*', 'a*+', 'a+*']
+
+        for regex in valid_plus_regexes:
+            with self.subTest(regex=regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data['success'])
+
+        # Invalid plus usage (+ at beginning with nothing to apply to)
+        invalid_plus_regexes = ['+a', '+', '|+']
+
+        for regex in invalid_plus_regexes:
+            with self.subTest(regex=regex):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                self.assertEqual(response.status_code, 400)
+                data = response.json()
+                self.assertIn('error', data)
+                self.assertIn('Invalid regex syntax', data['error'])
+
+    def test_regex_to_epsilon_nfa_consecutive_operator_equivalences(self):
+        """Test that consecutive operators produce valid NFAs with expected properties"""
+        # Test specific consecutive operator patterns
+        consecutive_patterns = [
+            ('a*+', 'Should be equivalent to a*'),
+            ('a+*', 'Should be equivalent to a*'),
+            ('(ab)*+', 'Should be equivalent to (ab)*'),
+            ('(ab)+*', 'Should be equivalent to (ab)*'),
+        ]
+
+        for regex, description in consecutive_patterns:
+            with self.subTest(regex=regex, description=description):
+                response = self.post_json('/api/regex-to-epsilon-nfa/', {
+                    'regex': regex
+                })
+
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertTrue(data['success'])
+
+                # Verify NFA structure is reasonable
+                nfa = data['epsilon_nfa']
+                self.assertIn('states', nfa)
+                self.assertIn('alphabet', nfa)
+                self.assertIn('transitions', nfa)
+                self.assertIn('startingState', nfa)
+                self.assertIn('acceptingStates', nfa)
+
+                # Should have multiple states due to Thompson construction
+                self.assertGreater(len(nfa['states']), 2)

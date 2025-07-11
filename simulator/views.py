@@ -1119,7 +1119,16 @@ def regex_to_epsilon_nfa(request):
         if regex is None:
             return JsonResponse({'error': 'Missing regex parameter'}, status=400)
 
+        # Validate regex syntax before attempting conversion
+        from .regex_conversions import validate_regex_syntax
+        validation_result = validate_regex_syntax(regex)
+        if not validation_result['valid']:
+            return JsonResponse({
+                'error': f'Invalid regex syntax: {validation_result["error"]}'
+            }, status=400)
+
         # Perform the conversion
+        from .regex_conversions import regex_to_epsilon_nfa
         epsilon_nfa = regex_to_epsilon_nfa(regex)
 
         # Collect simple stats for the response payload
