@@ -48,11 +48,13 @@ import { nfaResultsManager } from './nfaResultsManager.js';
 import { fsaSerializationManager } from './fsaSerializationManager.js';
 import { fsaFileUIManager } from './fsaFileUI.js';
 import { fsaTransformManager } from './transformManager.js';
+import { regexConversionManager } from './regexConversionManager.js';
 import { edgeCreationManager } from './edgeCreationManager.js';
 import { toolManager } from './toolManager.js';
 import { undoRedoManager } from './undoRedoManager.js';
 import { propertyInfoManager } from './propertyInfoManager.js';
 import { menuManager } from './menuManager.js';
+import { calculateStatePositions, findNonOverlappingPositions } from './positioningUtils.js';
 
 import { tutorialModalManager } from './tutorialModalManager.js';
 
@@ -118,6 +120,9 @@ export function initialiseSimulator() {
 
     // Initialise FSA transformation system
     initializeFSATransformation();
+
+    // Initialise REGEX conversion system
+    initializeRegexConversion();
 
     // Initialise property info manager
     initialisePropertyInfoManager();
@@ -237,8 +242,17 @@ function initializeFSATransformation() {
 
     // Make transform functions globally available
     window.fsaTransformManager = fsaTransformManager;
+}
 
-    console.log('FSA transformation system initialized');
+/**
+ * Initialize REGEX conversion system
+ */
+function initializeRegexConversion() {
+    // Initialize REGEX conversion manager with JSPlumb instance
+    regexConversionManager.initialize(jsPlumbInstance);
+
+    // Make REGEX conversion functions globally available
+    window.regexConversionManager = regexConversionManager;
 }
 
 /**
@@ -289,12 +303,11 @@ function initializeFSASerialization() {
     // Integrate with control lock manager
     integrateWithControlLockManager();
 
-    // Make serialization functions globally available
+    // Make serialisation and conversion functions globally available
     window.fsaSerializationManager = fsaSerializationManager;
     window.fsaFileUIManager = fsaFileUIManager;
     window.menuManager = menuManager;
 
-    console.log('FSA serialization system with unified menu bar initialized');
 }
 
 /**

@@ -12,6 +12,7 @@ import {
 import { updateAlphabetDisplay } from './alphabetManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 import { notificationManager } from './notificationManager.js';
+import { calculateStatePositions } from './positioningUtils.js';
 
 /**
  * FSA Serialization Manager class
@@ -206,8 +207,11 @@ class FSASerializationManager {
             // Clear current FSA
             await this.clearCurrentFSA(jsPlumbInstance);
 
+            // Optimize positions if needed
+            const optimizedStatesData = this.optimizeStatePositions(data);
+
             // Load states first
-            await this.deserializeStates(data.states, jsPlumbInstance);
+            await this.deserializeStates(optimizedStatesData.states, jsPlumbInstance);
 
             // Then load transitions
             await this.deserializeTransitions(data.transitions, jsPlumbInstance);
@@ -240,6 +244,77 @@ class FSASerializationManager {
             );
             return false;
         }
+    }
+
+    /**
+     * Optimize state positions using positioning utilities
+     * @param {Object} data - Serialized FSA data
+     * @returns {Object} - Data with optimized positions
+     */
+    optimizeStatePositions(data) {
+        // Convert to FSA format for positioning utility
+        const fsa = {
+            states: data.states.map(state => state.id),
+            transitions: this.convertTransitionsToFSAFormat(data.transitions),
+            acceptingStates: data.states.filter(state => state.isAccepting).map(state => state.id),
+            startingState: data.startingState
+        };
+
+        // Get existing positions
+        const existingPositions = {};
+        data.states.forEach(state => {
+            existingPositions[state.id] = state.position;
+        });
+
+        // Calculate optimized positions
+        const optimizedPositions = calculateStatePositions(fsa, existingPositions, {
+            preserveExisting: true,
+            maxIterations: 50
+        });
+
+        // Update states data with optimized positions
+        const optimizedStates = data.states.map(state => ({
+            ...state,
+            position: optimizedPositions[state.id] || state.position
+        }));
+
+        return {
+            ...data,
+            states: optimizedStates
+        };
+    }
+
+    /**
+     * Convert transitions to FSA format for positioning utility
+     * @param {Array} transitionsData - Array of transition data
+     * @returns {Object} - FSA format transitions
+     */
+    convertTransitionsToFSAFormat(transitionsData) {
+        const transitions = {};
+
+        transitionsData.forEach(transition => {
+            if (!transitions[transition.sourceId]) {
+                transitions[transition.sourceId] = {};
+            }
+
+            // Handle epsilon transitions
+            if (transition.hasEpsilon) {
+                if (!transitions[transition.sourceId]['']) {
+                    transitions[transition.sourceId][''] = [];
+                }
+                transitions[transition.sourceId][''].push(transition.targetId);
+            }
+
+            // Handle symbol transitions
+            transition.symbols.forEach(symbol => {
+                if (!transitions[transition.sourceId][symbol]) {
+                    transitions[transition.sourceId][symbol] = [];
+                }
+                transitions[transition.sourceId][symbol].push(transition.targetId);
+            });
+        });
+
+        return transitions;
     }
 
     /**

@@ -55,7 +55,10 @@
 /* 19. Tutorial Modal */
 @import url('tutorial-modal.css');
 
-/* 20. Responsive Styles - Must be last */
+/* 20. Regex Conversion */
+@import url('regex-conversion.css');
+
+/* 21. Responsive Styles - Must be last */
 @import url('responsive.css');
 
 /* Hide drag‑and‑drop overlay unless actively dragging a file */

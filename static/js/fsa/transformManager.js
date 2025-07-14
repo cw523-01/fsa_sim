@@ -3,6 +3,7 @@ import { notificationManager } from './notificationManager.js';
 import { controlLockManager } from './controlLockManager.js';
 import { undoRedoManager } from './undoRedoManager.js';
 import { menuManager } from './menuManager.js';
+import { calculateStatePositions, calculatePositionsPreserving, findNonOverlappingPositions, calculateTransformLayout } from './positioningUtils.js';
 import {
     convertFSAToBackendFormat,
     checkFSAProperties
@@ -492,8 +493,8 @@ class FSATransformManager {
         const transformedFSA = fsaDataMap[type];
         const config = this.transformConfigs[type];
 
-        // Calculate positions
-        const newPositions = this.calculateStatePositions(
+        // Calculate positions using NEW layered positioning algorithm
+        const newPositions = this.calculateTransformPositions(
             type, result.original_fsa, transformedFSA, originalPositions
         );
 
@@ -512,57 +513,28 @@ class FSATransformManager {
     }
 
     /**
-     * Calculate state positions for transformed FSA
+     * Calculate state positions for transformed FSA using NEW layered algorithm
      */
-    calculateStatePositions(type, originalFSA, transformedFSA, originalPositions) {
-        // Define strategies as functions to be called when needed
-        const positionStrategies = {
-            minimize: () => this.calculateCentroidPositions(transformedFSA, originalPositions),
-            convert: () => this.calculateCentroidPositions(transformedFSA, originalPositions),
-            complete: () => this.preservePositionsWithNew(transformedFSA, originalPositions),
-            complement: () => this.preservePositionsWithNew(transformedFSA, originalPositions)
-        };
+    calculateTransformPositions(type, originalFSA, transformedFSA, originalPositions) {
+        console.log(`Calculating positions for ${type} transformation`);
 
-        // Call the appropriate strategy function
-        const strategy = positionStrategies[type];
-        if (!strategy) {
-            console.error(`Unknown transform type: ${type}`);
-            return this.getDefaultPositions(transformedFSA);
-        }
-
-        const positions = strategy();
-        this.adjustOverlappingPositions(positions);
-        return positions;
+        // For all transformations, use the layered hierarchical layout
+        return calculateTransformLayout(transformedFSA);
     }
 
     /**
-     * Get default positions for all states when strategy fails
+     * Handle positioning for minimize operation
+     * LEGACY: Kept for reference, but not used with new layered algorithm
      */
-    getDefaultPositions(transformedFSA) {
+    handleMinimizePositions(transformedFSA, originalPositions) {
+        // For minimization, we want to place merged states at centroids of original states
         const positions = {};
-        if (!transformedFSA || !transformedFSA.states) {
-            console.error('Invalid transformedFSA:', transformedFSA);
-            return positions;
-        }
-
-        transformedFSA.states.forEach((stateId, index) => {
-            positions[stateId] = this.getDefaultPosition(stateId, transformedFSA.states);
-        });
-
-        return positions;
-    }
-
-    /**
-     * Calculate centroid positions for merged states
-     */
-    calculateCentroidPositions(transformedFSA, originalPositions) {
-        const newPositions = {};
 
         transformedFSA.states.forEach(stateId => {
-            // Try to parse original states from the new state ID
             const originalIds = this.parseOriginalStates(stateId);
 
             if (originalIds.length > 0) {
+                // Calculate centroid of original states
                 let totalX = 0, totalY = 0, validCount = 0;
 
                 originalIds.forEach(originalId => {
@@ -574,38 +546,52 @@ class FSATransformManager {
                 });
 
                 if (validCount > 0) {
-                    newPositions[stateId] = {
+                    positions[stateId] = {
                         x: Math.round(totalX / validCount),
                         y: Math.round(totalY / validCount)
                     };
                 }
             }
-
-            // Fallback for states without valid positions
-            if (!newPositions[stateId]) {
-                newPositions[stateId] = this.getDefaultPosition(stateId, transformedFSA.states);
-            }
         });
 
-        return newPositions;
+        // Use positioning utility to refine layout and handle missing positions
+        return calculateStatePositions(transformedFSA, positions, { preserveExisting: true });
     }
 
     /**
-     * Preserve original positions and add new states
+     * Handle positioning for convert operation
+     * LEGACY: Kept for reference, but not used with new layered algorithm
      */
-    preservePositionsWithNew(transformedFSA, originalPositions) {
-        const newPositions = {};
+    handleConvertPositions(transformedFSA, originalPositions) {
+        // For NFA to DFA conversion, subset states should be positioned based on their components
+        const positions = {};
 
         transformedFSA.states.forEach(stateId => {
-            if (originalPositions[stateId]) {
-                newPositions[stateId] = originalPositions[stateId];
-            } else {
-                // Place new states (like dead states) away from existing ones
-                newPositions[stateId] = this.findNonOverlappingPosition(originalPositions);
+            const originalIds = this.parseOriginalStates(stateId);
+
+            if (originalIds.length > 0) {
+                // Calculate centroid of subset states
+                let totalX = 0, totalY = 0, validCount = 0;
+
+                originalIds.forEach(originalId => {
+                    if (originalPositions[originalId]) {
+                        totalX += originalPositions[originalId].x;
+                        totalY += originalPositions[originalId].y;
+                        validCount++;
+                    }
+                });
+
+                if (validCount > 0) {
+                    positions[stateId] = {
+                        x: Math.round(totalX / validCount),
+                        y: Math.round(totalY / validCount)
+                    };
+                }
             }
         });
 
-        return newPositions;
+        // Use positioning utility to optimize layout based on transitions
+        return calculateStatePositions(transformedFSA, positions);
     }
 
     /**
@@ -625,60 +611,6 @@ class FSATransformManager {
     }
 
     /**
-     * Get default position for states without calculated positions
-     */
-    getDefaultPosition(stateId, allStates) {
-        const canvas = document.getElementById('fsa-canvas');
-        const centerX = canvas ? canvas.offsetWidth / 2 : 400;
-        const centerY = canvas ? canvas.offsetHeight / 2 : 300;
-        const stateIndex = allStates.indexOf(stateId);
-
-        if (stateId.includes('DEAD')) {
-            return { x: centerX + 200, y: centerY + 200 };
-        }
-
-        // Grid layout for other states
-        const gridSize = Math.ceil(Math.sqrt(allStates.length));
-        const row = Math.floor(stateIndex / gridSize);
-        const col = stateIndex % gridSize;
-
-        return {
-            x: centerX + (col - gridSize/2) * 120,
-            y: centerY + (row - gridSize/2) * 120
-        };
-    }
-
-    /**
-     * Find non-overlapping position for new states
-     */
-    findNonOverlappingPosition(existingPositions) {
-        const canvas = document.getElementById('fsa-canvas');
-        const centerX = canvas ? canvas.offsetWidth / 2 : 400;
-        const centerY = canvas ? canvas.offsetHeight / 2 : 300;
-
-        let x = centerX + 200;
-        let y = centerY + 200;
-        let attempts = 0;
-
-        while (attempts < 10) {
-            let hasOverlap = false;
-
-            Object.values(existingPositions).forEach(pos => {
-                const distance = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
-                if (distance < 80) hasOverlap = true;
-            });
-
-            if (!hasOverlap) break;
-
-            x += 50;
-            y += 50;
-            attempts++;
-        }
-
-        return { x, y };
-    }
-
-    /**
      * Get current state positions
      */
     getOriginalStatePositions() {
@@ -693,31 +625,6 @@ class FSATransformManager {
         });
 
         return positions;
-    }
-
-    /**
-     * Adjust overlapping positions
-     */
-    adjustOverlappingPositions(positions) {
-        const minDistance = 80;
-        const positionArray = Object.entries(positions);
-
-        for (let i = 0; i < positionArray.length; i++) {
-            for (let j = i + 1; j < positionArray.length; j++) {
-                const [id1, pos1] = positionArray[i];
-                const [id2, pos2] = positionArray[j];
-
-                const dx = pos2.x - pos1.x;
-                const dy = pos2.y - pos1.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance < minDistance) {
-                    const angle = Math.atan2(dy, dx);
-                    pos2.x = Math.round(pos1.x + Math.cos(angle) * minDistance);
-                    pos2.y = Math.round(pos1.y + Math.sin(angle) * minDistance);
-                }
-            }
-        }
     }
 
     /**

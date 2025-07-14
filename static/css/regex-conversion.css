@@ -1,0 +1,518 @@
+/* REGEX conversion popup - inherit base file operation popup styles and match transform modals */
+.file-operation-popup.regex-convert {
+    /* Base popup styles inherited from file-operations-popup.css */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    width: 600px;
+    max-width: 90vw;
+    max-height: 80vh;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #6c757d;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: var(--z-modals);
+    opacity: 0;
+    transition: all 0.3s ease;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+}
+
+.file-operation-popup.regex-convert.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.file-operation-popup.regex-convert.hide {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+}
+
+/* REGEX popup header styling to match transform modals */
+.file-operation-popup.regex-convert .popup-header {
+    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-hover) 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    color: white;
+    border-radius: 10px 10px 0 0;
+    border-bottom: 2px solid var(--border-color);
+}
+
+/* Popup title styling to match transform modals */
+.file-operation-popup.regex-convert .popup-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* Popup icon styling to match transform modals */
+.file-operation-popup.regex-convert .popup-icon {
+    font-size: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 8px;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Close button styling to match transform modals */
+.file-operation-popup.regex-convert .popup-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+}
+
+.file-operation-popup.regex-convert .popup-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* File operation actions section to match transform modals */
+.file-operation-popup.regex-convert .file-operation-actions {
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.7);
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+/* File operation content section to match transform modals */
+.file-operation-popup.regex-convert .file-operation-content {
+    flex: 1;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 20px;
+}
+
+/* File operation description to match transform modals */
+.file-operation-popup.regex-convert .file-operation-description {
+    font-size: 14px;
+    color: #495057;
+    line-height: 1.4;
+    margin-bottom: 20px;
+}
+
+/* Action buttons to match transform modals exactly */
+.file-operation-popup.regex-convert .file-action-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.file-operation-popup.regex-convert .file-action-btn:hover:not(.disabled) {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+.file-operation-popup.regex-convert .file-action-btn.primary {
+    background: var(--secondary-color);
+}
+
+.file-operation-popup.regex-convert .file-action-btn.primary:hover:not(.disabled) {
+    background: var(--secondary-hover);
+}
+
+.file-operation-popup.regex-convert .file-action-btn.disabled {
+    background: #adb5bd;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.file-operation-popup.regex-convert .file-action-btn.disabled:hover {
+    background: #adb5bd;
+    transform: none;
+}
+
+/* Form styling to match transform modals */
+.file-operation-popup.regex-convert .form-group {
+    margin-bottom: 20px;
+}
+
+.file-operation-popup.regex-convert .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #495057;
+    font-size: 14px;
+}
+
+/* REGEX input field styling */
+#regex-input-field {
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-md);
+    font-family: var(--font-family-mono);
+    transition: var(--transition-fast);
+    background-color: var(--white);
+    color: var(--text-color);
+}
+
+#regex-input-field:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+#regex-input-field::placeholder {
+    color: var(--text-gray);
+    font-style: italic;
+}
+
+/* Form group validation states */
+.form-group.valid #regex-input-field {
+    border-color: var(--success-color);
+}
+
+.form-group.invalid #regex-input-field {
+    border-color: var(--error-color);
+}
+
+/* Examples section styling with proper highlighting to match transform modals */
+.examples-section {
+    margin: var(--spacing-lg) 0;
+    padding: var(--spacing-md);
+    background: rgba(33, 150, 243, 0.05);
+    border: 1px solid rgba(33, 150, 243, 0.2);
+    border-radius: 6px;
+    border-left: 4px solid var(--secondary-color);
+}
+
+.examples-dropdown {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.examples-dropdown label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--secondary-color);
+    margin-bottom: var(--spacing-xs);
+}
+
+.examples-select {
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid rgba(33, 150, 243, 0.3);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-family: var(--font-family);
+    background-color: var(--white);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.examples-select:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.examples-select:hover {
+    border-color: var(--secondary-color);
+    background-color: rgba(33, 150, 243, 0.02);
+}
+
+.examples-select option {
+    padding: var(--spacing-sm);
+    background-color: var(--white);
+    color: var(--text-color);
+    font-family: var(--font-family);
+}
+
+/* Warning section styling to match transform modals exactly */
+.file-operation-popup.regex-convert .warning-section {
+    background: rgba(255, 152, 0, 0.1);
+    border: 1px solid var(--warning-color);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.file-operation-popup.regex-convert .warning-icon {
+    color: var(--warning-color);
+    font-size: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.file-operation-popup.regex-convert .warning-text {
+    font-size: 13px;
+    color: #e65100;
+    line-height: 1.3;
+    margin: 0;
+}
+
+.file-operation-popup.regex-convert .warning-text strong {
+    font-weight: bold;
+    color: #e65100;
+}
+
+/* Input help text styling */
+.input-help {
+    font-size: var(--font-size-xs);
+    color: var(--text-gray);
+    margin-top: var(--spacing-xs);
+    line-height: 1.3;
+}
+
+/* Input error text styling */
+.input-error {
+    font-size: var(--font-size-xs);
+    color: var(--error-color);
+    margin-top: var(--spacing-xs);
+    display: none;
+}
+
+.input-error.show {
+    display: block;
+}
+
+/* Current FSA display styling to match transform modals */
+.file-operation-popup.regex-convert .states-info {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: #495057;
+}
+
+.file-operation-popup.regex-convert .states-count {
+    font-weight: bold;
+    color: var(--secondary-color);
+}
+
+/* Loading state for convert button */
+#regex-convert-btn.loading {
+    position: relative;
+    color: transparent !important;
+}
+
+#regex-convert-btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    margin-left: -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--white);
+    border-radius: var(--radius-circle);
+    animation: regex-spin 1s linear infinite;
+}
+
+@keyframes regex-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* REGEX conversion specific info styles to match transform info sections */
+.file-operation-popup.regex-convert .conversion-info {
+    margin: var(--spacing-lg) 0;
+    padding: var(--spacing-md);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    border-left: 4px solid var(--secondary-color);
+}
+
+.file-operation-popup.regex-convert .conversion-info .info-item {
+    margin-bottom: var(--spacing-sm);
+}
+
+.file-operation-popup.regex-convert .conversion-info .info-item:last-child {
+    margin-bottom: 0;
+}
+
+/* REGEX type indicators */
+.regex-type-indicator {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    margin-left: var(--spacing-xs);
+}
+
+.regex-type-indicator.epsilon-nfa {
+    background-color: rgba(33, 150, 243, 0.1);
+    color: var(--secondary-color);
+    border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+.regex-type-indicator.thompson {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: var(--success-color);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+/* Success state for completed conversions */
+.regex-success-indicator {
+    color: var(--success-color);
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background-color: var(--sim-final-bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--success-color);
+    margin-top: var(--spacing-sm);
+}
+
+/* REGEX results summary styling */
+.regex-results {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+}
+
+.regex-results h4 {
+    margin: 0 0 var(--spacing-sm) 0;
+    color: var(--text-color);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+}
+
+.regex-results .result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-xs) 0;
+    border-bottom: 1px solid var(--medium-gray);
+    font-size: var(--font-size-sm);
+}
+
+.regex-results .result-item:last-child {
+    border-bottom: none;
+}
+
+.regex-results .result-value {
+    font-weight: var(--font-weight-medium);
+    color: var(--secondary-color);
+}
+
+/* REGEX operation indicator */
+.regex-operation-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    color: var(--text-gray);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background-color: rgba(33, 150, 243, 0.1);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(33, 150, 243, 0.3);
+    margin-left: var(--spacing-sm);
+}
+
+.regex-operation-indicator.processing {
+    color: var(--warning-color);
+    background-color: rgba(255, 152, 0, 0.1);
+    border-color: rgba(255, 152, 0, 0.3);
+}
+
+.regex-operation-indicator.error {
+    color: var(--error-color);
+    background-color: rgba(244, 67, 54, 0.1);
+    border-color: rgba(244, 67, 54, 0.3);
+}
+
+/* Responsive adjustments for REGEX conversion */
+@media (max-width: 768px) {
+    .file-operation-popup.regex-convert {
+        max-width: 90vw;
+        margin: var(--spacing-xl);
+    }
+
+    .examples-section {
+        padding: var(--spacing-sm);
+    }
+
+    #regex-input-field {
+        font-size: var(--font-size-sm);
+    }
+
+    .examples-select {
+        font-size: var(--font-size-xs);
+    }
+}
+
+/* Focus styles for REGEX conversion accessibility */
+.examples-select:focus {
+    outline: 2px solid var(--secondary-color);
+    outline-offset: 2px;
+}
+
+/* Animation for REGEX operations */
+@keyframes regex-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.regex-operation-active {
+    animation: regex-pulse 2s ease-in-out infinite;
+}
+
+/* Integration with control lock states */
+.regex-menu-locked #regex-dropdown .menu-option {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.regex-menu-locked #regex-dropdown .menu-option:hover {
+    background-color: transparent;
+}
+
+/* Ensure consistent styling with transform modals */
+.file-operation-popup.regex-convert,
+.file-operation-popup.regex-convert * {
+    color: inherit;
+}
+
+.file-operation-popup.regex-convert .examples-select,
+.file-operation-popup.regex-convert #regex-input-field {
+    background-color: var(--white);
+    color: var(--text-color);
+}
+
+.file-operation-popup.regex-convert .examples-select option {
+    background-color: var(--white);
+    color: var(--text-color);
+}
