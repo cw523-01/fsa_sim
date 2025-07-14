@@ -118,7 +118,7 @@ class RegexConversionManager {
                 </div>
                 <button class="popup-close" onclick="regexConversionManager.hideRegexPopup()">×</button>
             </div>
-            <div class="file-operation-content">
+            <div class="file-operation-content scrollable-content">
                 <div class="file-operation-description">
                     Enter a regular expression to convert it into an equivalent ε-NFA using Thompson's construction algorithm.
                 </div>
@@ -146,11 +146,31 @@ class RegexConversionManager {
                         </select>
                     </div>
                 </div>
+
+                <div class="chaining-options">
+                    <h4>Additional Operations:</h4>
+                    <div class="option-group">
+                        <div class="checkbox-option">
+                            <input type="checkbox" id="convert-to-dfa-option" class="chain-checkbox">
+                            <label for="convert-to-dfa-option">
+                                <span class="option-title">Convert to DFA</span>
+                                <span class="option-description">Remove ε-transitions and make deterministic</span>
+                            </label>
+                        </div>
+                        <div class="checkbox-option dependent disabled" data-depends="convert-to-dfa-option">
+                            <input type="checkbox" id="minimize-dfa-option" class="chain-checkbox" disabled>
+                            <label for="minimize-dfa-option">
+                                <span class="option-title">Minimize DFA</span>
+                                <span class="option-description">Remove redundant states (only available if converting to DFA)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
     
                 <div class="warning-section">
                     <span class="warning-icon">⚠️</span>
                     <div class="warning-text">
-                        <strong>Warning:</strong> This operation will replace the current FSA with the generated ε-NFA. 
+                        <strong>Warning:</strong> This operation will replace the current FSA with the generated automaton. 
                         Consider exporting your current FSA first if you want to save it.
                     </div>
                 </div>
@@ -194,6 +214,8 @@ class RegexConversionManager {
         const regexError = document.getElementById('regex-input-error');
         const convertBtn = document.getElementById('regex-convert-btn');
         const examplesSelect = document.getElementById('examples-select');
+        const convertToDfaCheckbox = document.getElementById('convert-to-dfa-option');
+        const minimizeDfaCheckbox = document.getElementById('minimize-dfa-option');
 
         if (regexInput) {
             regexInput.addEventListener('input', () => {
@@ -211,6 +233,9 @@ class RegexConversionManager {
                     regexError.classList.remove('show');
                     convertBtn.classList.remove('disabled');
                 }
+
+                // Update button text based on options
+                this.updateConvertButtonText();
             });
 
             // Enter key to convert
@@ -233,6 +258,55 @@ class RegexConversionManager {
                     examplesSelect.value = '';
                 }
             });
+        }
+
+        // Handle chaining options
+        if (convertToDfaCheckbox) {
+            convertToDfaCheckbox.addEventListener('change', () => {
+                // Enable/disable minimize option based on convert to DFA
+                if (minimizeDfaCheckbox) {
+                    minimizeDfaCheckbox.disabled = !convertToDfaCheckbox.checked;
+                    if (!convertToDfaCheckbox.checked) {
+                        minimizeDfaCheckbox.checked = false;
+                    }
+
+                    // Update dependent option styling
+                    const dependentOption = minimizeDfaCheckbox.closest('.checkbox-option');
+                    if (dependentOption) {
+                        if (convertToDfaCheckbox.checked) {
+                            dependentOption.classList.remove('disabled');
+                        } else {
+                            dependentOption.classList.add('disabled');
+                        }
+                    }
+                }
+                this.updateConvertButtonText();
+            });
+        }
+
+        if (minimizeDfaCheckbox) {
+            minimizeDfaCheckbox.addEventListener('change', () => {
+                this.updateConvertButtonText();
+            });
+        }
+    }
+
+    /**
+     * Update convert button text based on selected options
+     */
+    updateConvertButtonText() {
+        const convertBtn = document.getElementById('regex-convert-btn');
+        const convertToDfaCheckbox = document.getElementById('convert-to-dfa-option');
+        const minimizeDfaCheckbox = document.getElementById('minimize-dfa-option');
+
+        if (!convertBtn) return;
+
+        if (minimizeDfaCheckbox && minimizeDfaCheckbox.checked) {
+            convertBtn.textContent = 'Convert to Minimal DFA';
+        } else if (convertToDfaCheckbox && convertToDfaCheckbox.checked) {
+            convertBtn.textContent = 'Convert to DFA';
+        } else {
+            convertBtn.textContent = 'Convert to ε-NFA';
         }
     }
 
@@ -272,6 +346,13 @@ class RegexConversionManager {
             return;
         }
 
+        // Get chaining options
+        const convertToDfaCheckbox = document.getElementById('convert-to-dfa-option');
+        const minimizeDfaCheckbox = document.getElementById('minimize-dfa-option');
+
+        const shouldConvertToDfa = convertToDfaCheckbox && convertToDfaCheckbox.checked;
+        const shouldMinimize = minimizeDfaCheckbox && minimizeDfaCheckbox.checked && shouldConvertToDfa;
+
         const config = this.conversionConfig;
 
         // Show loading state
@@ -285,10 +366,13 @@ class RegexConversionManager {
             // Create snapshot for undo/redo
             let snapshotCommand = null;
             if (undoRedoManager && !undoRedoManager.isProcessing()) {
-                snapshotCommand = undoRedoManager.createSnapshotCommand(config.undoLabel);
+                const operationLabel = shouldMinimize ? 'Convert REGEX to Minimal DFA' :
+                                     shouldConvertToDfa ? 'Convert REGEX to DFA' :
+                                     'Convert REGEX to ε-NFA';
+                snapshotCommand = undoRedoManager.createSnapshotCommand(operationLabel);
             }
 
-            // Call backend API
+            // Call backend API for REGEX conversion
             const response = await fetch(config.apiEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -300,16 +384,61 @@ class RegexConversionManager {
                 throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
 
-            const result = await response.json();
+            const regexResult = await response.json();
+            let finalResult = regexResult;
+            let operationChain = ['REGEX to ε-NFA'];
+
+            // Chain additional operations if requested
+            if (shouldConvertToDfa) {
+                convertBtn.textContent = 'Converting to DFA...';
+
+                // Convert ε-NFA to DFA
+                const nfaToDfaResponse = await fetch('/api/nfa-to-dfa/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fsa: regexResult.epsilon_nfa })
+                });
+
+                if (!nfaToDfaResponse.ok) {
+                    const errorData = await nfaToDfaResponse.json();
+                    throw new Error(errorData.error || `NFA to DFA conversion failed: ${nfaToDfaResponse.status}`);
+                }
+
+                const dfaResult = await nfaToDfaResponse.json();
+                finalResult.converted_dfa = dfaResult.converted_dfa;
+                finalResult.conversion_statistics = dfaResult.statistics;
+                operationChain.push('NFA to DFA');
+
+                if (shouldMinimize) {
+                    convertBtn.textContent = 'Minimizing DFA...';
+
+                    // Minimize the DFA
+                    const minimizeResponse = await fetch('/api/minimise-dfa/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fsa: dfaResult.converted_dfa })
+                    });
+
+                    if (!minimizeResponse.ok) {
+                        const errorData = await minimizeResponse.json();
+                        throw new Error(errorData.error || `DFA minimization failed: ${minimizeResponse.status}`);
+                    }
+
+                    const minimizeResult = await minimizeResponse.json();
+                    finalResult.minimised_dfa = minimizeResult.minimised_fsa;
+                    finalResult.minimization_statistics = minimizeResult.statistics;
+                    operationChain.push('Minimize DFA');
+                }
+            }
 
             // Hide popup
             this.hideRegexPopup();
 
-            // Replace FSA with generated ε-NFA
-            await this.replaceWithGeneratedNFA(result);
+            // Replace FSA with final result
+            await this.replaceWithGeneratedFSA(finalResult, shouldMinimize, shouldConvertToDfa);
 
-            // Show results
-            this.showConversionResults(result);
+            // Show comprehensive results
+            this.showChainedConversionResults(finalResult, operationChain, shouldMinimize, shouldConvertToDfa);
 
             // Finish undo/redo snapshot
             if (snapshotCommand) {
@@ -332,67 +461,146 @@ class RegexConversionManager {
     }
 
     /**
-     * Replace current FSA with generated ε-NFA
+     * Replace current FSA with generated FSA
      */
-    async replaceWithGeneratedNFA(result) {
+    async replaceWithGeneratedFSA(result, shouldMinimize, shouldConvertToDfa) {
         // Clear current FSA
         await fsaSerializationManager.clearCurrentFSA(this.jsPlumbInstance);
 
-        const epsilonNFA = result.epsilon_nfa;
-        const config = this.conversionConfig;
+        // Determine which result to use
+        let finalFSA;
+        let tags = ['regex-generated'];
+        let description = `Generated from regular expression: ${this.currentRegexInput}`;
 
-        // Calculate positions using NEW layered positioning algorithm
-        const positions = this.calculateNFAPositions(epsilonNFA);
+        if (shouldMinimize && result.minimised_dfa) {
+            finalFSA = result.minimised_dfa;
+            tags.push('minimal-dfa', 'converted');
+            description += ' (converted to minimal DFA)';
+        } else if (shouldConvertToDfa && result.converted_dfa) {
+            finalFSA = result.converted_dfa;
+            tags.push('dfa', 'converted');
+            description += ' (converted to DFA)';
+        } else {
+            finalFSA = result.epsilon_nfa;
+            tags.push('epsilon-nfa');
+        }
+
+        // Calculate positions using layered positioning algorithm
+        const positions = calculateTransformLayout(finalFSA);
 
         // Create serialized data
-        const serializedFSA = this.createSerializedNFA(
-            epsilonNFA,
+        const serializedFSA = this.createSerializedFSA(
+            finalFSA,
             positions,
             `REGEX: ${this.currentRegexInput}`,
-            `ε-NFA generated from regular expression: ${this.currentRegexInput}`,
-            config.tags
+            description,
+            tags
         );
 
-        // Load the generated ε-NFA
+        // Load the generated FSA
         await fsaSerializationManager.deserializeFSA(serializedFSA, this.jsPlumbInstance);
         updateFSAPropertiesDisplay(this.jsPlumbInstance);
     }
 
     /**
-     * Calculate positions for NFA states using NEW layered positioning algorithm
+     * Show results for chained conversion operations
      */
-    calculateNFAPositions(epsilonNFA) {
+    showChainedConversionResults(result, operationChain, shouldMinimize, shouldConvertToDfa) {
+        const regexString = this.currentRegexInput || 'regular expression';
+
+        if (shouldMinimize) {
+            const originalStats = result.statistics;
+            const conversionStats = result.conversion_statistics;
+            const minimizationStats = result.minimization_statistics;
+
+            notificationManager.showSuccess(
+                'REGEX Conversion Complete',
+                `Successfully converted "${regexString}" through: ${operationChain.join(' → ')}.\n` +
+                `Final result: ${minimizationStats.minimised.states_count} states, ` +
+                `${minimizationStats.minimised.transitions_count} transitions.`
+            );
+        } else if (shouldConvertToDfa) {
+            const originalStats = result.statistics;
+            const conversionStats = result.conversion_statistics;
+
+            notificationManager.showSuccess(
+                'REGEX Conversion Complete',
+                `Successfully converted "${regexString}" through: ${operationChain.join(' → ')}.\n` +
+                `Final result: ${conversionStats.converted.states_count} states, ` +
+                `${conversionStats.converted.transitions_count} transitions.`
+            );
+        } else {
+            const stats = result.statistics;
+            notificationManager.showSuccess(
+                'REGEX Conversion Complete',
+                `Successfully converted "${regexString}" to ε-NFA with ${stats.states_count} states and ${stats.transitions_count} transitions.`
+            );
+        }
+    }
+
+    /**
+     * Calculate positions for NFA states using layered positioning algorithm
+     */
+    calculateNFAPositions(fsa) {
         console.log('Using layered hierarchical positioning for REGEX conversion');
+        return calculateTransformLayout(fsa);
+    }
 
-        // Use the new layered hierarchical layout for consistent, readable positioning
-        return calculateTransformLayout(epsilonNFA);
+    /**
+     * Generate smart state name using first and last approach
+     * @param {string} stateId - Original state ID (potentially merged like "S0_S1_S3_S5_S6_S7_S8")
+     * @returns {string} - Smart state name
+     */
+    generateSmartStateName(stateId) {
+        // If no underscore, it's not a merged state
+        if (!stateId.includes('_')) {
+            return stateId;
+        }
 
-        // OLD CODE - Keep commented for reference:
-        // return calculateFreshLayout(epsilonNFA);
+        const parts = stateId.split('_');
+
+        // If only 2-3 parts, keep the full name
+        if (parts.length <= 3) {
+            return stateId;
+        }
+
+        // Use first and last with underscore
+        const first = parts[0];
+        const last = parts[parts.length - 1];
+        return `${first}_${last}`;
     }
 
     /**
      * Create serialized NFA data
      */
-    createSerializedNFA(epsilonNFA, positions, name, description, tags) {
-        const statesData = epsilonNFA.states.map(stateId => ({
-            id: stateId,
-            label: stateId,
-            isAccepting: epsilonNFA.acceptingStates.includes(stateId),
-            position: positions[stateId] || { x: 100, y: 100 },
-            visual: {
-                className: epsilonNFA.acceptingStates.includes(stateId) ? 'accepting-state' : 'state',
-                zIndex: 'auto'
-            }
-        }));
+    createSerializedFSA(fsa, positions, name, description, tags) {
+        const statesData = fsa.states.map(stateId => {
+            // Apply smart naming for merged states
+            const displayName = this.generateSmartStateName(stateId);
+
+            return {
+                id: displayName,
+                label: displayName,
+                isAccepting: fsa.acceptingStates.includes(stateId),
+                position: positions[stateId] || { x: 100, y: 100 },
+                visual: {
+                    className: fsa.acceptingStates.includes(stateId) ? 'accepting-state' : 'state',
+                    zIndex: 'auto'
+                }
+            };
+        });
 
         const transitionsData = [];
-        Object.entries(epsilonNFA.transitions).forEach(([sourceId, transitions]) => {
+        Object.entries(fsa.transitions).forEach(([sourceId, transitions]) => {
             Object.entries(transitions).forEach(([symbol, targets]) => {
                 if (targets && targets.length > 0) {
                     targets.forEach(targetId => {
+                        // Apply smart naming to source and target
+                        const smartSourceId = this.generateSmartStateName(sourceId);
+                        const smartTargetId = this.generateSmartStateName(targetId);
+
                         const existingTransition = transitionsData.find(t =>
-                            t.sourceId === sourceId && t.targetId === targetId
+                            t.sourceId === smartSourceId && t.targetId === smartTargetId
                         );
 
                         if (existingTransition) {
@@ -403,16 +611,16 @@ class RegexConversionManager {
                             }
                         } else {
                             transitionsData.push({
-                                id: `${sourceId}-${targetId}-${symbol || 'epsilon'}`,
-                                sourceId: sourceId,
-                                targetId: targetId,
+                                id: `${smartSourceId}-${smartTargetId}-${symbol || 'epsilon'}`,
+                                sourceId: smartSourceId,
+                                targetId: smartTargetId,
                                 symbols: symbol === '' ? [] : [symbol],
                                 hasEpsilon: symbol === '',
                                 visual: {
-                                    connectorType: sourceId === targetId ? 'Bezier' : 'Straight',
-                                    isCurved: sourceId === targetId,
+                                    connectorType: smartSourceId === smartTargetId ? 'Bezier' : 'Straight',
+                                    isCurved: smartSourceId === smartTargetId,
                                     labelLocation: 0.3,
-                                    anchors: sourceId === targetId ? ['Top', 'Left'] : ['Continuous', 'Continuous']
+                                    anchors: smartSourceId === smartTargetId ? ['Top', 'Left'] : ['Continuous', 'Continuous']
                                 }
                             });
                         }
@@ -427,7 +635,7 @@ class RegexConversionManager {
             metadata: { name, description, creator: "FSA Simulator - REGEX Converter", tags },
             states: statesData,
             transitions: transitionsData,
-            startingState: epsilonNFA.startingState,
+            startingState: this.generateSmartStateName(fsa.startingState),
             canvasProperties: {
                 dimensions: { width: 800, height: 600 },
                 viewport: { scrollLeft: 0, scrollTop: 0 },
@@ -435,19 +643,6 @@ class RegexConversionManager {
                 backgroundColor: '#ffffff'
             }
         };
-    }
-
-    /**
-     * Show conversion results
-     */
-    showConversionResults(result) {
-        const stats = result.statistics;
-        const regexString = this.currentRegexInput || 'regular expression';
-
-        notificationManager.showSuccess(
-            'REGEX Conversion Complete',
-            `Successfully converted "${regexString}" to ε-NFA with ${stats.states_count} states and ${stats.transitions_count} transitions.`
-        );
     }
 
     /**

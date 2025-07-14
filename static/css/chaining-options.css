@@ -1,0 +1,527 @@
+/* Scrollable Content for REGEX Modal Only - FIXED */
+.file-operation-popup.regex-convert {
+    max-height: 90vh !important;
+}
+
+.file-operation-popup.regex-convert .file-operation-content.scrollable-content {
+    max-height: 60vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-right: 8px;
+}
+
+/* Ensure proper display */
+.file-operation-popup.regex-convert .file-operation-content.scrollable-content {
+    display: block !important;
+}
+
+/* Custom scrollbar styling for REGEX modal scrollable content */
+.file-operation-popup.regex-convert .file-operation-content.scrollable-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.file-operation-popup.regex-convert .file-operation-content.scrollable-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+.file-operation-popup.regex-convert .file-operation-content.scrollable-content::-webkit-scrollbar-thumb {
+    background: rgba(108, 117, 125, 0.5);
+    border-radius: 4px;
+    transition: background-color var(--transition-fast);
+}
+
+.file-operation-popup.regex-convert .file-operation-content.scrollable-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(108, 117, 125, 0.7);
+}
+
+/* Firefox scrollbar styling for REGEX modal */
+.file-operation-popup.regex-convert .file-operation-content.scrollable-content {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(108, 117, 125, 0.5) rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Option Title and Description - Fixed Text Colors */
+.option-title {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: #333 !important; /* Force dark color */
+    line-height: 1.2;
+}
+
+.option-description {
+    font-size: var(--font-size-xs);
+    color: #333 !important; /* Force dark color */
+    line-height: 1.3;
+    margin: 0;
+}
+
+/* Specific overrides for all popup types */
+.file-operation-popup .option-title,
+.file-operation-popup.convert .option-title,
+.file-operation-popup.regex-convert .option-title {
+    color: #333 !important;
+}
+
+.file-operation-popup .option-description,
+.file-operation-popup.convert .option-description,
+.file-operation-popup.regex-convert .option-description {
+    color: #333 !important;
+}
+
+.checkbox-option.dependent.disabled .option-title {
+    color: #999 !important;
+}
+
+.checkbox-option.dependent.disabled .option-description {
+    color: #aaa !important;
+}
+
+/* Chaining Options Styles */
+.chaining-options {
+    margin: var(--spacing-lg) 0;
+    padding: var(--spacing-md);
+    background: rgba(76, 175, 80, 0.05);
+    border: 1px solid rgba(76, 175, 80, 0.2);
+    border-radius: 6px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.chaining-options h4 {
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--primary-color);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.chaining-options h4::before {
+    content: '⚡';
+    font-size: var(--font-size-lg);
+}
+
+/* Option Group Container */
+.option-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+/* Individual Checkbox Option */
+.checkbox-option {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border: 1px solid rgba(76, 175, 80, 0.2);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.7);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+.checkbox-option:hover {
+    background: rgba(76, 175, 80, 0.1);
+    border-color: rgba(76, 175, 80, 0.4);
+    box-shadow: 0 2px 4px rgba(76, 175, 80, 0.1);
+}
+
+.checkbox-option.dependent {
+    margin-left: var(--spacing-lg);
+    border-color: rgba(76, 175, 80, 0.15);
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.checkbox-option.dependent.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: rgba(200, 200, 200, 0.1);
+    border-color: rgba(200, 200, 200, 0.2);
+}
+
+.checkbox-option.dependent.disabled:hover {
+    background: rgba(200, 200, 200, 0.1);
+    border-color: rgba(200, 200, 200, 0.2);
+    box-shadow: none;
+}
+
+/* Chain Checkbox Styling */
+.chain-checkbox {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--primary-color);
+    flex-shrink: 0;
+    margin-top: 2px; /* Align with first line of text */
+}
+
+.chain-checkbox:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Checkbox Labels */
+.checkbox-option label {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    margin: 0;
+}
+
+.checkbox-option.dependent.disabled label {
+    cursor: not-allowed;
+}
+
+/* Specific Styling for Different Transform Types */
+
+/* REGEX Conversion Chaining Options */
+.file-operation-popup.regex-convert .chaining-options {
+    background: rgba(33, 150, 243, 0.05);
+    border-color: rgba(33, 150, 243, 0.2);
+    border-left-color: var(--secondary-color);
+}
+
+.file-operation-popup.regex-convert .chaining-options h4 {
+    color: var(--secondary-color);
+}
+
+.file-operation-popup.regex-convert .checkbox-option {
+    border-color: rgba(33, 150, 243, 0.2);
+}
+
+.file-operation-popup.regex-convert .checkbox-option:hover {
+    background: rgba(33, 150, 243, 0.1);
+    border-color: rgba(33, 150, 243, 0.4);
+    box-shadow: 0 2px 4px rgba(33, 150, 243, 0.1);
+}
+
+.file-operation-popup.regex-convert .chain-checkbox {
+    accent-color: var(--secondary-color);
+}
+
+/* NFA to DFA Conversion Chaining Options */
+.file-operation-popup.convert .chaining-options {
+    background: rgba(33, 150, 243, 0.05);
+    border-color: rgba(33, 150, 243, 0.2);
+    border-left-color: var(--secondary-color);
+}
+
+.file-operation-popup.convert .chaining-options h4 {
+    color: var(--secondary-color);
+}
+
+.file-operation-popup.convert .checkbox-option {
+    border-color: rgba(33, 150, 243, 0.2);
+}
+
+.file-operation-popup.convert .checkbox-option:hover {
+    background: rgba(33, 150, 243, 0.1);
+    border-color: rgba(33, 150, 243, 0.4);
+    box-shadow: 0 2px 4px rgba(33, 150, 243, 0.1);
+}
+
+.file-operation-popup.convert .chain-checkbox {
+    accent-color: var(--secondary-color);
+}
+
+/* Dependent Option Indicators */
+.checkbox-option.dependent::before {
+    content: '└─';
+    position: absolute;
+    left: calc(var(--spacing-md) - 2px);
+    top: calc(var(--spacing-sm) + 2px);
+    color: rgba(76, 175, 80, 0.5);
+    font-family: monospace;
+    font-size: var(--font-size-xs);
+    pointer-events: none;
+}
+
+.file-operation-popup.regex-convert .checkbox-option.dependent::before,
+.file-operation-popup.convert .checkbox-option.dependent::before {
+    color: rgba(33, 150, 243, 0.5);
+}
+
+.checkbox-option.dependent.disabled::before {
+    color: rgba(200, 200, 200, 0.5);
+}
+
+/* Checkbox States and Focus */
+.chain-checkbox:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.file-operation-popup.regex-convert .chain-checkbox:focus,
+.file-operation-popup.convert .chain-checkbox:focus {
+    outline-color: var(--secondary-color);
+}
+
+/* Checked State Styling */
+.checkbox-option:has(.chain-checkbox:checked) {
+    background: rgba(76, 175, 80, 0.15);
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 6px rgba(76, 175, 80, 0.2);
+}
+
+.file-operation-popup.regex-convert .checkbox-option:has(.chain-checkbox:checked),
+.file-operation-popup.convert .checkbox-option:has(.chain-checkbox:checked) {
+    background: rgba(33, 150, 243, 0.15);
+    border-color: var(--secondary-color);
+    box-shadow: 0 2px 6px rgba(33, 150, 243, 0.2);
+}
+
+.checkbox-option:has(.chain-checkbox:checked) .option-title {
+    color: var(--primary-color);
+    font-weight: var(--font-weight-bold);
+}
+
+.file-operation-popup.regex-convert .checkbox-option:has(.chain-checkbox:checked) .option-title,
+.file-operation-popup.convert .checkbox-option:has(.chain-checkbox:checked) .option-title {
+    color: var(--secondary-color);
+}
+
+/* Animation for checking/unchecking */
+.checkbox-option {
+    transform: scale(1);
+    transition: all var(--transition-fast), transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.checkbox-option:has(.chain-checkbox:checked) {
+    transform: scale(1.02);
+}
+
+/* Progressive Disclosure Animation */
+.checkbox-option.dependent {
+    transition: all var(--transition-fast), opacity var(--transition-normal), transform var(--transition-normal);
+}
+
+.checkbox-option.dependent.disabled {
+    transform: translateX(-5px);
+}
+
+.checkbox-option.dependent:not(.disabled) {
+    transform: translateX(0);
+}
+
+/* Loading State for Chain Operations */
+.chaining-options.processing {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.chaining-options.processing::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: var(--spacing-md);
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: chain-spin 1s linear infinite;
+}
+
+@keyframes chain-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design for Chaining Options */
+@media (max-width: 768px) {
+    .chaining-options {
+        padding: var(--spacing-sm);
+        margin: var(--spacing-md) 0;
+    }
+
+    .checkbox-option {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .checkbox-option.dependent {
+        margin-left: var(--spacing-md);
+    }
+
+    .option-title {
+        font-size: var(--font-size-xs);
+    }
+
+    .option-description {
+        font-size: 10px;
+        line-height: 1.2;
+    }
+
+    .chain-checkbox {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .chaining-options {
+        padding: var(--spacing-xs);
+    }
+
+    .checkbox-option {
+        padding: var(--spacing-xs);
+        gap: var(--spacing-xs);
+    }
+
+    .checkbox-option.dependent {
+        margin-left: var(--spacing-sm);
+    }
+
+    .checkbox-option.dependent::before {
+        left: calc(var(--spacing-xs) - 2px);
+    }
+
+    .chaining-options h4 {
+        font-size: var(--font-size-sm);
+        margin-bottom: var(--spacing-sm);
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .checkbox-option {
+        border-width: 2px;
+    }
+
+    .checkbox-option:hover {
+        border-width: 2px;
+    }
+
+    .option-description {
+        color: var(--text-color);
+    }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .checkbox-option,
+    .checkbox-option.dependent {
+        transition: none;
+    }
+
+    .checkbox-option:has(.chain-checkbox:checked) {
+        transform: none;
+    }
+
+    .chaining-options.processing::after {
+        animation: none;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .chaining-options {
+        background: rgba(76, 175, 80, 0.1);
+        border-color: rgba(76, 175, 80, 0.3);
+    }
+
+    .checkbox-option {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(76, 175, 80, 0.3);
+    }
+
+    .checkbox-option:hover {
+        background: rgba(76, 175, 80, 0.2);
+    }
+
+    .option-title {
+        color: #e2e8f0;
+    }
+
+    .option-description {
+        color: #a0aec0;
+    }
+
+    .file-operation-popup.regex-convert .chaining-options,
+    .file-operation-popup.convert .chaining-options {
+        background: rgba(33, 150, 243, 0.1);
+        border-color: rgba(33, 150, 243, 0.3);
+    }
+
+    .file-operation-popup.regex-convert .checkbox-option,
+    .file-operation-popup.convert .checkbox-option {
+        border-color: rgba(33, 150, 243, 0.3);
+    }
+
+    .file-operation-popup.regex-convert .checkbox-option:hover,
+    .file-operation-popup.convert .checkbox-option:hover {
+        background: rgba(33, 150, 243, 0.2);
+    }
+}
+
+/* Integration with Existing Info Sections */
+.chaining-options + .warning-section {
+    margin-top: var(--spacing-lg);
+}
+
+.chaining-options + .info-section {
+    margin-top: var(--spacing-lg);
+}
+
+/* Ensure proper spacing with other popup elements */
+.file-operation-description + .chaining-options {
+    margin-top: var(--spacing-lg);
+}
+
+.states-info + .chaining-options {
+    margin-top: var(--spacing-lg);
+}
+
+.examples-section + .chaining-options {
+    margin-top: var(--spacing-lg);
+}
+
+/* Custom styling for operation chain indicators */
+.operation-chain-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    color: var(--text-gray);
+    margin-top: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(200, 200, 200, 0.3);
+}
+
+.operation-chain-indicator .chain-arrow {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+.file-operation-popup.regex-convert .operation-chain-indicator .chain-arrow,
+.file-operation-popup.convert .operation-chain-indicator .chain-arrow {
+    color: var(--secondary-color);
+}
+
+/* Success state for completed chain operations */
+.chain-success-indicator {
+    color: var(--success-color);
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background-color: rgba(76, 175, 80, 0.1);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--success-color);
+    margin-top: var(--spacing-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.chain-success-indicator::before {
+    content: '✓';
+    font-weight: bold;
+}

@@ -231,6 +231,7 @@ class FSATransformManager {
             <div class="file-operation-content">
                 ${popupContent.description}
                 ${popupContent.statesInfo}
+                ${popupContent.chainingOptions || ''}
                 ${popupContent.warningSection}
             </div>
             <div class="file-operation-actions">
@@ -248,7 +249,47 @@ class FSATransformManager {
         const canvas = document.getElementById('fsa-canvas');
         if (canvas) {
             canvas.appendChild(popup);
+
+            // Setup event handlers for chaining options if present
+            this.setupTransformPopupHandlers(type);
+
             setTimeout(() => popup.classList.add('show'), 100);
+        }
+    }
+
+    /**
+     * Setup event handlers for transform popup chaining options
+     */
+    setupTransformPopupHandlers(type) {
+        if (type === 'convert') {
+            const minimizeCheckbox = document.getElementById('minimize-after-convert-option');
+            const confirmBtn = document.getElementById('transform-confirm-btn');
+
+            if (minimizeCheckbox && confirmBtn) {
+                minimizeCheckbox.addEventListener('change', () => {
+                    this.updateTransformButtonText(type);
+                });
+
+                // Initialize button text
+                this.updateTransformButtonText(type);
+            }
+        }
+    }
+
+    /**
+     * Update transform button text based on selected options
+     */
+    updateTransformButtonText(type) {
+        const confirmBtn = document.getElementById('transform-confirm-btn');
+        if (!confirmBtn) return;
+
+        if (type === 'convert') {
+            const minimizeCheckbox = document.getElementById('minimize-after-convert-option');
+            if (minimizeCheckbox && minimizeCheckbox.checked) {
+                confirmBtn.textContent = 'Convert to Minimal DFA';
+            } else {
+                confirmBtn.textContent = 'Convert to DFA';
+            }
         }
     }
 
@@ -293,6 +334,20 @@ class FSATransformManager {
                         <span class="states-count">${summary.total_states} states</span> 
                         and <span class="states-count">${transitionCount} transitions</span>
                     </div>`,
+                    chainingOptions: `
+                        <div class="chaining-options">
+                            <h4>Additional Operations:</h4>
+                            <div class="option-group">
+                                <div class="checkbox-option">
+                                    <input type="checkbox" id="minimize-after-convert-option" class="chain-checkbox">
+                                    <label for="minimize-after-convert-option">
+                                        <span class="option-title">Minimize DFA</span>
+                                        <span class="option-description">Remove redundant states after conversion</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    `,
                     warningSection: this.generateWarningSection(
                         'This operation will permanently replace the current automaton with an equivalent DFA. ' +
                         (isDeterministic ? 'The resulting DFA may have a similar number of states.' :
@@ -399,8 +454,6 @@ class FSATransformManager {
             popup.classList.add('hide');
             setTimeout(() => popup.parentNode?.removeChild(popup), 300);
         }
-        // Don't clear the transform data here as it's needed for the operation
-        // It will be cleared after the operation completes or fails
     }
 
     /**
@@ -420,6 +473,13 @@ class FSATransformManager {
 
         const config = this.transformConfigs[this.currentTransformType];
 
+        // Get chaining options for convert operation
+        let shouldMinimize = false;
+        if (this.currentTransformType === 'convert') {
+            const minimizeCheckbox = document.getElementById('minimize-after-convert-option');
+            shouldMinimize = minimizeCheckbox && minimizeCheckbox.checked;
+        }
+
         // Show loading state
         confirmBtn.textContent = 'Processing...';
         confirmBtn.disabled = true;
@@ -428,10 +488,11 @@ class FSATransformManager {
             // Create snapshot for undo/redo
             let snapshotCommand = null;
             if (undoRedoManager && !undoRedoManager.isProcessing()) {
-                snapshotCommand = undoRedoManager.createSnapshotCommand(config.undoLabel);
+                const operationLabel = shouldMinimize ? 'Convert NFA to Minimal DFA' : config.undoLabel;
+                snapshotCommand = undoRedoManager.createSnapshotCommand(operationLabel);
             }
 
-            // Call backend API
+            // Call backend API for primary operation
             const response = await fetch(config.apiEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -443,16 +504,36 @@ class FSATransformManager {
                 throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
 
-            const result = await response.json();
+            let result = await response.json();
+
+            // Chain minimization if requested for convert operation
+            if (this.currentTransformType === 'convert' && shouldMinimize) {
+                confirmBtn.textContent = 'Minimizing DFA...';
+
+                const minimizeResponse = await fetch('/api/minimise-dfa/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fsa: result.converted_dfa })
+                });
+
+                if (!minimizeResponse.ok) {
+                    const errorData = await minimizeResponse.json();
+                    throw new Error(errorData.error || `DFA minimization failed: ${minimizeResponse.status}`);
+                }
+
+                const minimizeResult = await minimizeResponse.json();
+                result.minimised_dfa = minimizeResult.minimised_fsa;
+                result.minimization_statistics = minimizeResult.statistics;
+            }
 
             // Hide popup
             this.hideTransformPopup();
 
             // Replace FSA
-            await this.replaceWithTransformedFSA(this.currentTransformType, result);
+            await this.replaceWithTransformedFSA(this.currentTransformType, result, shouldMinimize);
 
             // Show results
-            this.showTransformResults(this.currentTransformType, result);
+            this.showTransformResults(this.currentTransformType, result, shouldMinimize);
 
             // Finish undo/redo snapshot
             if (snapshotCommand) {
@@ -477,34 +558,44 @@ class FSATransformManager {
     /**
      * Replace current FSA with transformed version
      */
-    async replaceWithTransformedFSA(type, result) {
+    async replaceWithTransformedFSA(type, result, shouldMinimize = false) {
         const originalPositions = this.getOriginalStatePositions();
 
         await fsaSerializationManager.clearCurrentFSA(this.jsPlumbInstance);
 
-        // Get the transformed FSA data based on type
-        const fsaDataMap = {
-            minimize: result.minimised_fsa,
-            convert: result.converted_dfa,
-            complete: result.completed_fsa,
-            complement: result.complement_fsa
-        };
+        // Get the transformed FSA data based on type and chaining
+        let transformedFSA;
+        let description;
+        let tags;
 
-        const transformedFSA = fsaDataMap[type];
-        const config = this.transformConfigs[type];
+        if (type === 'convert' && shouldMinimize && result.minimised_dfa) {
+            transformedFSA = result.minimised_dfa;
+            description = 'Minimal DFA generated by NFA to DFA conversion followed by minimization';
+            tags = ['converted', 'minimized', 'dfa'];
+        } else {
+            const fsaDataMap = {
+                minimize: result.minimised_fsa,
+                convert: result.converted_dfa,
+                complete: result.completed_fsa,
+                complement: result.complement_fsa
+            };
 
-        // Calculate positions using NEW layered positioning algorithm
-        const newPositions = this.calculateTransformPositions(
-            type, result.original_fsa, transformedFSA, originalPositions
-        );
+            transformedFSA = fsaDataMap[type];
+            const config = this.transformConfigs[type];
+            description = `FSA generated by ${config.name.toLowerCase()}`;
+            tags = config.tags;
+        }
+
+        // Calculate positions using layered positioning algorithm
+        const newPositions = calculateTransformLayout(transformedFSA);
 
         // Create serialized data
         const serializedFSA = this.createSerializedFSA(
             transformedFSA,
             newPositions,
-            `${config.name} Result`,
-            `FSA generated by ${config.name.toLowerCase()}`,
-            config.tags
+            shouldMinimize ? 'Minimal DFA from Conversion' : `${this.transformConfigs[type].name} Result`,
+            description,
+            tags
         );
 
         // Load the transformed FSA
@@ -513,101 +604,11 @@ class FSATransformManager {
     }
 
     /**
-     * Calculate state positions for transformed FSA using NEW layered algorithm
+     * Calculate state positions for transformed FSA using layered algorithm
      */
     calculateTransformPositions(type, originalFSA, transformedFSA, originalPositions) {
         console.log(`Calculating positions for ${type} transformation`);
-
-        // For all transformations, use the layered hierarchical layout
         return calculateTransformLayout(transformedFSA);
-    }
-
-    /**
-     * Handle positioning for minimize operation
-     * LEGACY: Kept for reference, but not used with new layered algorithm
-     */
-    handleMinimizePositions(transformedFSA, originalPositions) {
-        // For minimization, we want to place merged states at centroids of original states
-        const positions = {};
-
-        transformedFSA.states.forEach(stateId => {
-            const originalIds = this.parseOriginalStates(stateId);
-
-            if (originalIds.length > 0) {
-                // Calculate centroid of original states
-                let totalX = 0, totalY = 0, validCount = 0;
-
-                originalIds.forEach(originalId => {
-                    if (originalPositions[originalId]) {
-                        totalX += originalPositions[originalId].x;
-                        totalY += originalPositions[originalId].y;
-                        validCount++;
-                    }
-                });
-
-                if (validCount > 0) {
-                    positions[stateId] = {
-                        x: Math.round(totalX / validCount),
-                        y: Math.round(totalY / validCount)
-                    };
-                }
-            }
-        });
-
-        // Use positioning utility to refine layout and handle missing positions
-        return calculateStatePositions(transformedFSA, positions, { preserveExisting: true });
-    }
-
-    /**
-     * Handle positioning for convert operation
-     * LEGACY: Kept for reference, but not used with new layered algorithm
-     */
-    handleConvertPositions(transformedFSA, originalPositions) {
-        // For NFA to DFA conversion, subset states should be positioned based on their components
-        const positions = {};
-
-        transformedFSA.states.forEach(stateId => {
-            const originalIds = this.parseOriginalStates(stateId);
-
-            if (originalIds.length > 0) {
-                // Calculate centroid of subset states
-                let totalX = 0, totalY = 0, validCount = 0;
-
-                originalIds.forEach(originalId => {
-                    if (originalPositions[originalId]) {
-                        totalX += originalPositions[originalId].x;
-                        totalY += originalPositions[originalId].y;
-                        validCount++;
-                    }
-                });
-
-                if (validCount > 0) {
-                    positions[stateId] = {
-                        x: Math.round(totalX / validCount),
-                        y: Math.round(totalY / validCount)
-                    };
-                }
-            }
-        });
-
-        // Use positioning utility to optimize layout based on transitions
-        return calculateStatePositions(transformedFSA, positions);
-    }
-
-    /**
-     * Parse original state IDs from transformed state name
-     */
-    parseOriginalStates(stateName) {
-        if (stateName === 'EMPTY' || stateName.startsWith('DEAD')) {
-            return [];
-        }
-
-        if (stateName.includes('_PLUS_') && stateName.includes('more_H')) {
-            const firstPart = stateName.split('_PLUS_')[0];
-            return firstPart.split('_');
-        }
-
-        return stateName.split('_').filter(id => id && id !== 'EMPTY');
     }
 
     /**
@@ -628,19 +629,48 @@ class FSATransformManager {
     }
 
     /**
+     * Generate smart state name using first and last approach
+     * @param {string} stateId - Original state ID (potentially merged like "S0_S1_S3_S5_S6_S7_S8")
+     * @returns {string} - Smart state name
+     */
+    generateSmartStateName(stateId) {
+        // If no underscore, it's not a merged state
+        if (!stateId.includes('_')) {
+            return stateId;
+        }
+
+        const parts = stateId.split('_');
+
+        // If only 2-3 parts, keep the full name
+        if (parts.length <= 3) {
+            return stateId;
+        }
+
+        // Use first and last with underscore
+        const first = parts[0];
+        const last = parts[parts.length - 1];
+        return `${first}_${last}`;
+    }
+
+    /**
      * Create serialized FSA data
      */
     createSerializedFSA(fsa, positions, name, description, tags) {
-        const statesData = fsa.states.map(stateId => ({
-            id: stateId,
-            label: stateId,
-            isAccepting: fsa.acceptingStates.includes(stateId),
-            position: positions[stateId] || { x: 100, y: 100 },
-            visual: {
-                className: fsa.acceptingStates.includes(stateId) ? 'accepting-state' : 'state',
-                zIndex: 'auto'
-            }
-        }));
+        const statesData = fsa.states.map(stateId => {
+            // Apply smart naming for merged states
+            const displayName = this.generateSmartStateName(stateId);
+
+            return {
+                id: displayName,
+                label: displayName,
+                isAccepting: fsa.acceptingStates.includes(stateId),
+                position: positions[stateId] || { x: 100, y: 100 },
+                visual: {
+                    className: fsa.acceptingStates.includes(stateId) ? 'accepting-state' : 'state',
+                    zIndex: 'auto'
+                }
+            };
+        });
 
         const transitionsData = [];
         Object.entries(fsa.transitions).forEach(([sourceId, transitions]) => {
@@ -648,8 +678,12 @@ class FSATransformManager {
                 if (targets && targets.length > 0) {
                     const targetId = targets[0];
 
+                    // Apply smart naming to source and target
+                    const smartSourceId = this.generateSmartStateName(sourceId);
+                    const smartTargetId = this.generateSmartStateName(targetId);
+
                     const existingTransition = transitionsData.find(t =>
-                        t.sourceId === sourceId && t.targetId === targetId
+                        t.sourceId === smartSourceId && t.targetId === smartTargetId
                     );
 
                     if (existingTransition) {
@@ -660,16 +694,16 @@ class FSATransformManager {
                         }
                     } else {
                         transitionsData.push({
-                            id: `${sourceId}-${targetId}-${symbol}`,
-                            sourceId: sourceId,
-                            targetId: targetId,
+                            id: `${smartSourceId}-${smartTargetId}-${symbol}`,
+                            sourceId: smartSourceId,
+                            targetId: smartTargetId,
                             symbols: symbol === '' ? [] : [symbol],
                             hasEpsilon: symbol === '',
                             visual: {
-                                connectorType: sourceId === targetId ? 'Bezier' : 'Straight',
-                                isCurved: sourceId === targetId,
+                                connectorType: smartSourceId === smartTargetId ? 'Bezier' : 'Straight',
+                                isCurved: smartSourceId === smartTargetId,
                                 labelLocation: 0.3,
-                                anchors: sourceId === targetId ? ['Top', 'Left'] : ['Continuous', 'Continuous']
+                                anchors: smartSourceId === smartTargetId ? ['Top', 'Left'] : ['Continuous', 'Continuous']
                             }
                         });
                     }
@@ -683,7 +717,7 @@ class FSATransformManager {
             metadata: { name, description, creator: "FSA Simulator", tags },
             states: statesData,
             transitions: transitionsData,
-            startingState: fsa.startingState,
+            startingState: this.generateSmartStateName(fsa.startingState),
             canvasProperties: {
                 dimensions: { width: 800, height: 600 },
                 viewport: { scrollLeft: 0, scrollTop: 0 },
@@ -696,15 +730,35 @@ class FSATransformManager {
     /**
      * Show transform results
      */
-    showTransformResults(type, result) {
-        const resultHandlers = {
-            minimize: () => this.showMinimizationResults(result),
-            convert: () => this.showConversionResults(result),
-            complete: () => this.showCompletionResults(result),
-            complement: () => this.showComplementResults(result)
-        };
+    showTransformResults(type, result, shouldMinimize = false) {
+        if (type === 'convert' && shouldMinimize) {
+            this.showChainedConversionResults(result);
+        } else {
+            const resultHandlers = {
+                minimize: () => this.showMinimizationResults(result),
+                convert: () => this.showConversionResults(result),
+                complete: () => this.showCompletionResults(result),
+                complement: () => this.showComplementResults(result)
+            };
 
-        resultHandlers[type]();
+            resultHandlers[type]();
+        }
+    }
+
+    /**
+     * Show results for chained conversion + minimization
+     */
+    showChainedConversionResults(result) {
+        const conversionStats = result.statistics;
+        const minimizationStats = result.minimization_statistics;
+
+        notificationManager.showSuccess(
+            'NFA to Minimal DFA Complete',
+            `Successfully converted NFA to DFA and minimized.\n` +
+            `Conversion: ${conversionStats.original.states_count} → ${conversionStats.converted.states_count} states\n` +
+            `Minimization: ${conversionStats.converted.states_count} → ${minimizationStats.minimised.states_count} states\n` +
+            `Final result: ${minimizationStats.minimised.states_count} states, ${minimizationStats.minimised.transitions_count} transitions`
+        );
     }
 
     /**
