@@ -5,6 +5,7 @@ import { undoRedoManager } from './undoRedoManager.js';
 import { menuManager } from './menuManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 import { calculateTransformLayout } from './positioningUtils.js';
+import { SafeStateNameGenerator } from './transformManager.js'; // Import from transformManager
 
 /**
  * REGEX Conversion Manager - handles REGEX to FSA conversion operations
@@ -14,6 +15,7 @@ class RegexConversionManager {
         this.jsPlumbInstance = null;
         this.currentRegexData = null;
         this.currentRegexInput = null;
+        this.stateNameGenerator = new SafeStateNameGenerator(); // Add the safe name generator
 
         // Conversion configuration
         this.conversionConfig = {
@@ -547,40 +549,37 @@ class RegexConversionManager {
     }
 
     /**
-     * Generate smart state name using first and last approach
+     * Generate safe state name with collision detection
      * @param {string} stateId - Original state ID (potentially merged like "S0_S1_S3_S5_S6_S7_S8")
-     * @returns {string} - Smart state name
+     * @param {Array} allStateIds - All state IDs to check for collisions
+     * @returns {string} - Safe state name
      */
-    generateSmartStateName(stateId) {
-        // If no underscore, it's not a merged state
-        if (!stateId.includes('_')) {
-            return stateId;
+    generateSmartStateName(stateId, allStateIds = null) {
+        // If we have all state IDs, use batch processing for complete safety
+        if (allStateIds) {
+            const mapping = this.stateNameGenerator.generateSafeMapping(allStateIds);
+            return mapping[stateId];
         }
 
-        const parts = stateId.split('_');
-
-        // If only 2-3 parts, keep the full name
-        if (parts.length <= 3) {
-            return stateId;
-        }
-
-        // Use first and last with underscore
-        const first = parts[0];
-        const last = parts[parts.length - 1];
-        return `${first}_${last}`;
+        // Fallback for single state processing
+        return this.stateNameGenerator.generateSafeStateName(stateId);
     }
 
     /**
      * Create serialized NFA data
      */
     createSerializedFSA(fsa, positions, name, description, tags) {
+        // Reset the name generator and create safe mapping for all states
+        this.stateNameGenerator.reset();
+        const stateNameMapping = this.stateNameGenerator.generateSafeMapping(fsa.states);
+
         const statesData = fsa.states.map(stateId => {
-            // Apply smart naming for merged states
-            const displayName = this.generateSmartStateName(stateId);
+            // Use the safe name from the mapping
+            const safeName = stateNameMapping[stateId];
 
             return {
-                id: displayName,
-                label: displayName,
+                id: safeName,
+                label: safeName,
                 isAccepting: fsa.acceptingStates.includes(stateId),
                 position: positions[stateId] || { x: 100, y: 100 },
                 visual: {
@@ -595,9 +594,9 @@ class RegexConversionManager {
             Object.entries(transitions).forEach(([symbol, targets]) => {
                 if (targets && targets.length > 0) {
                     targets.forEach(targetId => {
-                        // Apply smart naming to source and target
-                        const smartSourceId = this.generateSmartStateName(sourceId);
-                        const smartTargetId = this.generateSmartStateName(targetId);
+                        // Apply safe naming to source and target using the mapping
+                        const smartSourceId = stateNameMapping[sourceId];
+                        const smartTargetId = stateNameMapping[targetId];
 
                         const existingTransition = transitionsData.find(t =>
                             t.sourceId === smartSourceId && t.targetId === smartTargetId
@@ -635,7 +634,7 @@ class RegexConversionManager {
             metadata: { name, description, creator: "FSA Simulator - REGEX Converter", tags },
             states: statesData,
             transitions: transitionsData,
-            startingState: this.generateSmartStateName(fsa.startingState),
+            startingState: stateNameMapping[fsa.startingState],
             canvasProperties: {
                 dimensions: { width: 800, height: 600 },
                 viewport: { scrollLeft: 0, scrollTop: 0 },

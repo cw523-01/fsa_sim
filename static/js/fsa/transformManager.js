@@ -11,6 +11,112 @@ import {
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 
 /**
+ * Safe state name generator that prevents collisions
+ * Used by both transform and regex conversion managers
+ */
+class SafeStateNameGenerator {
+    constructor() {
+        this.usedNames = new Set();
+    }
+
+    /**
+     * Reset the used names tracking (call this at the start of each conversion)
+     */
+    reset() {
+        this.usedNames.clear();
+    }
+
+    /**
+     * Generate a safe, unique state name from a potentially merged state ID
+     * @param {string} stateId - Original state ID (potentially merged like "S0_S1_S3_S5_S6_S7_S8")
+     * @returns {string} - Safe, unique state name
+     */
+    generateSafeStateName(stateId) {
+        // If no underscore, it's not a merged state - check for uniqueness anyway
+        if (!stateId.includes('_')) {
+            return this.ensureUnique(stateId);
+        }
+
+        const parts = stateId.split('_');
+
+        // If only 2-3 parts, keep the full name
+        if (parts.length <= 3) {
+            return this.ensureUnique(stateId);
+        }
+
+        // Try the first_last approach first
+        const first = parts[0];
+        const last = parts[parts.length - 1];
+        const firstLastName = `${first}_${last}`;
+
+        if (!this.usedNames.has(firstLastName)) {
+            this.usedNames.add(firstLastName);
+            return firstLastName;
+        }
+
+        // If first_last is taken, try progressively longer names
+        for (let endIndex = parts.length - 2; endIndex >= 1; endIndex--) {
+            const candidateName = `${first}_${parts.slice(endIndex).join('_')}`;
+            if (!this.usedNames.has(candidateName)) {
+                this.usedNames.add(candidateName);
+                return candidateName;
+            }
+        }
+
+        // If we still have conflicts, try adding from the beginning
+        for (let startIndex = 1; startIndex < parts.length - 1; startIndex++) {
+            const candidateName = `${parts.slice(0, startIndex + 1).join('_')}_${last}`;
+            if (!this.usedNames.has(candidateName)) {
+                this.usedNames.add(candidateName);
+                return candidateName;
+            }
+        }
+
+        // Last resort: use the full original name
+        return this.ensureUnique(stateId);
+    }
+
+    /**
+     * Ensure a name is unique by adding a counter if needed
+     * @param {string} baseName - The base name to make unique
+     * @returns {string} - Unique name
+     */
+    ensureUnique(baseName) {
+        if (!this.usedNames.has(baseName)) {
+            this.usedNames.add(baseName);
+            return baseName;
+        }
+
+        // Add counter suffix until we find a unique name
+        let counter = 1;
+        let candidateName;
+        do {
+            candidateName = `${baseName}_${counter}`;
+            counter++;
+        } while (this.usedNames.has(candidateName));
+
+        this.usedNames.add(candidateName);
+        return candidateName;
+    }
+
+    /**
+     * Batch process all state names to ensure no collisions
+     * @param {Array} stateIds - Array of original state IDs
+     * @returns {Object} - Mapping from original ID to safe name
+     */
+    generateSafeMapping(stateIds) {
+        this.reset();
+        const mapping = {};
+
+        stateIds.forEach(stateId => {
+            mapping[stateId] = this.generateSafeStateName(stateId);
+        });
+
+        return mapping;
+    }
+}
+
+/**
  * FSA Transform Manager - handles FSA transformation operations with unified menu system
  */
 class FSATransformManager {
@@ -18,6 +124,7 @@ class FSATransformManager {
         this.jsPlumbInstance = null;
         this.currentTransformData = null;
         this.currentTransformType = null;
+        this.stateNameGenerator = new SafeStateNameGenerator();
 
         // Transform configurations
         this.transformConfigs = {
@@ -629,40 +736,37 @@ class FSATransformManager {
     }
 
     /**
-     * Generate smart state name using first and last approach
+     * Generate safe state name with collision detection
      * @param {string} stateId - Original state ID (potentially merged like "S0_S1_S3_S5_S6_S7_S8")
-     * @returns {string} - Smart state name
+     * @param {Array} allStateIds - All state IDs to check for collisions
+     * @returns {string} - Safe state name
      */
-    generateSmartStateName(stateId) {
-        // If no underscore, it's not a merged state
-        if (!stateId.includes('_')) {
-            return stateId;
+    generateSmartStateName(stateId, allStateIds = null) {
+        // If we have all state IDs, use batch processing for complete safety
+        if (allStateIds) {
+            const mapping = this.stateNameGenerator.generateSafeMapping(allStateIds);
+            return mapping[stateId];
         }
 
-        const parts = stateId.split('_');
-
-        // If only 2-3 parts, keep the full name
-        if (parts.length <= 3) {
-            return stateId;
-        }
-
-        // Use first and last with underscore
-        const first = parts[0];
-        const last = parts[parts.length - 1];
-        return `${first}_${last}`;
+        // Fallback for single state processing
+        return this.stateNameGenerator.generateSafeStateName(stateId);
     }
 
     /**
      * Create serialized FSA data
      */
     createSerializedFSA(fsa, positions, name, description, tags) {
+        // Reset the name generator and create safe mapping for all states
+        this.stateNameGenerator.reset();
+        const stateNameMapping = this.stateNameGenerator.generateSafeMapping(fsa.states);
+
         const statesData = fsa.states.map(stateId => {
-            // Apply smart naming for merged states
-            const displayName = this.generateSmartStateName(stateId);
+            // Use the safe name from the mapping
+            const safeName = stateNameMapping[stateId];
 
             return {
-                id: displayName,
-                label: displayName,
+                id: safeName,
+                label: safeName,
                 isAccepting: fsa.acceptingStates.includes(stateId),
                 position: positions[stateId] || { x: 100, y: 100 },
                 visual: {
@@ -678,9 +782,9 @@ class FSATransformManager {
                 if (targets && targets.length > 0) {
                     const targetId = targets[0];
 
-                    // Apply smart naming to source and target
-                    const smartSourceId = this.generateSmartStateName(sourceId);
-                    const smartTargetId = this.generateSmartStateName(targetId);
+                    // Apply safe naming to source and target using the mapping
+                    const smartSourceId = stateNameMapping[sourceId];
+                    const smartTargetId = stateNameMapping[targetId];
 
                     const existingTransition = transitionsData.find(t =>
                         t.sourceId === smartSourceId && t.targetId === smartTargetId
@@ -717,7 +821,7 @@ class FSATransformManager {
             metadata: { name, description, creator: "FSA Simulator", tags },
             states: statesData,
             transitions: transitionsData,
-            startingState: this.generateSmartStateName(fsa.startingState),
+            startingState: stateNameMapping[fsa.startingState],
             canvasProperties: {
                 dimensions: { width: 800, height: 600 },
                 viewport: { scrollLeft: 0, scrollTop: 0 },
@@ -864,6 +968,9 @@ class FSATransformManager {
 
 // Create and export singleton instance
 export const fsaTransformManager = new FSATransformManager();
+
+// Export the SafeStateNameGenerator class for use in other managers
+export { SafeStateNameGenerator };
 
 // Make globally available
 window.fsaTransformManager = fsaTransformManager;
