@@ -20,6 +20,7 @@ from .fsa_properties import (
     is_nondeterministic
 )
 from .fsa_transformations import minimise_dfa, nfa_to_dfa, complete_dfa, complement_dfa
+from .minimise_nfa import minimise_nfa
 from .regex_conversions import regex_to_epsilon_nfa
 
 def index(request):
@@ -1156,4 +1157,110 @@ def regex_to_epsilon_nfa(request):
         return JsonResponse({'error': str(e)}, status=400)
     except Exception as e:
         # Unexpected server‑side error
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+@csrf_exempt
+@require_POST
+def min_nfa(request):
+    """
+    Django view to handle NFA minimisation requests.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format (can be deterministic or non-deterministic)
+
+    Returns a JSON response with the minimised NFA.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing FSA definition'}, status=400)
+
+        # Validate FSA structure
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
+
+        # Store original FSA statistics for comparison
+        original_stats = {
+            'states_count': len(fsa['states']),
+            'alphabet_size': len(fsa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in fsa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(fsa['acceptingStates']),
+            'has_epsilon_transitions': any(
+                '' in fsa['transitions'].get(state, {}) and fsa['transitions'][state]['']
+                for state in fsa['states']
+            ),
+            'is_deterministic': is_deterministic(fsa)
+        }
+
+        # Minimise the NFA
+        minimisation_result = minimise_nfa(fsa)
+        minimised_fsa = minimisation_result.nfa
+
+        # Calculate minimised FSA statistics
+        minimised_stats = {
+            'states_count': len(minimised_fsa['states']),
+            'alphabet_size': len(minimised_fsa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in minimised_fsa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(minimised_fsa['acceptingStates']),
+            'has_epsilon_transitions': any(
+                '' in minimised_fsa['transitions'].get(state, {}) and minimised_fsa['transitions'][state]['']
+                for state in minimised_fsa['states']
+            ),
+            'is_deterministic': is_deterministic(minimised_fsa)
+        }
+
+        # Calculate reduction statistics
+        reduction_stats = {
+            'states_reduced': minimisation_result.reduction,
+            'states_reduction_percentage': round(minimisation_result.reduction_percent, 2),
+            'transitions_reduced': original_stats['transitions_count'] - minimised_stats['transitions_count'],
+            'transitions_reduction_percentage': round(
+                ((original_stats['transitions_count'] - minimised_stats['transitions_count']) /
+                 original_stats['transitions_count']) * 100, 2
+            ) if original_stats['transitions_count'] > 0 else 0,
+            'is_already_minimal': minimisation_result.reduction == 0
+        }
+
+        # Build response message
+        if reduction_stats['is_already_minimal']:
+            message = 'NFA was already minimal'
+        else:
+            message = f'NFA minimised successfully using {minimisation_result.method_used}'
+            if minimisation_result.is_optimal:
+                message += ' (optimal result)'
+            else:
+                message += ' (heuristic result)'
+
+        return JsonResponse({
+            'success': True,
+            'original_fsa': fsa,
+            'minimised_fsa': minimised_fsa,
+            'statistics': {
+                'original': original_stats,
+                'minimised': minimised_stats,
+                'reduction': reduction_stats
+            },
+            'minimisation_details': {
+                'method_used': minimisation_result.method_used,
+                'is_optimal': minimisation_result.is_optimal,
+                'stages': minimisation_result.stages,
+                'original_states': minimisation_result.original_states,
+                'final_states': minimisation_result.final_states
+            },
+            'message': message
+        })
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
         return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)

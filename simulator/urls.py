@@ -34,6 +34,7 @@ urlpatterns = [
     path('api/nfa-to-dfa/', views.convert_nfa_to_dfa, name='nfa_to_dfa'),
     path('api/complete-dfa/', views.dfa_to_complete, name='complete_dfa'),
     path('api/complement-dfa/', views.dfa_to_complement, name='complement_dfa'),
+    path('api/minimise-nfa/', views.min_nfa, name='minimise_nfa'),
 
     # REGEX conversion endpoints
     path('api/regex-to-epsilon-nfa/', views.regex_to_epsilon_nfa, name='regex_to_epsilon_nfa'),

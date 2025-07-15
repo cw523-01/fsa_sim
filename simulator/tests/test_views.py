@@ -2796,3 +2796,133 @@ class RegexConversionViewTests(FSAViewTestCase):
 
                 # Should have multiple states due to Thompson construction
                 self.assertGreater(len(nfa['states']), 2)
+
+
+class MinimiseNFAViewTests(FSAViewTestCase):
+    """Tests for the NFA minimisation endpoint"""
+
+    def test_minimize_nfa_successful_deterministic(self):
+        """Test successful NFA minimisation with deterministic input"""
+        response = self.post_json('/api/minimise-nfa/', {
+            'fsa': self.sample_dfa  # DFA is also a valid NFA
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertTrue(data['success'])
+        self.assertIn('minimised_fsa', data)
+        self.assertIn('statistics', data)
+        self.assertIn('minimisation_details', data)
+
+        # Check minimization details
+        details = data['minimisation_details']
+        self.assertIn('method_used', details)
+        self.assertIn('is_optimal', details)
+        self.assertIn('stages', details)
+        self.assertIsInstance(details['stages'], list)
+
+    def test_minimise_nfa_successful_nondeterministic(self):
+        """Test successful NFA minimisation with non-deterministic input"""
+        response = self.post_json('/api/minimise-nfa/', {
+            'fsa': self.sample_nfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertTrue(data['success'])
+        self.assertIn('minimised_fsa', data)
+        self.assertIn('statistics', data)
+
+        # Check that statistics include epsilon transition analysis
+        original_stats = data['statistics']['original']
+        minimised_stats = data['statistics']['minimised']
+        self.assertIn('has_epsilon_transitions', original_stats)
+        self.assertIn('is_deterministic', original_stats)
+        self.assertIn('has_epsilon_transitions', minimised_stats)
+        self.assertIn('is_deterministic', minimised_stats)
+
+    def test_minimise_nfa_missing_fsa(self):
+        """Test NFA minimisation without FSA definition"""
+        response = self.post_json('/api/minimise-nfa/', {})
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing FSA definition', data['error'])
+
+    def test_minimise_nfa_invalid_structure(self):
+        """Test NFA minimisation with invalid FSA structure"""
+        response = self.post_json('/api/minimise-nfa/', {
+            'fsa': self.invalid_fsa
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+
+    @patch('simulator.views.minimise_nfa')
+    def test_minimise_nfa_function_exception(self, mock_minimise):
+        """Test exception in NFA minimisation function"""
+        mock_minimise.side_effect = Exception("NFA minimization error")
+
+        response = self.post_json('/api/minimise-nfa/', {
+            'fsa': self.sample_nfa
+        })
+
+        self.assertEqual(response.status_code, 500)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Server error', data['error'])
+
+    def test_minimise_nfa_already_minimal(self):
+        """Test NFA minimisation when FSA is already minimal"""
+        # Create a simple minimal NFA
+        minimal_nfa = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {'S0': {'a': ['S0']}},
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+
+        response = self.post_json('/api/minimise-nfa/', {
+            'fsa': minimal_nfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertTrue(data['success'])
+        reduction_stats = data['statistics']['reduction']
+
+        # Should indicate no reduction was possible
+        if reduction_stats['is_already_minimal']:
+            self.assertEqual(reduction_stats['states_reduced'], 0)
+            self.assertIn('already minimal', data['message'])
+
+    def test_minimise_nfa_statistics_accuracy(self):
+        """Test that NFA minimisation statistics are calculated correctly"""
+        response = self.post_json('/api/minimise-nfa/', {
+            'fsa': self.sample_nfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        original_stats = data['statistics']['original']
+        minimised_stats = data['statistics']['minimised']
+        reduction_stats = data['statistics']['reduction']
+        details = data['minimisation_details']
+
+        # Verify statistics consistency
+        self.assertEqual(original_stats['states_count'], details['original_states'])
+        self.assertEqual(minimised_stats['states_count'], details['final_states'])
+        self.assertEqual(reduction_stats['states_reduced'],
+                         original_stats['states_count'] - minimised_stats['states_count'])
+
+        # Verify percentage calculation
+        if original_stats['states_count'] > 0:
+            expected_percent = (reduction_stats['states_reduced'] / original_stats['states_count']) * 100
+            self.assertAlmostEqual(reduction_stats['states_reduction_percentage'], expected_percent, places=2)
