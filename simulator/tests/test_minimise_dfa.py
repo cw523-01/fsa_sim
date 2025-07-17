@@ -204,7 +204,6 @@ class TestMinimiseDFA(TestCase):
 
         minimized = minimise_dfa(dfa)
 
-        print(minimized)
         self.assertEqual(len(minimized['states']), 1)
         self.assertTrue(is_deterministic(minimized))
         self.assertEqual(minimized['acceptingStates'], ['S0'])

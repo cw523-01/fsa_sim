@@ -176,7 +176,7 @@ def nfa_to_dfa(nfa: Dict) -> Dict:
     epsilon_closure_cache: Dict[FrozenSet[str], FrozenSet[str]] = {}
 
     def epsilon_closure(states: FrozenSet[str]) -> FrozenSet[str]:
-        """Compute epsilon closure of a set of states with memoization"""
+        """Compute epsilon closure of a set of states with memorisation"""
         if states in epsilon_closure_cache:
             return epsilon_closure_cache[states]
 

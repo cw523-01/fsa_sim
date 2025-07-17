@@ -558,6 +558,27 @@ class UndoRedoManager {
         if (this.redoStack.length === 0) return null;
         return this.redoStack[this.redoStack.length - 1].getDescription();
     }
+
+    /**
+     * Cancel a snapshot command without adding it to the undo stack
+     * Used when an operation determines no changes were made
+     */
+    cancelSnapshotCommand(command) {
+        if (!command || this.isUndoRedoInProgress) return;
+
+        try {
+            console.log(`Snapshot command cancelled: ${command.getDescription()}`);
+
+            // Command is simply discarded - no need to add to any stack
+            // The snapshot command object will be garbage collected
+
+            // Update menu states in case they were waiting for this command
+            this.updateMenuStates();
+
+        } catch (error) {
+            console.error('Error cancelling snapshot command:', error);
+        }
+    }
 }
 
 // Create and export singleton instance

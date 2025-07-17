@@ -126,19 +126,22 @@ class FSATransformManager {
         this.currentTransformType = null;
         this.stateNameGenerator = new SafeStateNameGenerator();
 
+        // NFA minimisation threshold
+        this.NFA_MINIMISATION_THRESHOLD = 25;
+
         // Transform configurations
         this.transformConfigs = {
-            minimize: {
-                name: 'Minimize DFA',
+            minimise: {
+                name: 'Minimise DFA',
                 apiEndpoint: '/api/minimise-dfa/',
-                popupClass: 'minimize',
+                popupClass: 'minimise',
                 headerGradient: 'var(--primary-color) 0%, var(--primary-hover) 100%',
                 buttonColor: 'var(--primary-color)',
                 hoverColor: 'var(--primary-hover)',
-                undoLabel: 'Minimize DFA',
+                undoLabel: 'Minimise DFA',
                 requiresDeterministic: true,
                 requiresConnected: true,
-                tags: ['minimized']
+                tags: ['minimised']
             },
             convert: {
                 name: 'Convert to DFA',
@@ -175,12 +178,24 @@ class FSATransformManager {
                 requiresDeterministic: true,
                 requiresConnected: true,
                 tags: ['complement', 'complemented']
-            }
+            },
+            minimiseNfa: {
+                name: 'Minimise NFA',
+                apiEndpoint: '/api/minimise-nfa/',
+                popupClass: 'minimise-nfa',
+                headerGradient: 'var(--secondary-color) 0%, #1565C0 100%',
+                buttonColor: 'var(--secondary-color)',
+                hoverColor: '#1565C0',
+                undoLabel: 'Minimise NFA',
+                requiresDeterministic: false,
+                requiresConnected: true,
+                tags: ['minimised', 'nfa']
+            },
         };
     }
 
     /**
-     * Initialize with JSPlumb instance
+     * Initialise with JSPlumb instance
      */
     initialize(jsPlumbInstance) {
         this.jsPlumbInstance = jsPlumbInstance;
@@ -203,10 +218,11 @@ class FSATransformManager {
      */
     setupTransformEventListeners() {
         menuManager.registerMenuItems({
-            'menu-minimise-dfa': () => this.executeTransform('minimize'),
+            'menu-minimise-dfa': () => this.executeTransform('minimise'),
             'menu-nfa-to-dfa': () => this.executeTransform('convert'),
             'menu-complete-dfa': () => this.executeTransform('complete'),
-            'menu-complement-dfa': () => this.executeTransform('complement')
+            'menu-complement-dfa': () => this.executeTransform('complement'),
+            'menu-minimise-nfa': () => this.executeTransform('minimiseNfa')
         });
     }
 
@@ -222,8 +238,9 @@ class FSATransformManager {
             }
 
             const shortcuts = {
-                'm': 'minimize',
-                'd': 'convert'
+                'm': 'minimise',
+                'd': 'convert',
+                'n': 'minimiseNfa'
             };
 
             if ((e.ctrlKey || e.metaKey) && shortcuts[e.key]) {
@@ -260,7 +277,7 @@ class FSATransformManager {
      */
     async validateTransform(config) {
         if (!this.jsPlumbInstance) {
-            notificationManager.showError(`${config.name} Error`, 'FSA not initialized');
+            notificationManager.showError(`${config.name} Error`, 'FSA not initialised');
             return { isValid: false };
         }
 
@@ -335,7 +352,7 @@ class FSATransformManager {
                 </div>
                 <button class="popup-close" onclick="fsaTransformManager.hideTransformPopup()">×</button>
             </div>
-            <div class="file-operation-content">
+            <div class="file-operation-content scrollable-content">
                 ${popupContent.description}
                 ${popupContent.statesInfo}
                 ${popupContent.chainingOptions || ''}
@@ -369,15 +386,15 @@ class FSATransformManager {
      */
     setupTransformPopupHandlers(type) {
         if (type === 'convert') {
-            const minimizeCheckbox = document.getElementById('minimize-after-convert-option');
+            const minimiseCheckbox = document.getElementById('minimise-after-convert-option');
             const confirmBtn = document.getElementById('transform-confirm-btn');
 
-            if (minimizeCheckbox && confirmBtn) {
-                minimizeCheckbox.addEventListener('change', () => {
+            if (minimiseCheckbox && confirmBtn) {
+                minimiseCheckbox.addEventListener('change', () => {
                     this.updateTransformButtonText(type);
                 });
 
-                // Initialize button text
+                // Initialise button text
                 this.updateTransformButtonText(type);
             }
         }
@@ -391,8 +408,8 @@ class FSATransformManager {
         if (!confirmBtn) return;
 
         if (type === 'convert') {
-            const minimizeCheckbox = document.getElementById('minimize-after-convert-option');
-            if (minimizeCheckbox && minimizeCheckbox.checked) {
+            const minimiseCheckbox = document.getElementById('minimise-after-convert-option');
+            if (minimiseCheckbox && minimiseCheckbox.checked) {
                 confirmBtn.textContent = 'Convert to Minimal DFA';
             } else {
                 confirmBtn.textContent = 'Convert to DFA';
@@ -413,16 +430,16 @@ class FSATransformManager {
         `;
 
         const contentGenerators = {
-            minimize: () => ({
+            minimise: () => ({
                 description: `<div class="file-operation-description">
-                    Minimizing the DFA will replace the current automaton with an equivalent minimal DFA using Hopcroft's algorithm.
+                    Minimising the DFA will replace the current automaton with an equivalent minimal DFA using Hopcroft's algorithm.
                 </div>`,
                 statesInfo: baseStatesInfo,
                 warningSection: this.generateWarningSection(
                     'This operation will permanently replace the current DFA with its minimal equivalent. ' +
-                    'The minimized DFA will have the same behavior but potentially fewer states.'
+                    'The minimised DFA will have the same behavior but potentially fewer states.'
                 ),
-                confirmButtonText: 'Minimize DFA'
+                confirmButtonText: 'Minimise DFA'
             }),
 
             convert: () => {
@@ -446,9 +463,9 @@ class FSATransformManager {
                             <h4>Additional Operations:</h4>
                             <div class="option-group">
                                 <div class="checkbox-option">
-                                    <input type="checkbox" id="minimize-after-convert-option" class="chain-checkbox">
-                                    <label for="minimize-after-convert-option">
-                                        <span class="option-title">Minimize DFA</span>
+                                    <input type="checkbox" id="minimise-after-convert-option" class="chain-checkbox">
+                                    <label for="minimise-after-convert-option">
+                                        <span class="option-title">Minimise DFA</span>
                                         <span class="option-description">Remove redundant states after conversion</span>
                                     </label>
                                 </div>
@@ -510,6 +527,81 @@ class FSATransformManager {
                         'The complement DFA accepts exactly the strings that the original DFA rejects.'
                     ),
                     confirmButtonText: 'Complement DFA'
+                };
+            },
+
+            minimiseNfa: () => {
+                const isDeterministic = properties.deterministic;
+                const hasEpsilon = summary.has_epsilon_transitions;
+                const stateCount = summary.total_states;
+
+                let typeDesc = isDeterministic && !hasEpsilon ? 'DFA (deterministic)' :
+                              isDeterministic && hasEpsilon ? 'Deterministic automaton with ε-transitions' :
+                              'NFA (non-deterministic)';
+
+                let description = `
+                    <div class="file-operation-description">
+                        Minimising the NFA will create an equivalent automaton with potentially fewer states using advanced algorithms.
+                        
+                        <div class="limitation-highlight">
+                            <div class="limitation-header">
+                                <span class="limitation-icon">⚠️</span>
+                                <span>Important Algorithm Limitation</span>
+                            </div>
+                            <div class="limitation-content">
+                                <strong>NFA minimisation is a computationally difficult problem.</strong> Unlike DFA minimisation, which guarantees an optimal result, this NFA minimisation technique uses heuristic approaches that may not always find the absolute minimum.
+                            </div>
+                            <ul class="limitation-points">
+                                <li>The result <strong>may not be the smallest possible</strong> equivalent NFA</li>
+                                <li>The algorithm provides a <strong>good approximation</strong> in most practical cases</li>
+                                <li>Some reduction is usually achieved, but <strong>optimality is not guaranteed</strong></li>
+                                <li>Larger NFAs may see more variation in results</li>
+                            </ul>
+                        </div>
+            
+                        <div class="algorithm-explanation">
+                            <h4>Algorithm Details</h4>
+                            <p>Uses a hybrid approach combining the Kameda-Weiner algorithm with determinisation and DFA minimisation techniques. The method adapts based on automaton size and complexity for improved practical results.</p>
+                        </div>
+                    </div>
+                `;
+
+                // Add size-specific warnings for larger NFAs
+                let sizeWarningSection = '';
+                if (stateCount > this.NFA_MINIMISATION_THRESHOLD) {
+                    sizeWarningSection = `
+                        <div class="size-threshold-warning">
+                            <span class="size-threshold-icon">🔄</span>
+                            <div class="size-threshold-content">
+                                <div class="size-threshold-title">Large NFA Detected</div>
+                                <div class="size-threshold-text">
+                                    With ${stateCount} states, this NFA is above the optimal threshold (${this.NFA_MINIMISATION_THRESHOLD} states). 
+                                    A simplified approach may be used, which could provide less optimal results.
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                let statesInfo = `
+                    <div class="states-info">
+                        Current FSA: <span class="states-count">${typeDesc}</span><br>
+                        <span class="states-count">${summary.total_states} states</span> 
+                        and <span class="states-count">${transitionCount} transitions</span>
+                    </div>
+                `;
+
+                let warningText = `This operation will permanently replace the current automaton with a minimised equivalent. 
+                                 The minimised NFA will have the same behavior but potentially fewer states.
+                                 <br><br>
+                                 <strong>Due to the theoretical complexity of NFA minimisation</strong>, the result may not be the absolute minimum possible, 
+                                 but significant reduction is often achieved in practice.`;
+
+                return {
+                    description: description,
+                    statesInfo: statesInfo + sizeWarningSection,
+                    warningSection: this.generateWarningSection(warningText),
+                    confirmButtonText: 'Minimise NFA'
                 };
             }
         };
@@ -581,10 +673,10 @@ class FSATransformManager {
         const config = this.transformConfigs[this.currentTransformType];
 
         // Get chaining options for convert operation
-        let shouldMinimize = false;
+        let shouldMinimise = false;
         if (this.currentTransformType === 'convert') {
-            const minimizeCheckbox = document.getElementById('minimize-after-convert-option');
-            shouldMinimize = minimizeCheckbox && minimizeCheckbox.checked;
+            const minimiseCheckbox = document.getElementById('minimise-after-convert-option');
+            shouldMinimise = minimiseCheckbox && minimiseCheckbox.checked;
         }
 
         // Show loading state
@@ -595,7 +687,7 @@ class FSATransformManager {
             // Create snapshot for undo/redo
             let snapshotCommand = null;
             if (undoRedoManager && !undoRedoManager.isProcessing()) {
-                const operationLabel = shouldMinimize ? 'Convert NFA to Minimal DFA' : config.undoLabel;
+                const operationLabel = shouldMinimise ? 'Convert NFA to Minimal DFA' : config.undoLabel;
                 snapshotCommand = undoRedoManager.createSnapshotCommand(operationLabel);
             }
 
@@ -612,39 +704,53 @@ class FSATransformManager {
             }
 
             let result = await response.json();
+            let hasChanges = this.checkForChanges(this.currentTransformType, result);
 
-            // Chain minimization if requested for convert operation
-            if (this.currentTransformType === 'convert' && shouldMinimize) {
-                confirmBtn.textContent = 'Minimizing DFA...';
+            // Chain minimisation if requested for convert operation
+            if (this.currentTransformType === 'convert' && shouldMinimise && hasChanges) {
+                confirmBtn.textContent = 'Minimising DFA...';
 
-                const minimizeResponse = await fetch('/api/minimise-dfa/', {
+                const minimiseResponse = await fetch('/api/minimise-dfa/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ fsa: result.converted_dfa })
                 });
 
-                if (!minimizeResponse.ok) {
-                    const errorData = await minimizeResponse.json();
-                    throw new Error(errorData.error || `DFA minimization failed: ${minimizeResponse.status}`);
+                if (!minimiseResponse.ok) {
+                    const errorData = await minimiseResponse.json();
+                    throw new Error(errorData.error || `DFA minimisation failed: ${minimiseResponse.status}`);
                 }
 
-                const minimizeResult = await minimizeResponse.json();
-                result.minimised_dfa = minimizeResult.minimised_fsa;
-                result.minimization_statistics = minimizeResult.statistics;
+                const minimiseResult = await minimiseResponse.json();
+                result.minimised_dfa = minimiseResult.minimised_fsa;
+                result.minimisation_statistics = minimiseResult.statistics;
+
+                // Check if minimisation also had no changes
+                if (minimiseResult.statistics.reduction.is_already_minimal) {
+                    hasChanges = false;
+                }
             }
 
             // Hide popup
             this.hideTransformPopup();
 
-            // Replace FSA
-            await this.replaceWithTransformedFSA(this.currentTransformType, result, shouldMinimize);
+            // Only replace FSA if there are actual changes
+            if (hasChanges) {
+                // Replace FSA
+                await this.replaceWithTransformedFSA(this.currentTransformType, result, shouldMinimise);
+            }
 
-            // Show results
-            this.showTransformResults(this.currentTransformType, result, shouldMinimize);
+            // Show results (this will show the appropriate "no changes" message)
+            this.showTransformResults(this.currentTransformType, result, shouldMinimise);
 
-            // Finish undo/redo snapshot
+            // Finish undo/redo snapshot only if there were changes
             if (snapshotCommand) {
-                undoRedoManager.finishSnapshotCommand(snapshotCommand);
+                if (hasChanges) {
+                    undoRedoManager.finishSnapshotCommand(snapshotCommand);
+                } else {
+                    // Cancel the snapshot since no changes were made
+                    undoRedoManager.cancelSnapshotCommand(snapshotCommand);
+                }
             }
 
             // Clear transform data after successful operation
@@ -663,9 +769,41 @@ class FSATransformManager {
     }
 
     /**
+     * Check if the transform operation resulted in actual changes
+     * @param {string} type - Transform type
+     * @param {Object} result - Transform result
+     * @returns {boolean} - Whether there are actual changes
+     */
+    checkForChanges(type, result) {
+        switch (type) {
+            case 'minimise':
+                return result.statistics && !result.statistics.reduction.is_already_minimal;
+
+            case 'convert':
+                // Check if it was already deterministic and had no epsilon transitions
+                return result.statistics &&
+                       (!result.statistics.conversion.was_already_deterministic ||
+                        result.statistics.conversion.epsilon_transitions_removed);
+
+            case 'complete':
+                return result.statistics && !result.statistics.completion.was_already_complete;
+
+            case 'complement':
+                // Complement always makes changes (swaps accepting states)
+                return true;
+
+            case 'minimiseNfa':
+                return result.statistics && !result.statistics.reduction.is_already_minimal;
+
+            default:
+                return true; // Default to assuming changes for unknown types
+        }
+    }
+
+    /**
      * Replace current FSA with transformed version
      */
-    async replaceWithTransformedFSA(type, result, shouldMinimize = false) {
+    async replaceWithTransformedFSA(type, result, shouldMinimise = false) {
         const originalPositions = this.getOriginalStatePositions();
 
         await fsaSerializationManager.clearCurrentFSA(this.jsPlumbInstance);
@@ -675,16 +813,17 @@ class FSATransformManager {
         let description;
         let tags;
 
-        if (type === 'convert' && shouldMinimize && result.minimised_dfa) {
+        if (type === 'convert' && shouldMinimise && result.minimised_dfa) {
             transformedFSA = result.minimised_dfa;
-            description = 'Minimal DFA generated by NFA to DFA conversion followed by minimization';
-            tags = ['converted', 'minimized', 'dfa'];
+            description = 'Minimal DFA generated by NFA to DFA conversion followed by minimisation';
+            tags = ['converted', 'minimised', 'dfa'];
         } else {
             const fsaDataMap = {
-                minimize: result.minimised_fsa,
+                minimise: result.minimised_fsa,
                 convert: result.converted_dfa,
                 complete: result.completed_fsa,
-                complement: result.complement_fsa
+                complement: result.complement_fsa,
+                minimiseNfa: result.minimised_fsa
             };
 
             transformedFSA = fsaDataMap[type];
@@ -700,7 +839,7 @@ class FSATransformManager {
         const serializedFSA = this.createSerializedFSA(
             transformedFSA,
             newPositions,
-            shouldMinimize ? 'Minimal DFA from Conversion' : `${this.transformConfigs[type].name} Result`,
+            shouldMinimise ? 'Minimal DFA from Conversion' : `${this.transformConfigs[type].name} Result`,
             description,
             tags
         );
@@ -780,37 +919,37 @@ class FSATransformManager {
         Object.entries(fsa.transitions).forEach(([sourceId, transitions]) => {
             Object.entries(transitions).forEach(([symbol, targets]) => {
                 if (targets && targets.length > 0) {
-                    const targetId = targets[0];
+                    targets.forEach(targetId => {  // Process ALL targets, not just the first one
+                        // Apply safe naming to source and target using the mapping
+                        const smartSourceId = stateNameMapping[sourceId];
+                        const smartTargetId = stateNameMapping[targetId];
 
-                    // Apply safe naming to source and target using the mapping
-                    const smartSourceId = stateNameMapping[sourceId];
-                    const smartTargetId = stateNameMapping[targetId];
+                        const existingTransition = transitionsData.find(t =>
+                            t.sourceId === smartSourceId && t.targetId === smartTargetId
+                        );
 
-                    const existingTransition = transitionsData.find(t =>
-                        t.sourceId === smartSourceId && t.targetId === smartTargetId
-                    );
-
-                    if (existingTransition) {
-                        if (symbol === '') {
-                            existingTransition.hasEpsilon = true;
-                        } else {
-                            existingTransition.symbols.push(symbol);
-                        }
-                    } else {
-                        transitionsData.push({
-                            id: `${smartSourceId}-${smartTargetId}-${symbol}`,
-                            sourceId: smartSourceId,
-                            targetId: smartTargetId,
-                            symbols: symbol === '' ? [] : [symbol],
-                            hasEpsilon: symbol === '',
-                            visual: {
-                                connectorType: smartSourceId === smartTargetId ? 'Bezier' : 'Straight',
-                                isCurved: smartSourceId === smartTargetId,
-                                labelLocation: 0.3,
-                                anchors: smartSourceId === smartTargetId ? ['Top', 'Left'] : ['Continuous', 'Continuous']
+                        if (existingTransition) {
+                            if (symbol === '') {
+                                existingTransition.hasEpsilon = true;
+                            } else {
+                                existingTransition.symbols.push(symbol);
                             }
-                        });
-                    }
+                        } else {
+                            transitionsData.push({
+                                id: `${smartSourceId}-${smartTargetId}-${symbol || 'epsilon'}`,
+                                sourceId: smartSourceId,
+                                targetId: smartTargetId,
+                                symbols: symbol === '' ? [] : [symbol],
+                                hasEpsilon: symbol === '',
+                                visual: {
+                                    connectorType: smartSourceId === smartTargetId ? 'Bezier' : 'Straight',
+                                    isCurved: smartSourceId === smartTargetId,
+                                    labelLocation: 0.3,
+                                    anchors: smartSourceId === smartTargetId ? ['Top', 'Left'] : ['Continuous', 'Continuous']
+                                }
+                            });
+                        }
+                    });
                 }
             });
         });
@@ -834,15 +973,16 @@ class FSATransformManager {
     /**
      * Show transform results
      */
-    showTransformResults(type, result, shouldMinimize = false) {
-        if (type === 'convert' && shouldMinimize) {
+    showTransformResults(type, result, shouldMinimise = false) {
+        if (type === 'convert' && shouldMinimise) {
             this.showChainedConversionResults(result);
         } else {
             const resultHandlers = {
-                minimize: () => this.showMinimizationResults(result),
+                minimise: () => this.showMinimisationResults(result),
                 convert: () => this.showConversionResults(result),
                 complete: () => this.showCompletionResults(result),
-                complement: () => this.showComplementResults(result)
+                complement: () => this.showComplementResults(result),
+                minimiseNfa: () => this.showNfaMinimisationResults(result)
             };
 
             resultHandlers[type]();
@@ -850,25 +990,25 @@ class FSATransformManager {
     }
 
     /**
-     * Show results for chained conversion + minimization
+     * Show results for chained conversion + minimisation
      */
     showChainedConversionResults(result) {
         const conversionStats = result.statistics;
-        const minimizationStats = result.minimization_statistics;
+        const minimisationStats = result.minimisation_statistics;
 
         notificationManager.showSuccess(
             'NFA to Minimal DFA Complete',
-            `Successfully converted NFA to DFA and minimized.\n` +
+            `Successfully converted NFA to DFA and minimised.\n` +
             `Conversion: ${conversionStats.original.states_count} → ${conversionStats.converted.states_count} states\n` +
-            `Minimization: ${conversionStats.converted.states_count} → ${minimizationStats.minimised.states_count} states\n` +
-            `Final result: ${minimizationStats.minimised.states_count} states, ${minimizationStats.minimised.transitions_count} transitions`
+            `Minimisation: ${conversionStats.converted.states_count} → ${minimisationStats.minimised.states_count} states\n` +
+            `Final result: ${minimisationStats.minimised.states_count} states, ${minimisationStats.minimised.transitions_count} transitions`
         );
     }
 
     /**
      * Result display methods
      */
-    showMinimizationResults(result) {
+    showMinimisationResults(result) {
         const stats = result.statistics;
         if (stats.reduction.is_already_minimal) {
             notificationManager.showInfo(
@@ -877,7 +1017,7 @@ class FSATransformManager {
             );
         } else {
             notificationManager.showSuccess(
-                'DFA Minimized Successfully',
+                'DFA Minimised Successfully',
                 `Reduced from ${stats.original.states_count} to ${stats.minimised.states_count} states (${stats.reduction.states_reduction_percentage}% reduction).`
             );
         }
@@ -928,6 +1068,35 @@ class FSATransformManager {
     }
 
     /**
+     * Show results for NFA minimisation
+     */
+    showNfaMinimisationResults(result) {
+        const details = result.minimisation_details;
+        const stats = result.statistics;
+
+        if (stats.reduction.is_already_minimal) {
+            notificationManager.showInfo(
+                'Could not minimise NFA',
+                'A smaller form of the NFA could not be found. NFA may already be minimal.'
+            );
+        } else {
+            let message = `Reduced from ${stats.original.states_count} to ${stats.minimised.states_count} states (${stats.reduction.states_reduction_percentage}% reduction).`;
+
+            // Add method information
+            if (details.method_used.includes('optimal')) {
+                message += ' Optimal result achieved.';
+            } else {
+                message += ' Heuristic minimisation applied.';
+            }
+
+            notificationManager.showSuccess(
+                'NFA Minimised Successfully',
+                message
+            );
+        }
+    }
+
+    /**
      * Get current transition count
      */
     getTransitionCount() {
@@ -943,25 +1112,6 @@ class FSATransformManager {
      */
     updateMenuStates(locked) {
         menuManager.updateMenuStates(locked);
-    }
-
-    /**
-     * Public methods for backward compatibility
-     */
-    minimiseDFA() {
-        this.executeTransform('minimize');
-    }
-
-    convertNFAToDFA() {
-        this.executeTransform('convert');
-    }
-
-    completeDFA() {
-        this.executeTransform('complete');
-    }
-
-    complementDFA() {
-        this.executeTransform('complement');
     }
 }
 

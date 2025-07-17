@@ -1626,6 +1626,13 @@ class ComprehensiveErrorTests(FSAViewTestCase):
         self.assertIn('error', data)
         self.assertIn('Missing regex parameter', data['error'])
 
+        # FSA equivalence endpoint that expects two FSAs
+        response = self.post_json('/api/check-fsa-equivalence/', {})
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing fsa1 definition', data['error'])
+
     def test_all_endpoints_handle_invalid_fsa(self):
         """Test that all endpoints properly handle invalid FSA"""
         endpoints = [
@@ -1642,6 +1649,7 @@ class ComprehensiveErrorTests(FSAViewTestCase):
             '/api/nfa-to-dfa/',
             '/api/complete-dfa/',
             '/api/complement-dfa/',
+            '/api/check-fsa-equivalence/',
         ]
 
         for endpoint in endpoints:
@@ -1671,6 +1679,7 @@ class ComprehensiveErrorTests(FSAViewTestCase):
             '/api/complete-dfa/',
             '/api/complement-dfa/',
             '/api/regex-to-epsilon-nfa/',
+            '/api/check-fsa-equivalence/',
         ]
 
         for endpoint in endpoints:
@@ -2926,3 +2935,243 @@ class MinimiseNFAViewTests(FSAViewTestCase):
         if original_stats['states_count'] > 0:
             expected_percent = (reduction_stats['states_reduced'] / original_stats['states_count']) * 100
             self.assertAlmostEqual(reduction_stats['states_reduction_percentage'], expected_percent, places=2)
+
+
+class CheckFSAEquivalenceViewTests(FSAViewTestCase):
+    """Tests for the FSA equivalence checking endpoint"""
+
+    def setUp(self):
+        super().setUp()
+        # Create an equivalent DFA with different state names
+        self.equivalent_dfa = {
+            'states': ['Q0', 'Q1'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'Q0': {'a': ['Q1'], 'b': ['Q0']},
+                'Q1': {'a': ['Q0'], 'b': ['Q1']}
+            },
+            'startingState': 'Q0',
+            'acceptingStates': ['Q1']
+        }
+
+        # Create a non-equivalent DFA
+        self.non_equivalent_dfa = {
+            'states': ['R0', 'R1'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'R0': {'a': ['R1'], 'b': ['R0']},
+                'R1': {'a': ['R0'], 'b': ['R1']}
+            },
+            'startingState': 'R0',
+            'acceptingStates': ['R0']  # Different accepting states
+        }
+
+    def test_check_equivalent_dfas(self):
+        """Test checking two equivalent DFAs"""
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.sample_dfa,
+            'fsa2': self.equivalent_dfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['equivalent'])
+        self.assertIn('fsa1_stats', data)
+        self.assertIn('fsa2_stats', data)
+        self.assertIn('comparison_details', data)
+        self.assertIn('analysis', data)
+        self.assertIn('message', data)
+
+    def test_check_non_equivalent_dfas(self):
+        """Test checking two non-equivalent DFAs"""
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.sample_dfa,
+            'fsa2': self.non_equivalent_dfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertFalse(data['equivalent'])
+        self.assertIn('comparison_details', data)
+        self.assertIn('reason', data['comparison_details'])
+
+    def test_check_equivalent_nfas(self):
+        """Test checking two equivalent NFAs"""
+        # Create equivalent NFA with different structure
+        equivalent_nfa = {
+            'states': ['P0', 'P1', 'P2'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'P0': {'a': ['P0', 'P1'], 'b': ['P0']},
+                'P1': {'b': ['P2']},
+                'P2': {}
+            },
+            'startingState': 'P0',
+            'acceptingStates': ['P2']
+        }
+
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.sample_nfa,
+            'fsa2': equivalent_nfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        # Should be equivalent (both accept strings ending in 'ab')
+        self.assertTrue(data['equivalent'])
+
+    def test_check_mixed_dfa_nfa(self):
+        """Test checking DFA against NFA"""
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.sample_dfa,
+            'fsa2': self.sample_nfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('equivalent', data)
+        self.assertIn('analysis', data)
+        self.assertTrue(data['analysis']['mixed_types'])
+
+    def test_missing_fsa1(self):
+        """Test request without fsa1 definition"""
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa2': self.sample_dfa
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing fsa1 definition', data['error'])
+
+    def test_missing_fsa2(self):
+        """Test request without fsa2 definition"""
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.sample_dfa
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing fsa2 definition', data['error'])
+
+    def test_invalid_fsa1_structure(self):
+        """Test request with invalid fsa1 structure"""
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.invalid_fsa,
+            'fsa2': self.sample_dfa
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Invalid fsa1 structure', data['error'])
+
+    def test_invalid_fsa2_structure(self):
+        """Test request with invalid fsa2 structure"""
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.sample_dfa,
+            'fsa2': self.invalid_fsa
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Invalid fsa2 structure', data['error'])
+
+    def test_different_alphabets(self):
+        """Test FSAs with different alphabets"""
+        different_alphabet_fsa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['x', 'y'],
+            'transitions': {
+                'S0': {'x': ['S1'], 'y': ['S0']},
+                'S1': {'x': ['S0'], 'y': ['S1']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.sample_dfa,
+            'fsa2': different_alphabet_fsa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('analysis', data)
+        self.assertFalse(data['analysis']['same_alphabet'])
+
+    def test_statistics_accuracy(self):
+        """Test that statistics are calculated correctly"""
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.sample_dfa,
+            'fsa2': self.sample_nfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        fsa1_stats = data['fsa1_stats']
+        fsa2_stats = data['fsa2_stats']
+
+        # Check DFA stats
+        self.assertEqual(fsa1_stats['states_count'], len(self.sample_dfa['states']))
+        self.assertTrue(fsa1_stats['is_deterministic'])
+        self.assertFalse(fsa1_stats['has_epsilon_transitions'])
+
+        # Check NFA stats
+        self.assertEqual(fsa2_stats['states_count'], len(self.sample_nfa['states']))
+        self.assertFalse(fsa2_stats['is_deterministic'])
+
+    @patch('simulator.fsa_equivalence.are_automata_equivalent')
+    def test_equivalence_function_exception(self, mock_equiv):
+        """Test exception in equivalence checking function"""
+        mock_equiv.side_effect = Exception("Equivalence check error")
+
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.sample_dfa,
+            'fsa2': self.equivalent_dfa
+        })
+
+        self.assertEqual(response.status_code, 500)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Server error', data['error'])
+
+    def test_equivalence_with_minimal_dfa_info(self):
+        """Test response includes minimal DFA information"""
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.sample_dfa,
+            'fsa2': self.equivalent_dfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        if 'minimal_dfa_info' in data:
+            minimal_info = data['minimal_dfa_info']
+            self.assertIn('fsa1_minimal_states', minimal_info)
+            self.assertIn('fsa2_minimal_states', minimal_info)
+            self.assertIsInstance(minimal_info['fsa1_minimal_states'], int)
+            self.assertIsInstance(minimal_info['fsa2_minimal_states'], int)
+
+    def test_analysis_completeness(self):
+        """Test that analysis section provides comprehensive information"""
+        response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.sample_dfa,
+            'fsa2': self.sample_nfa
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        analysis = data['analysis']
+
+        # Check all expected analysis fields are present
+        expected_fields = [
+            'both_deterministic', 'both_nondeterministic', 'mixed_types',
+            'same_alphabet', 'alphabet_compatible'
+        ]
+        for field in expected_fields:
+            self.assertIn(field, analysis)
+            self.assertIsInstance(analysis[field], bool)

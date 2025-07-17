@@ -38,4 +38,7 @@ urlpatterns = [
 
     # REGEX conversion endpoints
     path('api/regex-to-epsilon-nfa/', views.regex_to_epsilon_nfa, name='regex_to_epsilon_nfa'),
+
+    # Utility endpoint to check if two FSA are equivalent
+    path('api/check-fsa-equivalence/', views.check_fsa_equivalence, name='check_fsa_equivalence'),
 ]

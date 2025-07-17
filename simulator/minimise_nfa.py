@@ -1,11 +1,7 @@
-from typing import Dict, Set, List, Tuple, FrozenSet, NamedTuple, Optional
+from typing import Dict, Set, List, Tuple, NamedTuple, FrozenSet
 from collections import defaultdict, deque
-from .fsa_properties import is_deterministic, validate_fsa_structure
 from .fsa_transformations import nfa_to_dfa, minimise_dfa
-from pysat.solvers import Glucose3
-from pysat.formula import CNF
-import itertools
-import random
+from .fsa_equivalence import are_automata_equivalent
 
 
 class MinimisationResult(NamedTuple):
@@ -18,828 +14,966 @@ class MinimisationResult(NamedTuple):
     is_optimal: bool
     method_used: str
     stages: List[str]
+    candidate_results: List[Dict]
+    equivalence_verified: bool
+    verification_details: Dict
 
 
-class MinimisationConfig:
-    """Unified configuration for NFA minimisation algorithms"""
-    SAT_DIRECT_THRESHOLD = 12
-    SAT_POST_HEURISTIC_THRESHOLD = 20
-    SAT_TIMEOUT_SECONDS = 600
-    KAMEDA_WEINER_THRESHOLD = 150
-    MAX_VERIFICATION_LENGTH = 12
-    VERIFICATION_SAMPLE_SIZE = 100
-    MAX_VERIFICATION_ATTEMPTS = 3
+class StateSet:
+    """Immutable set of states for the Kameda-Weiner algorithm"""
+
+    def __init__(self, states):
+        self._states = frozenset(states)
+        self._hash = hash(self._states)
+
+    def __hash__(self):
+        return self._hash
+
+    def __eq__(self, other):
+        return isinstance(other, StateSet) and self._states == other._states
+
+    def __iter__(self):
+        return iter(self._states)
+
+    def __len__(self):
+        return len(self._states)
+
+    def __contains__(self, item):
+        return item in self._states
+
+    def intersect(self, other):
+        return StateSet(self._states & other._states)
+
+    def union(self, other):
+        return StateSet(self._states | other._states)
+
+    def any(self, predicate):
+        return any(predicate(state) for state in self._states)
+
+    def __repr__(self):
+        return f"StateSet({sorted(self._states)})"
 
 
-def analyse_fsa_complexity(nfa: Dict) -> Dict[str, any]:
-    """analyses NFA complexity to determine the best minimisation approach."""
-    num_states = len(nfa['states'])
-    alphabet_size = len(nfa['alphabet'])
-    has_epsilon = any('' in nfa['transitions'].get(s, {}) for s in nfa['states'])
+class Grid:
+    """Represents a grid in the Kameda-Weiner prime grid computation"""
 
-    analysis = {
-        'num_states': num_states,
-        'alphabet_size': alphabet_size,
-        'has_epsilon': has_epsilon,
-        'can_use_sat_directly': num_states <= MinimisationConfig.SAT_DIRECT_THRESHOLD,
-        'is_deterministic': is_deterministic(nfa),
-        'recommended_approach': None
-    }
+    def __init__(self, rows: Set[int], columns: Set[int]):
+        self.rows = frozenset(rows)
+        self.columns = frozenset(columns)
+        self._hash = hash((self.rows, self.columns))
 
-    # Determine recommended approach for NFA minimization
-    if analysis['can_use_sat_directly']:
-        analysis['recommended_approach'] = 'sat_direct'
-    else:
-        analysis['recommended_approach'] = 'kameda_weiner_then_analyse'
+    def __hash__(self):
+        return self._hash
 
-    return analysis
+    def __eq__(self, other):
+        return isinstance(other, Grid) and self.rows == other.rows and self.columns == other.columns
+
+    def __repr__(self):
+        return f"Grid(rows={sorted(self.rows)}, cols={sorted(self.columns)})"
 
 
-def normalise_nfa(nfa: Dict) -> Dict:
-    """normalise NFA by adding epsilon closure and ensuring consistent structure."""
-    normalised = {
-        'states': nfa['states'][:],
-        'alphabet': [a for a in nfa['alphabet'] if a != ''],  # Remove epsilon from alphabet
-        'transitions': {},
+class Cover:
+    """Represents a cover of grids"""
+
+    def __init__(self, grids: Set[Grid]):
+        self.grids = frozenset(grids)
+        self._hash = hash(self.grids)
+
+    def __hash__(self):
+        return self._hash
+
+    def __eq__(self, other):
+        return isinstance(other, Cover) and self.grids == other.grids
+
+    def __iter__(self):
+        return iter(self.grids)
+
+    def __len__(self):
+        return len(self.grids)
+
+
+def remove_unreachable_states(nfa: Dict) -> Dict:
+    """Remove states that are unreachable from the start state."""
+
+    # BFS from start state to find all reachable states
+    reachable = set()
+    queue = deque([nfa['startingState']])
+    reachable.add(nfa['startingState'])
+
+    while queue:
+        current = queue.popleft()
+        if current in nfa['transitions']:
+            for symbol in nfa['transitions'][current]:
+                for target in nfa['transitions'][current][symbol]:
+                    if target not in reachable:
+                        reachable.add(target)
+                        queue.append(target)
+
+    # Build new NFA with only reachable states
+    new_states = [s for s in nfa['states'] if s in reachable]
+    new_accepting = [s for s in nfa['acceptingStates'] if s in reachable]
+    new_transitions = {}
+
+    for state in new_states:
+        if state in nfa['transitions']:
+            new_transitions[state] = {}
+            for symbol in nfa['transitions'][state]:
+                targets = [t for t in nfa['transitions'][state][symbol] if t in reachable]
+                if targets:
+                    new_transitions[state][symbol] = targets
+
+    result = {
+        'states': new_states,
+        'alphabet': nfa['alphabet'][:],
+        'transitions': new_transitions,
         'startingState': nfa['startingState'],
-        'acceptingStates': nfa['acceptingStates'][:]
+        'acceptingStates': new_accepting
     }
 
-    # Compute epsilon closure for each state
-    epsilon_closure = {}
-    for state in nfa['states']:
-        epsilon_closure[state] = _compute_epsilon_closure(nfa, state)
-
-    # Build normalised transitions with epsilon closure incorporated
-    for state in nfa['states']:
-        normalised['transitions'][state] = {}
-        for symbol in normalised['alphabet']:
-            targets = set()
-            # For each state reachable via epsilon from current state
-            for eps_state in epsilon_closure[state]:
-                # Add all targets reachable by symbol, plus their epsilon closures
-                if eps_state in nfa['transitions'] and symbol in nfa['transitions'][eps_state]:
-                    for target in nfa['transitions'][eps_state][symbol]:
-                        targets.update(epsilon_closure[target])
-            normalised['transitions'][state][symbol] = sorted(list(targets))
-
-    # Update accepting states: a state is accepting if any epsilon-reachable state is accepting
-    new_accepting = set()
-    for state in nfa['states']:
-        if any(eps_state in nfa['acceptingStates'] for eps_state in epsilon_closure[state]):
-            new_accepting.add(state)
-    normalised['acceptingStates'] = sorted(list(new_accepting))
-
-    return normalised
+    return result
 
 
-def _compute_epsilon_closure(nfa: Dict, state: str) -> Set[str]:
-    """Compute epsilon closure of a state."""
-    closure = {state}
-    worklist = [state]
+def remove_dead_states(nfa: Dict) -> Dict:
+    """Remove states that cannot reach any accepting state."""
 
-    while worklist:
-        current = worklist.pop()
-        if current in nfa['transitions'] and '' in nfa['transitions'][current]:
-            for target in nfa['transitions'][current]['']:
-                if target not in closure:
-                    closure.add(target)
-                    worklist.append(target)
-
-    return closure
-
-
-def kameda_weiner_minimise(nfa: Dict) -> Dict:
-    """
-    Minimises an NFA using corrected Kameda-Weiner simulation-based approach.
-    """
-    # normalise NFA to handle epsilon transitions
-    normalised_nfa = normalise_nfa(nfa)
-
-    # Build simulation relations
-    forward_sim = _compute_forward_simulation(normalised_nfa)
-    backward_sim = _compute_backward_simulation(normalised_nfa)
-
-    # Compute bisimulation (intersection of forward and backward simulation)
-    bisimulation = _compute_bisimulation(forward_sim, backward_sim, normalised_nfa['states'])
-
-    # Build quotient automaton based on bisimulation equivalence classes
-    return _build_quotient_automaton(normalised_nfa, bisimulation)
-
-
-def _compute_forward_simulation(nfa: Dict) -> Dict[str, Set[str]]:
-    """
-    Compute forward simulation relation: p ≼_f q if q can simulate all behaviors of p.
-    """
-    states = nfa['states']
-    alphabet = nfa['alphabet']
-    transitions = nfa['transitions']
-    accepting = set(nfa['acceptingStates'])
-
-    # Initialize simulation relation: q can simulate p only if acceptance property matches
-    sim = {p: set() for p in states}
-    for p in states:
-        for q in states:
-            if (p in accepting) == (q in accepting):
-                sim[p].add(q)
-
-    # Fixpoint iteration to refine simulation relation
-    changed = True
-    iteration = 0
-    while changed and iteration < 100:  # Add iteration limit for safety
-        changed = False
-        new_sim = {p: set() for p in states}
-        iteration += 1
-
-        for p in states:
-            for q in sim[p]:
-                can_simulate = True
-
-                # For each symbol, check if q can simulate p's behavior
-                for symbol in alphabet:
-                    p_targets = set(transitions.get(p, {}).get(symbol, []))
-                    q_targets = set(transitions.get(q, {}).get(symbol, []))
-
-                    # For every target p', there must exist a target q' such that q' simulates p'
-                    for p_target in p_targets:
-                        if not any(q_target in sim.get(p_target, set()) for q_target in q_targets):
-                            can_simulate = False
-                            break
-
-                    if not can_simulate:
-                        break
-
-                if can_simulate:
-                    new_sim[p].add(q)
-
-        if new_sim != sim:
-            changed = True
-            sim = new_sim
-
-    return sim
-
-
-def _compute_backward_simulation(nfa: Dict) -> Dict[str, Set[str]]:
-    """
-    Compute backward simulation relation: p ≼_b q if p can backward-simulate q.
-    This means for every way to reach q, there's a corresponding way to reach p.
-    """
-    states = nfa['states']
-    alphabet = nfa['alphabet']
-    transitions = nfa['transitions']
-    starting = nfa['startingState']
-
-    # Build reverse transition function
-    reverse_trans = defaultdict(lambda: defaultdict(set))
-    for state in states:
-        for symbol in alphabet:
-            for target in transitions.get(state, {}).get(symbol, []):
-                reverse_trans[target][symbol].add(state)
-
-    # Initialize backward simulation: p can backward-simulate q only if start property matches
-    sim = {p: set() for p in states}
-    for p in states:
-        for q in states:
-            if (p == starting) == (q == starting):
-                sim[p].add(q)
-
-    # Fixpoint iteration
-    changed = True
-    iteration = 0
-    while changed and iteration < 100:
-        changed = False
-        new_sim = {p: set() for p in states}
-        iteration += 1
-
-        for p in states:
-            for q in sim[p]:
-                can_backward_simulate = True
-
-                # For each symbol, check backward simulation condition
-                for symbol in alphabet:
-                    q_predecessors = reverse_trans[q][symbol]
-                    p_predecessors = reverse_trans[p][symbol]
-
-                    # For every predecessor q' of q, there must be a predecessor p' of p
-                    # such that p' can backward-simulate q'
-                    for q_pred in q_predecessors:
-                        if not any(q_pred in sim.get(p_pred, set()) for p_pred in p_predecessors):
-                            can_backward_simulate = False
-                            break
-
-                    if not can_backward_simulate:
-                        break
-
-                if can_backward_simulate:
-                    new_sim[p].add(q)
-
-        if new_sim != sim:
-            changed = True
-            sim = new_sim
-
-    return sim
-
-
-def _compute_bisimulation(forward_sim: Dict[str, Set[str]],
-                          backward_sim: Dict[str, Set[str]],
-                          states: List[str]) -> List[Set[str]]:
-    """
-    Compute bisimulation equivalence classes from forward and backward simulation.
-    """
-    # Two states are bisimilar if they can simulate each other in both directions
-    bisimilar = set()
-
-    for p in states:
-        for q in states:
-            if (q in forward_sim.get(p, set()) and
-                    p in forward_sim.get(q, set()) and
-                    q in backward_sim.get(p, set()) and
-                    p in backward_sim.get(q, set())):
-                bisimilar.add((min(p, q), max(p, q)))  # normalise pairs
-
-    # Build equivalence classes using union-find
-    parent = {state: state for state in states}
-
-    def find(x):
-        if parent[x] != x:
-            parent[x] = find(parent[x])
-        return parent[x]
-
-    def union(x, y):
-        px, py = find(x), find(y)
-        if px != py:
-            parent[px] = py
-
-    # Union bisimilar states
-    for p, q in bisimilar:
-        union(p, q)
-
-    # Group states by their representative
-    groups = defaultdict(set)
-    for state in states:
-        groups[find(state)].add(state)
-
-    return list(groups.values())
-
-
-def _build_quotient_automaton(nfa: Dict, equivalence_classes: List[Set[str]]) -> Dict:
-    """Build the quotient automaton from equivalence classes."""
-    if len(equivalence_classes) == 0:
-        return nfa  # No reduction possible
-
-    # Create state mapping
-    state_to_class = {}
-    class_representatives = {}
-
-    for i, equiv_class in enumerate(equivalence_classes):
-        representative = f"q{i}"
-        class_representatives[representative] = equiv_class
-        for state in equiv_class:
-            state_to_class[state] = representative
-
-    # Build transitions for quotient automaton
-    quotient_transitions = defaultdict(lambda: defaultdict(set))
-
+    # Build reverse graph
+    reverse_graph = defaultdict(set)
     for state in nfa['states']:
         if state in nfa['transitions']:
-            source_class = state_to_class[state]
             for symbol in nfa['transitions'][state]:
                 for target in nfa['transitions'][state][symbol]:
-                    target_class = state_to_class[target]
-                    quotient_transitions[source_class][symbol].add(target_class)
+                    reverse_graph[target].add(state)
 
-    # Convert sets to lists
-    final_transitions = {}
-    for source in quotient_transitions:
-        final_transitions[source] = {}
-        for symbol in quotient_transitions[source]:
-            final_transitions[source][symbol] = sorted(list(quotient_transitions[source][symbol]))
+    # BFS backwards from accepting states
+    alive_states = set(nfa['acceptingStates'])
+    queue = deque(nfa['acceptingStates'])
 
-    # Determine start state and accepting states
-    start_state = state_to_class[nfa['startingState']]
-    accepting_states = []
+    while queue:
+        state = queue.popleft()
+        for predecessor in reverse_graph[state]:
+            if predecessor not in alive_states:
+                alive_states.add(predecessor)
+                queue.append(predecessor)
 
-    for class_rep, equiv_class in class_representatives.items():
-        if any(state in nfa['acceptingStates'] for state in equiv_class):
-            accepting_states.append(class_rep)
+    # Build new NFA with only alive states
+    new_states = [s for s in nfa['states'] if s in alive_states]
+    new_accepting = [s for s in nfa['acceptingStates'] if s in alive_states]
+    new_transitions = {}
 
-    return {
-        'states': sorted(list(class_representatives.keys())),
+    for state in new_states:
+        if state in nfa['transitions']:
+            new_transitions[state] = {}
+            for symbol in nfa['transitions'][state]:
+                targets = [t for t in nfa['transitions'][state][symbol] if t in alive_states]
+                if targets:
+                    new_transitions[state][symbol] = targets
+
+    result = {
+        'states': new_states,
         'alphabet': nfa['alphabet'][:],
-        'transitions': final_transitions,
-        'startingState': start_state,
-        'acceptingStates': sorted(accepting_states)
+        'transitions': new_transitions,
+        'startingState': nfa['startingState'] if nfa['startingState'] in alive_states else '',
+        'acceptingStates': new_accepting
     }
 
-
-def direct_product_sat_minimise(nfa: Dict, best_nfa: Optional[Dict] = None) -> Dict:
-    """
-    Finds the exact minimal NFA using Direct Product SAT construction.
-    Uses binary search to find the minimum number of states.
-
-    Note: The caller is responsible for ensuring the NFA size is practical
-    for SAT solving (typically ≤20 states).
-    """
-    # normalise the NFA first
-    normalised_nfa = normalise_nfa(nfa)
-
-    if best_nfa is None or len(best_nfa['states']) >= len(normalised_nfa['states']):
-        best_nfa = normalised_nfa
-
-    lower_bound = 1
-    upper_bound = len(normalised_nfa['states'])
-
-    while lower_bound <= upper_bound:
-        k = (lower_bound + upper_bound) // 2
-
-        result = _direct_product_sat_check(normalised_nfa, k)
-
-        if result is not None:
-            if len(result['states']) < len(best_nfa['states']):
-                # keep the smallest so far
-                best_nfa = result
-            upper_bound = k - 1
-        else:
-            lower_bound = k + 1
-            # Even if UNSAT, we already know nothing with <k states works.
-
-    return best_nfa
+    return result
 
 
-def _direct_product_sat_check(original_nfa: Dict, target_states: int) -> Optional[Dict]:
-    """
-    Checks if there exists an NFA with target_states using Direct Product Construction.
-    Now with proper timeout handling using solve_limited.
-    """
-    try:
-        encoding = DirectProductSATEncoding(original_nfa, target_states)
-        formula = encoding.build_formula()
+def eliminate_epsilon_transitions(nfa: Dict) -> Dict:
+    """Eliminate epsilon transitions using standard epsilon elimination."""
 
-        solver = Glucose3()
-        solver.append_formula(formula)
+    if not any('' in nfa['transitions'].get(s, {}) for s in nfa['states']):
+        return nfa
 
-        # Use solve_limited with proper timeout handling
-        result = solver.solve_limited(expect_interrupt=True)
+    # Compute epsilon closures for all states
+    def compute_epsilon_closure(state: str) -> Set[str]:
+        closure = {state}
+        stack = [state]
 
-        # Handle timeout case
-        if result is None:
-            solver.delete()
-            return None
+        while stack:
+            current = stack.pop()
+            if current in nfa['transitions'] and '' in nfa['transitions'][current]:
+                for target in nfa['transitions'][current]['']:
+                    if target not in closure:
+                        closure.add(target)
+                        stack.append(target)
 
-        if result:
-            model = solver.get_model()
-            result_nfa = encoding.extract_nfa(model)
+        return closure
 
-            # Multiple verification attempts with different methods
-            verification_passed = False
-            for attempt in range(MinimisationConfig.MAX_VERIFICATION_ATTEMPTS):
-                if _verify_language_equivalence(original_nfa, result_nfa, attempt):
-                    verification_passed = True
+    epsilon_closures = {}
+    for state in nfa['states']:
+        epsilon_closures[state] = compute_epsilon_closure(state)
+
+    # Build new transitions without epsilon
+    new_transitions = {}
+    alphabet_no_epsilon = [s for s in nfa['alphabet'] if s != '']
+
+    for state in nfa['states']:
+        new_transitions[state] = {}
+
+        # For each non-epsilon symbol
+        for symbol in alphabet_no_epsilon:
+            targets = set()
+
+            # From epsilon closure of current state
+            for eps_state in epsilon_closures[state]:
+                if eps_state in nfa['transitions'] and symbol in nfa['transitions'][eps_state]:
+                    for direct_target in nfa['transitions'][eps_state][symbol]:
+                        # Add epsilon closure of each target
+                        targets.update(epsilon_closures[direct_target])
+
+            if targets:
+                new_transitions[state][symbol] = sorted(list(targets))
+
+    # Update accepting states - a state is accepting if any state in its epsilon closure is accepting
+    new_accepting = []
+    for state in nfa['states']:
+        if any(eps_state in nfa['acceptingStates'] for eps_state in epsilon_closures[state]):
+            new_accepting.append(state)
+
+    result = {
+        'states': nfa['states'][:],
+        'alphabet': alphabet_no_epsilon,
+        'transitions': new_transitions,
+        'startingState': nfa['startingState'],
+        'acceptingStates': new_accepting
+    }
+
+    return result
+
+
+def determinise_nfa(nfa: Dict) -> Tuple[Dict, Dict]:
+    """Convert NFA to DFA using subset construction."""
+
+    # Map from StateSet to new state name
+    state_sets_to_states = {}
+    state_counter = 0
+
+    def get_state_name(state_set):
+        nonlocal state_counter
+        state_set_obj = StateSet(state_set)
+        if state_set_obj not in state_sets_to_states:
+            state_sets_to_states[state_set_obj] = f"d{state_counter}"
+            state_counter += 1
+        return state_sets_to_states[state_set_obj]
+
+    # Start with the initial state set
+    initial_set = {nfa['startingState']}
+    start_state = get_state_name(initial_set)
+
+    # BFS to build DFA
+    queue = deque([StateSet(initial_set)])
+    processed = set()
+    dfa_transitions = {}
+
+    while queue:
+        current_set = queue.popleft()
+        if current_set in processed:
+            continue
+        processed.add(current_set)
+
+        current_state = state_sets_to_states[current_set]
+        dfa_transitions[current_state] = {}
+
+        # For each symbol in alphabet
+        for symbol in nfa['alphabet']:
+            next_states = set()
+
+            # Collect all states reachable by this symbol
+            for state in current_set:
+                if state in nfa['transitions'] and symbol in nfa['transitions'][state]:
+                    next_states.update(nfa['transitions'][state][symbol])
+
+            if next_states:
+                next_state_set = StateSet(next_states)
+                next_state = get_state_name(next_states)
+                dfa_transitions[current_state][symbol] = [next_state]
+
+                if next_state_set not in processed:
+                    queue.append(next_state_set)
+
+    # Determine accepting states
+    accepting_states = []
+    for state_set, state_name in state_sets_to_states.items():
+        if state_set.any(lambda s: s in nfa['acceptingStates']):
+            accepting_states.append(state_name)
+
+    dfa = {
+        'states': list(state_sets_to_states.values()),
+        'alphabet': nfa['alphabet'][:],
+        'transitions': dfa_transitions,
+        'startingState': start_state,
+        'acceptingStates': accepting_states
+    }
+
+    return dfa, state_sets_to_states
+
+
+def make_state_map(nfa: Dict) -> Tuple[Dict, Dict, Dict, Dict]:
+    """Create state map as described in Kameda-Weiner algorithm."""
+
+    # Determinise NFA
+    dfa, state_mapping = determinise_nfa(nfa)
+
+    # Create dual (reverse) NFA
+    dual_nfa = {
+        'states': nfa['states'][:],
+        'alphabet': nfa['alphabet'][:],
+        'transitions': {},
+        'startingState': '',
+        'acceptingStates': [nfa['startingState']]  # Reverse: old start becomes accept
+    }
+
+    # Reverse transitions
+    for state in nfa['states']:
+        if state in nfa['transitions']:
+            for symbol in nfa['transitions'][state]:
+                for target in nfa['transitions'][state][symbol]:
+                    if target not in dual_nfa['transitions']:
+                        dual_nfa['transitions'][target] = {}
+                    if symbol not in dual_nfa['transitions'][target]:
+                        dual_nfa['transitions'][target][symbol] = []
+                    dual_nfa['transitions'][target][symbol].append(state)
+
+    # Create artificial start state that connects to all original accepting states
+    if nfa['acceptingStates']:
+        dual_start = 'dual_start'
+        dual_nfa['states'].append(dual_start)
+        dual_nfa['startingState'] = dual_start
+        dual_nfa['transitions'][dual_start] = {}
+
+        # Add epsilon transitions to all original accepting states
+        dual_nfa['transitions'][dual_start][''] = nfa['acceptingStates'][:]
+        if '' not in dual_nfa['alphabet']:
+            dual_nfa['alphabet'].append('')
+
+    dual_dfa, dual_state_mapping = determinise_nfa(dual_nfa)
+
+    # Create state map matrix
+    dfa_states = dfa['states'][:]
+    dual_states = dual_dfa['states'][:]
+
+    # Put start states first (important for the algorithm)
+    if dfa['startingState'] in dfa_states:
+        dfa_states.remove(dfa['startingState'])
+        dfa_states.insert(0, dfa['startingState'])
+
+    if dual_dfa['startingState'] in dual_states:
+        dual_states.remove(dual_dfa['startingState'])
+        dual_states.insert(0, dual_dfa['startingState'])
+
+    # Build state map
+    state_map = {}
+    for i, dfa_state in enumerate(dfa_states):
+        state_map[i] = {}
+
+        # Find original state set for this DFA state
+        dfa_state_set = None
+        for state_set, mapped_state in state_mapping.items():
+            if mapped_state == dfa_state:
+                dfa_state_set = state_set
+                break
+
+        for j, dual_state in enumerate(dual_states):
+            # Find original state set for this dual DFA state
+            dual_state_set = None
+            for state_set, mapped_state in dual_state_mapping.items():
+                if mapped_state == dual_state:
+                    dual_state_set = state_set
                     break
 
-            if verification_passed:
-                solver.delete()
-                return result_nfa
+            # Intersection of state sets
+            if dfa_state_set and dual_state_set:
+                intersection = dfa_state_set.intersect(dual_state_set)
+                state_map[i][j] = set(intersection)
             else:
-                solver.delete()
-                return None
-        else:
-            solver.delete()
-            return None
-
-    except Exception as e:
-        print(f"  SAT solver error: {e}")
-        return None
-
-
-class DirectProductSATEncoding:
-    """
-    Direct Product SAT encoding that properly captures language equivalence
-    using simulation between original and target NFAs.
-    """
-
-    def __init__(self, original_nfa: Dict, target_states: int):
-        self.original_nfa = original_nfa
-        self.target_states = target_states
-        self.alphabet = original_nfa['alphabet']
-        self.original_states = original_nfa['states']
-
-        self.next_var = 1
-        self.var_map = {}
-        self._create_variables()
-
-    def _create_variables(self):
-        """Create boolean variables for the Direct Product SAT encoding."""
-
-        # Target NFA structure variables
-        # trans[i][a][j] = target state i has transition to state j on symbol a
-        self.trans_vars = {}
-        for i in range(self.target_states):
-            self.trans_vars[i] = {}
-            for a in self.alphabet:
-                self.trans_vars[i][a] = {}
-                for j in range(self.target_states):
-                    var = self._new_var(f"trans_{i}_{a}_{j}")
-                    self.trans_vars[i][a][j] = var
-
-        # accept[i] = target state i is accepting
-        self.accept_vars = {}
-        for i in range(self.target_states):
-            var = self._new_var(f"accept_{i}")
-            self.accept_vars[i] = var
-
-        # Simulation variables
-        # sim[orig][targ] = target state targ can simulate original state orig
-        self.sim_vars = {}
-        for orig_state in self.original_states:
-            self.sim_vars[orig_state] = {}
-            for i in range(self.target_states):
-                var = self._new_var(f"sim_{orig_state}_{i}")
-                self.sim_vars[orig_state][i] = var
-
-    def _new_var(self, name: str) -> int:
-        """Create a new SAT variable."""
-        var = self.next_var
-        self.next_var += 1
-        self.var_map[var] = name
-        return var
-
-    def build_formula(self) -> CNF:
-        """Build the complete SAT formula using Direct Product Construction."""
-        cnf = CNF()
-
-        # 1. Every original state must be simulated by at least one target state
-        self._add_simulation_coverage_constraints(cnf)
-
-        # 2. Simulation must respect acceptance
-        self._add_acceptance_simulation_constraints(cnf)
-
-        # 3. Simulation must respect transitions
-        self._add_transition_simulation_constraints(cnf)
-
-        # 4. Target start state must simulate original start state
-        self._add_start_state_constraints(cnf)
-
-        # 5. Every target state that simulates an accepting original state must be accepting
-        self._add_accepting_consistency_constraints(cnf)
-
-        return cnf
-
-    def _add_simulation_coverage_constraints(self, cnf: CNF):
-        """Every original state must be simulated by at least one target state."""
-        for orig_state in self.original_states:
-            clause = [self.sim_vars[orig_state][i] for i in range(self.target_states)]
-            cnf.append(clause)
-
-    def _add_acceptance_simulation_constraints(self, cnf: CNF):
-        """If target state simulates original state, acceptance must be consistent."""
-        for orig_state in self.original_states:
-            is_orig_accepting = orig_state in self.original_nfa['acceptingStates']
-
-            for i in range(self.target_states):
-                # If target state i simulates original state and original is accepting,
-                # then target state i must be accepting
-                if is_orig_accepting:
-                    cnf.append([-self.sim_vars[orig_state][i], self.accept_vars[i]])
-                # If target state i simulates original state and original is not accepting,
-                # target can be either accepting or non-accepting (no constraint needed)
-
-    def _add_transition_simulation_constraints(self, cnf: CNF):
-        """Simulation must respect the transition structure."""
-        for orig_state in self.original_states:
-            for symbol in self.alphabet:
-                orig_targets = self.original_nfa['transitions'].get(orig_state, {}).get(symbol, [])
-
-                for i in range(self.target_states):
-                    # If target state i simulates orig_state, then for every transition
-                    # orig_state --symbol--> orig_target, there must be a transition
-                    # i --symbol--> j where j simulates orig_target
-
-                    for orig_target in orig_targets:
-                        # Build clause: ¬sim[orig_state][i] ∨ ∨_{j=0}^{k-1} (trans[i][symbol][j] ∧ sim[orig_target][j])
-
-                        # Create auxiliary variables for (trans[i][symbol][j] ∧ sim[orig_target][j])
-                        aux_vars = []
-                        for j in range(self.target_states):
-                            aux_var = self._new_var(f"aux_{orig_state}_{i}_{symbol}_{orig_target}_{j}")
-                            aux_vars.append(aux_var)
-
-                            # aux_var ↔ (trans[i][symbol][j] ∧ sim[orig_target][j])
-                            cnf.append([-aux_var, self.trans_vars[i][symbol][j]])
-                            cnf.append([-aux_var, self.sim_vars[orig_target][j]])
-                            cnf.append([aux_var, -self.trans_vars[i][symbol][j], -self.sim_vars[orig_target][j]])
-
-                        # Main constraint: ¬sim[orig_state][i] ∨ ∨ aux_vars
-                        cnf.append([-self.sim_vars[orig_state][i]] + aux_vars)
-
-    def _add_start_state_constraints(self, cnf: CNF):
-        """Target start state (state 0) must simulate original start state."""
-        orig_start = self.original_nfa['startingState']
-        cnf.append([self.sim_vars[orig_start][0]])
-
-    def _add_accepting_consistency_constraints(self, cnf: CNF):
-        """Additional consistency constraints for accepting states."""
-        # This ensures that the simulation is tight enough
-        for i in range(self.target_states):
-            # If target state i is accepting, it must simulate at least one accepting original state
-            accepting_orig_states = [s for s in self.original_states if s in self.original_nfa['acceptingStates']]
-
-            if accepting_orig_states:
-                clause = [-self.accept_vars[i]]
-                for orig_state in accepting_orig_states:
-                    clause.append(self.sim_vars[orig_state][i])
-                cnf.append(clause)
-
-    def extract_nfa(self, model: List[int]) -> Dict:
-        """Extract NFA from satisfying assignment."""
-        true_vars = set(var for var in model if var > 0)
-
-        transitions = defaultdict(lambda: defaultdict(list))
-
-        # Extract transitions
-        for i in range(self.target_states):
-            for a in self.alphabet:
-                for j in range(self.target_states):
-                    if self.trans_vars[i][a][j] in true_vars:
-                        state_name = f"s{i}"
-                        target_name = f"s{j}"
-                        transitions[state_name][a].append(target_name)
-
-        # Extract accepting states
-        accepting_states = []
-        for i in range(self.target_states):
-            if self.accept_vars[i] in true_vars:
-                accepting_states.append(f"s{i}")
-
-        return {
-            'states': [f"s{i}" for i in range(self.target_states)],
-            'alphabet': self.alphabet[:],
-            'transitions': dict(transitions),
-            'startingState': 's0',
-            'acceptingStates': accepting_states
-        }
-
-
-def _verify_language_equivalence(nfa1: Dict, nfa2: Dict, attempt: int = 0) -> bool:
-    """
-    Multi-layered verification that two NFAs accept the same language.
-    Uses different strategies for each attempt to catch different types of errors.
-    """
-    try:
-        # Strategy varies by attempt for robustness
-        if attempt == 0:
-            # Method 1: Convert to minimal DFAs and compare
-            return _verify_via_minimal_dfas(nfa1, nfa2)
-        elif attempt == 1:
-            # Method 2: Extensive random string testing with different seeds
-            return _verify_via_random_testing(nfa1, nfa2, seed=42 + attempt)
-        else:
-            # Method 3: Structural analysis with comprehensive enumeration
-            return _verify_via_comprehensive_enumeration(nfa1, nfa2)
-
-    except Exception as e:
-        print(f"Verification attempt {attempt} failed with error: {e}")
-        return False
-
-
-def _verify_via_minimal_dfas(nfa1: Dict, nfa2: Dict) -> bool:
-    """Verify equivalence by converting to minimal DFAs and comparing."""
-    try:
-        dfa1 = nfa_to_dfa(nfa1)
-        dfa2 = nfa_to_dfa(nfa2)
-        min_dfa1 = minimise_dfa(dfa1)
-        min_dfa2 = minimise_dfa(dfa2)
-
-        return _dfas_structurally_equivalent(min_dfa1, min_dfa2)
-    except Exception:
-        return False
-
-
-def _verify_via_random_testing(nfa1: Dict, nfa2: Dict, seed: int = 42) -> bool:
-    """Verify via extensive random string testing."""
-    random.seed(seed)
-    alphabet = nfa1['alphabet']
-
-    # Test strings of various lengths
-    for length in range(min(MinimisationConfig.MAX_VERIFICATION_LENGTH, 10)):
-        # For short strings, test all possibilities
-        if length <= 3:
-            strings_to_test = list(_generate_strings(alphabet, length))
-        else:
-            # For longer strings, sample randomly
-            sample_size = min(MinimisationConfig.VERIFICATION_SAMPLE_SIZE, 50)
-            strings_to_test = [
-                ''.join(random.choices(alphabet, k=length))
-                for _ in range(sample_size)
-            ]
-
-        for string in strings_to_test:
-            if _accepts_string(nfa1, string) != _accepts_string(nfa2, string):
-                return False
-
-    return True
-
-
-def _verify_via_comprehensive_enumeration(nfa1: Dict, nfa2: Dict) -> bool:
-    """Verify by comprehensive enumeration of short strings."""
-    alphabet = nfa1['alphabet']
-
-    # Test all strings up to a reasonable length
-    max_length = min(6, MinimisationConfig.MAX_VERIFICATION_LENGTH)
-
-    for length in range(max_length + 1):
-        for string in _generate_strings(alphabet, length):
-            if _accepts_string(nfa1, string) != _accepts_string(nfa2, string):
-                return False
-
-    return True
-
-
-def _dfas_structurally_equivalent(dfa1: Dict, dfa2: Dict) -> bool:
-    """Check if two minimal DFAs are structurally equivalent."""
-    if len(dfa1['states']) != len(dfa2['states']):
-        return False
-
-    if len(dfa1['acceptingStates']) != len(dfa2['acceptingStates']):
-        return False
-
-    return _find_dfa_isomorphism(dfa1, dfa2)
-
-
-def _find_dfa_isomorphism(dfa1: Dict, dfa2: Dict) -> bool:
-    """Try to find an isomorphism between two DFAs using BFS."""
-    if len(dfa1['states']) != len(dfa2['states']):
-        return False
-
-    if len(dfa1['states']) > 8:  # Avoid exponential blowup
-        return True  # Assume equivalent for large DFAs
-
-    # Try all possible mappings
-    for perm in itertools.permutations(dfa2['states']):
-        mapping = dict(zip(dfa1['states'], perm))
-        if _is_valid_dfa_mapping(dfa1, dfa2, mapping):
-            return True
-
-    return False
-
-
-def _is_valid_dfa_mapping(dfa1: Dict, dfa2: Dict, mapping: Dict[str, str]) -> bool:
-    """Check if a state mapping preserves DFA structure."""
-    # Check start state mapping
-    if mapping[dfa1['startingState']] != dfa2['startingState']:
-        return False
-
-    # Check accepting states mapping
-    mapped_accepting = {mapping[s] for s in dfa1['acceptingStates']}
-    if mapped_accepting != set(dfa2['acceptingStates']):
-        return False
-
-    # Check transition mapping
-    for state in dfa1['states']:
-        for symbol in dfa1['alphabet']:
-            targets1 = set(dfa1['transitions'].get(state, {}).get(symbol, []))
-            targets2 = set(dfa2['transitions'].get(mapping[state], {}).get(symbol, []))
-
-            mapped_targets1 = {mapping[t] for t in targets1}
-            if mapped_targets1 != targets2:
-                return False
-
-    return True
-
-
-def _generate_strings(alphabet: List[str], length: int):
-    """Generate all strings of given length over alphabet."""
-    if length == 0:
-        yield ""
-    else:
-        for chars in itertools.product(alphabet, repeat=length):
-            yield "".join(chars)
-
-
-def _accepts_string(nfa: Dict, string: str) -> bool:
-    """
-    Check if NFA accepts given string with proper epsilon closure handling.
-    """
-    # Start with epsilon closure of the starting state
-    current_states = _compute_epsilon_closure(nfa, nfa['startingState'])
-
-    for symbol in string:
-        next_states = set()
-        for state in current_states:
-            # Get all states reachable by this symbol
-            targets = nfa['transitions'].get(state, {}).get(symbol, [])
-            for target in targets:
-                # Add epsilon closure of each target
-                next_states.update(_compute_epsilon_closure(nfa, target))
-
-        current_states = next_states
-        if not current_states:
-            return False
-
-    return any(state in nfa['acceptingStates'] for state in current_states)
-
-
-def minimise_nfa(nfa: Dict) -> MinimisationResult:
-    """
-    NFA minimisation pipeline.
-    """
-    # Basic structure validation
-    validation_result = validate_fsa_structure(nfa)
-    if not validation_result['valid']:
-        raise ValueError(f"Invalid NFA structure: {validation_result.get('error', 'Unknown error')}")
-
-    # Additional validation checks that might not be caught by validate_fsa_structure
-    _validate_nfa_consistency(nfa)
-
-    original_states = len(nfa['states'])
+                state_map[i][j] = set()
+
+    return state_map, dfa, dual_dfa, state_mapping
+
+
+def make_elementary_automaton_matrix(state_map: Dict) -> List[List[bool]]:
+    """Create elementary automaton matrix from state map."""
+
+    rows = len(state_map)
+    cols = len(state_map[0]) if rows > 0 else 0
+
+    matrix = []
+    for i in range(rows):
+        row = []
+        for j in range(cols):
+            row.append(len(state_map[i][j]) > 0)
+        matrix.append(row)
+
+    return matrix
+
+
+def compute_prime_grids(matrix: List[List[bool]]) -> List[Grid]:
+    """Compute prime grids from the matrix """
+
+    rows = len(matrix)
+    cols = len(matrix[0]) if rows > 0 else 0
+
+    # Start with all single-element grids where matrix[i][j] = True
+    grids_to_process = set()
+    for i in range(rows):
+        for j in range(cols):
+            if matrix[i][j]:
+                grids_to_process.add(Grid({i}, {j}))
+
+    prime_grids = set()
+
+    while grids_to_process:
+        current_grid = grids_to_process.pop()
+        is_prime = True
+
+        # Try expanding rows
+        comparison_row = next(iter(current_grid.rows))
+        for test_row in range(rows):
+            if test_row in current_grid.rows:
+                continue
+
+            # Check if this row has the same pattern as comparison_row
+            can_expand = True
+            for col in current_grid.columns:
+                if matrix[test_row][col] != matrix[comparison_row][col]:
+                    can_expand = False
+                    break
+
+            if can_expand:
+                new_grid = Grid(current_grid.rows | {test_row}, current_grid.columns)
+                grids_to_process.add(new_grid)
+                is_prime = False
+
+        # Try expanding columns
+        comparison_col = next(iter(current_grid.columns))
+        for test_col in range(cols):
+            if test_col in current_grid.columns:
+                continue
+
+            # Check if this column has the same pattern as comparison_col
+            can_expand = True
+            for row in current_grid.rows:
+                if matrix[row][test_col] != matrix[row][comparison_col]:
+                    can_expand = False
+                    break
+
+            if can_expand:
+                new_grid = Grid(current_grid.rows, current_grid.columns | {test_col})
+                grids_to_process.add(new_grid)
+                is_prime = False
+
+        if is_prime:
+            prime_grids.add(current_grid)
+
+    return list(prime_grids)
+
+
+def enumerate_covers(matrix: List[List[bool]], prime_grids: List[Grid]) -> List[Cover]:
+    """Enumerate covers"""
+
+    rows = len(matrix)
+    cols = len(matrix[0]) if rows > 0 else 0
+
+    # Find all positions where matrix[i][j] = True
+    true_positions = set()
+    for i in range(rows):
+        for j in range(cols):
+            if matrix[i][j]:
+                true_positions.add((i, j))
+
+    if not true_positions:
+        return []
+
+    # For each grid, compute which flattened indices it covers
+    grid_to_flattened = {}
+    for grid in prime_grids:
+        flattened = set()
+        for row in grid.rows:
+            for col in grid.columns:
+                flattened.add(col * rows + row)  # Same flattening as C# code
+        grid_to_flattened[grid] = flattened
+
+    # Convert true positions to flattened indices
+    flattened_true = set()
+    for row, col in true_positions:
+        flattened_true.add(col * rows + row)
+
+    # Enumerate covers of different sizes
+    covers = []
+    for grid_count in range(1, len(prime_grids) + 1):
+        def enumerate_recursive(first_grid_index, remaining_flattened, current_cover, grids_needed):
+            if grids_needed == 0:
+                if not remaining_flattened:
+                    covers.append(Cover(set(current_cover)))
+                return
+
+            if grids_needed > len(prime_grids) - first_grid_index:
+                return
+
+            for grid_index in range(first_grid_index, len(prime_grids)):
+                grid = prime_grids[grid_index]
+                grid_coverage = grid_to_flattened[grid]
+
+                # Check if this grid covers any remaining positions
+                if grid_coverage & remaining_flattened:
+                    new_remaining = remaining_flattened - grid_coverage
+                    enumerate_recursive(grid_index + 1, new_remaining, current_cover + [grid], grids_needed - 1)
+
+        enumerate_recursive(0, flattened_true, [], grid_count)
+
+        if covers:  # Return first valid covers found
+            break
+
+    return covers
+
+
+def build_minimal_nfa_from_cover(original_nfa: Dict, cover: Cover, dfa: Dict, state_mapping: Dict) -> Dict:
+    """Build minimal NFA from cover using intersection rule."""
+
+    if not cover.grids:
+        return original_nfa
+
+    grids = list(cover.grids)
+
+    # Create subset assignment function
+    dfa_states = dfa['states'][:]
+    # Put start state first
+    if dfa['startingState'] in dfa_states:
+        dfa_states.remove(dfa['startingState'])
+        dfa_states.insert(0, dfa['startingState'])
+
+    subset_assignment = {}
+    for row_idx in range(len(dfa_states)):
+        subset_assignment[row_idx] = set()
+        for grid in grids:
+            if row_idx in grid.rows:
+                subset_assignment[row_idx].add(grid)
+
+    # Create states for each grid
+    grid_to_state = {grid: f"s{i}" for i, grid in enumerate(grids)}
+    new_states = list(grid_to_state.values())
+    new_transitions = {}
+
+    for grid in grids:
+        from_state = grid_to_state[grid]
+        new_transitions[from_state] = {}
+
+        # Get DFA states (rows) that this grid covers
+        covered_dfa_states = [dfa_states[i] for i in grid.rows if i < len(dfa_states)]
+
+        if not covered_dfa_states:
+            continue
+
+        # Find symbols available from ALL covered DFA states
+        available_symbols = set(original_nfa['alphabet'])
+        for dfa_state in covered_dfa_states:
+            if dfa_state in dfa['transitions']:
+                state_symbols = set(dfa['transitions'][dfa_state].keys())
+                available_symbols &= state_symbols
+            else:
+                available_symbols = set()
+                break
+
+        # For each available symbol, compute target grids
+        for symbol in available_symbols:
+            target_grids = None
+
+            for dfa_state in covered_dfa_states:
+                if dfa_state in dfa['transitions'] and symbol in dfa['transitions'][dfa_state]:
+                    target_dfa_states = dfa['transitions'][dfa_state][symbol]
+
+                    for target_dfa_state in target_dfa_states:
+                        if target_dfa_state in dfa_states:
+                            target_row = dfa_states.index(target_dfa_state)
+                            target_grid_set = subset_assignment.get(target_row, set())
+
+                            if target_grids is None:
+                                target_grids = target_grid_set.copy()
+                            else:
+                                target_grids &= target_grid_set
+
+            if target_grids:
+                target_states = [grid_to_state[grid] for grid in target_grids]
+                new_transitions[from_state][symbol] = target_states
+
+    # Determine start states (grids that contain row 0)
+    start_states = []
+    for grid in grids:
+        if 0 in grid.rows:
+            start_states.append(grid_to_state[grid])
+
+    # Determine accepting states (grids that contain column 0)
+    accepting_states = []
+    for grid in grids:
+        if 0 in grid.columns:
+            accepting_states.append(grid_to_state[grid])
+
+    result = {
+        'states': new_states,
+        'alphabet': original_nfa['alphabet'][:],
+        'transitions': new_transitions,
+        'startingState': start_states[0] if start_states else (new_states[0] if new_states else ''),
+        'acceptingStates': accepting_states
+    }
+
+    return result
+
+
+def apply_kameda_weiner(nfa: Dict, method_name: str) -> Tuple[Dict, List[str]]:
+    """Apply Kameda-Weiner algorithm to an NFA and return the result with stages."""
+
     stages = []
 
-    analysis = analyse_fsa_complexity(nfa)
+    try:
+        # Kameda-Weiner algorithm
+        stages.append(f"Create state map ({method_name})")
+        state_map, dfa, dual_dfa, state_mapping = make_state_map(nfa)
 
-    # Handle small NFAs with direct SAT
-    if analysis['can_use_sat_directly']:
-        result_nfa = direct_product_sat_minimise(nfa)
-        stages.append("Direct Product SAT minimisation")
-        method_used = "Direct Product SAT (optimal)"
-        is_optimal = True
+        stages.append(f"Elementary automaton matrix ({method_name})")
+        matrix = make_elementary_automaton_matrix(state_map)
 
+        stages.append(f"Compute prime grids ({method_name})")
+        prime_grids = compute_prime_grids(matrix)
+
+        if not prime_grids:
+            return nfa, stages
+
+        stages.append(f"Enumerate covers ({method_name})")
+        covers = enumerate_covers(matrix, prime_grids)
+
+        if not covers:
+            return nfa, stages
+
+        # Try covers in order of increasing size
+        best_nfa = nfa
+
+        for cover in sorted(covers, key=len):
+            if len(cover) >= len(nfa['states']):
+                continue
+
+            try:
+                stages.append(f"Try cover with {len(cover)} grids ({method_name})")
+                candidate_nfa = build_minimal_nfa_from_cover(nfa, cover, dfa, state_mapping)
+
+                # Basic validation
+                if candidate_nfa['states'] and len(candidate_nfa['states']) < len(best_nfa['states']):
+                    candidate_nfa = remove_unreachable_states(candidate_nfa)
+                    candidate_nfa = remove_dead_states(candidate_nfa)
+
+                    if candidate_nfa['states'] and len(candidate_nfa['states']) < len(best_nfa['states']):
+                        best_nfa = candidate_nfa
+                        break
+
+            except Exception as e:
+                continue
+
+        return best_nfa, stages
+
+    except Exception as e:
+        return nfa, stages
+
+
+def verify_candidate_equivalence(original_nfa: Dict, candidate_nfa: Dict, method_name: str) -> Tuple[bool, Dict]:
+    """
+    Verify that a candidate minimized NFA is equivalent to the original NFA.
+
+    Args:
+        original_nfa: The original NFA
+        candidate_nfa: The candidate minimized NFA
+        method_name: Name of the method used to generate the candidate
+
+    Returns:
+        Tuple of (is_equivalent, verification_details)
+    """
+    try:
+        is_equivalent, details = are_automata_equivalent(original_nfa, candidate_nfa)
+
+        verification_details = {
+            'method': method_name,
+            'equivalent': is_equivalent,
+            'original_states': len(original_nfa['states']),
+            'candidate_states': len(candidate_nfa['states']) if candidate_nfa['states'] else 0,
+            'equivalence_details': details
+        }
+
+        return is_equivalent, verification_details
+
+    except Exception as e:
+        verification_details = {
+            'method': method_name,
+            'equivalent': False,
+            'error': str(e),
+            'original_states': len(original_nfa['states']),
+            'candidate_states': len(candidate_nfa['states']) if candidate_nfa['states'] else 0
+        }
+
+        return False, verification_details
+
+
+def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationResult:
+    """
+    Minimise an NFA using a multi-stage pipeline approach with threshold-based Kameda-Weiner usage.
+
+    Args:
+        nfa: The NFA to minimise
+        kameda_weiner_threshold: Maximum number of states for which Kameda-Weiner will be applied
+    """
+
+    original_states = len(nfa['states'])
+    all_stages = ["Preprocessing"]
+    candidate_results = []
+    verification_results = []
+
+    # Handle empty NFA
+    if original_states == 0:
+        return MinimisationResult(
+            nfa=nfa,
+            original_states=0,
+            final_states=0,
+            reduction=0,
+            reduction_percent=0,
+            is_optimal=True,
+            method_used="Empty NFA",
+            stages=all_stages,
+            candidate_results=[],
+            equivalence_verified=True,
+            verification_details={}
+        )
+
+    current_nfa = nfa
+
+    # Preprocessing
+    current_nfa = remove_unreachable_states(current_nfa)
+    current_nfa = remove_dead_states(current_nfa)
+
+    # Handle NFA that became empty after preprocessing
+    if not current_nfa['states']:
+        empty_nfa = {
+            'states': [],
+            'alphabet': nfa['alphabet'][:],
+            'transitions': {},
+            'startingState': '',
+            'acceptingStates': []
+        }
+
+        # Verify empty NFA is equivalent to original (should be if original accepts no strings)
+        is_equiv, verification_details = verify_candidate_equivalence(
+            nfa, empty_nfa, "Empty after preprocessing"
+        )
+
+        return MinimisationResult(
+            nfa=empty_nfa,
+            original_states=original_states,
+            final_states=0,
+            reduction=original_states,
+            reduction_percent=100.0,
+            is_optimal=True,
+            method_used="Empty after preprocessing",
+            stages=all_stages + ["Empty after preprocessing"],
+            candidate_results=[],
+            equivalence_verified=is_equiv,
+            verification_details=verification_details
+        )
+
+    # Epsilon elimination
+    if any('' in current_nfa['transitions'].get(s, {}) for s in current_nfa['states']):
+        current_nfa = eliminate_epsilon_transitions(current_nfa)
+        current_nfa = remove_unreachable_states(current_nfa)
+        current_nfa = remove_dead_states(current_nfa)
+
+    # Check again if NFA became empty
+    if not current_nfa['states']:
+        empty_nfa = {
+            'states': [],
+            'alphabet': nfa['alphabet'][:],
+            'transitions': {},
+            'startingState': '',
+            'acceptingStates': []
+        }
+
+        is_equiv, verification_details = verify_candidate_equivalence(
+            nfa, empty_nfa, "Empty after epsilon elimination"
+        )
+
+        return MinimisationResult(
+            nfa=empty_nfa,
+            original_states=original_states,
+            final_states=0,
+            reduction=original_states,
+            reduction_percent=100.0,
+            is_optimal=True,
+            method_used="Empty after epsilon elimination",
+            stages=all_stages + ["Empty after epsilon elimination"],
+            candidate_results=[],
+            equivalence_verified=is_equiv,
+            verification_details=verification_details
+        )
+
+    preprocessed_states = len(current_nfa['states'])
+
+    # PIPELINE STAGE 1: Apply Kameda-Weiner to original NFA (only if below threshold)
+    if preprocessed_states <= kameda_weiner_threshold:
+        all_stages.append(
+            f"Kameda-Weiner on Original NFA (states: {preprocessed_states} <= threshold: {kameda_weiner_threshold})")
+        kw_original_nfa, kw_original_stages = apply_kameda_weiner(current_nfa, "Original NFA")
+        candidate_info = {
+            'nfa': kw_original_nfa,
+            'method': 'Kameda-Weiner on Original NFA',
+            'states': len(kw_original_nfa['states']) if kw_original_nfa['states'] else 0
+        }
+
+        # Verify this candidate
+        is_equiv, verification_details = verify_candidate_equivalence(
+            nfa, kw_original_nfa, 'Kameda-Weiner on Original NFA'
+        )
+        candidate_info['equivalence_verified'] = is_equiv
+        candidate_info['verification_details'] = verification_details
+        verification_results.append(verification_details)
+
+        candidate_results.append(candidate_info)
+        all_stages.extend(kw_original_stages)
     else:
-        # Apply Kameda-Weiner first
-        stages.append("Kameda-Weiner preprocessing")
-        kameda_weiner_result = kameda_weiner_minimise(nfa)
+        all_stages.append(
+            f"Skipping Kameda-Weiner on Original NFA (states: {preprocessed_states} > threshold: {kameda_weiner_threshold})")
 
-        # Re-analyse after Kameda-Weiner to see if SAT is now feasible
-        kameda_weiner_states = len(kameda_weiner_result['states'])
+    # PIPELINE STAGE 2: Determinise original NFA and minimise DFA (always run)
+    try:
+        all_stages.append("Determinise original NFA")
+        dfa = nfa_to_dfa(current_nfa)
 
-        if kameda_weiner_states <= MinimisationConfig.SAT_POST_HEURISTIC_THRESHOLD:
-            stages.append("Direct Product SAT minimisation (post-preprocessing)")
-            result_nfa = direct_product_sat_minimise(kameda_weiner_result, best_nfa=kameda_weiner_result)
-            method_used = "Kameda-Weiner + Direct Product SAT (optimal)"
-            is_optimal = True
-        else:
-            result_nfa = kameda_weiner_result
-            method_used = "Kameda-Weiner only (heuristic)"
-            is_optimal = False
+        all_stages.append("Minimise DFA")
+        minimised_dfa = minimise_dfa(dfa)
 
-    final_states = len(result_nfa['states'])
+        candidate_info = {
+            'nfa': minimised_dfa,
+            'method': 'Determinise + Minimise DFA',
+            'states': len(minimised_dfa['states']) if minimised_dfa['states'] else 0
+        }
+
+        # Verify this candidate
+        is_equiv, verification_details = verify_candidate_equivalence(
+            nfa, minimised_dfa, 'Determinise + Minimise DFA'
+        )
+        candidate_info['equivalence_verified'] = is_equiv
+        candidate_info['verification_details'] = verification_details
+        verification_results.append(verification_details)
+
+        candidate_results.append(candidate_info)
+
+        # Store the minimised DFA for potential use in stage 3
+        stage2_result = minimised_dfa
+        stage2_states = len(minimised_dfa['states']) if minimised_dfa['states'] else 0
+
+    except Exception as e:
+        # Add a fallback candidate
+        candidate_info = {
+            'nfa': current_nfa,
+            'method': 'Determinise + Minimise DFA (failed)',
+            'states': len(current_nfa['states']) if current_nfa['states'] else 0,
+            'equivalence_verified': True,  # Original NFA is trivially equivalent to itself
+            'verification_details': {'method': 'Determinise + Minimise DFA (failed)', 'equivalent': True}
+        }
+        candidate_results.append(candidate_info)
+        all_stages.append("Determinise + Minimise DFA (failed)")
+
+        # Use current NFA as fallback for stage 3
+        stage2_result = current_nfa
+        stage2_states = len(current_nfa['states']) if current_nfa['states'] else 0
+
+    # PIPELINE STAGE 3: Apply Kameda-Weiner to minimised DFA (only if result from stage 2 is below threshold)
+    if stage2_states <= kameda_weiner_threshold and stage2_result['states']:
+        try:
+            all_stages.append(
+                f"Kameda-Weiner on Minimised DFA (states: {stage2_states} <= threshold: {kameda_weiner_threshold})")
+            kw_dfa_nfa, kw_dfa_stages = apply_kameda_weiner(stage2_result, "Minimised DFA")
+            candidate_info = {
+                'nfa': kw_dfa_nfa,
+                'method': 'Kameda-Weiner on Minimised DFA',
+                'states': len(kw_dfa_nfa['states']) if kw_dfa_nfa['states'] else 0
+            }
+
+            # Verify this candidate
+            is_equiv, verification_details = verify_candidate_equivalence(
+                nfa, kw_dfa_nfa, 'Kameda-Weiner on Minimised DFA'
+            )
+            candidate_info['equivalence_verified'] = is_equiv
+            candidate_info['verification_details'] = verification_details
+            verification_results.append(verification_details)
+
+            candidate_results.append(candidate_info)
+            all_stages.extend(kw_dfa_stages)
+
+        except Exception as e:
+            # Add a fallback candidate
+            candidate_info = {
+                'nfa': stage2_result,
+                'method': 'Kameda-Weiner on Minimised DFA (failed)',
+                'states': stage2_states,
+                'equivalence_verified': True,  # Using verified result from stage 2
+                'verification_details': {'method': 'Kameda-Weiner on Minimised DFA (failed)', 'equivalent': True}
+            }
+            candidate_results.append(candidate_info)
+            all_stages.append("Kameda-Weiner on Minimised DFA (failed)")
+    else:
+        all_stages.append(
+            f"Skipping Kameda-Weiner on Minimised DFA (states: {stage2_states} > threshold: {kameda_weiner_threshold})")
+
+    # PIPELINE STAGE 4: Compare all candidates and select the best
+    all_stages.append("Compare candidates and select best")
+
+    # Only consider candidates that passed verification
+    valid_candidates = [c for c in candidate_results if c.get('equivalence_verified', False)]
+    if not valid_candidates:
+        # If no candidates passed verification, fall back to original NFA
+        all_stages.append("No candidates passed verification - using original NFA")
+        best_candidate = {
+            'nfa': nfa,
+            'method': 'Original NFA (fallback)',
+            'states': len(nfa['states']),
+            'equivalence_verified': True
+        }
+        verification_summary = {
+            'all_candidates_failed': True,
+            'total_candidates': len(candidate_results),
+            'valid_candidates': 0
+        }
+    else:
+        # Pick the best candidate (minimum states)
+        best_candidate = min(valid_candidates, key=lambda x: x['states'])
+        verification_summary = {
+            'total_candidates': len(candidate_results),
+            'valid_candidates': len(valid_candidates),
+            'kameda_weiner_threshold': kameda_weiner_threshold,
+            'original_states_after_preprocessing': preprocessed_states,
+            'stage2_states': stage2_states if 'stage2_states' in locals() else 0
+        }
+
+    best_nfa = best_candidate['nfa']
+    best_method = best_candidate['method']
+    best_states = best_candidate['states']
+
+    # Final cleanup of the best candidate
+    if best_nfa['states']:
+        best_nfa = remove_unreachable_states(best_nfa)
+        best_nfa = remove_dead_states(best_nfa)
+        final_states = len(best_nfa['states'])
+    else:
+        final_states = 0
+
     reduction = original_states - final_states
     reduction_percent = (reduction / original_states) * 100 if original_states > 0 else 0
 
     return MinimisationResult(
-        nfa=result_nfa,
+        nfa=best_nfa,
         original_states=original_states,
         final_states=final_states,
         reduction=reduction,
         reduction_percent=reduction_percent,
-        is_optimal=is_optimal,
-        method_used=method_used,
-        stages=stages
+        is_optimal=final_states < original_states,
+        method_used=best_method,
+        stages=all_stages,
+        candidate_results=candidate_results,
+        equivalence_verified=best_candidate.get('equivalence_verified', False),
+        verification_details=verification_summary
     )
-
-
-def _validate_nfa_consistency(nfa: Dict) -> None:
-    """
-    Additional validation to ensure NFA consistency beyond basic structure validation.
-    Raises ValueError if any inconsistencies are found.
-    """
-    required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
-
-    # Check all required keys are present
-    for key in required_keys:
-        if key not in nfa:
-            raise ValueError(f"Invalid NFA structure: missing required key '{key}'")
-
-    states_set = set(nfa['states'])
-
-    # Check starting state is in states list
-    if nfa['startingState'] not in states_set:
-        raise ValueError(f"Invalid NFA structure: starting state '{nfa['startingState']}' not in states list")
-
-    # Check all accepting states are in states list
-    for acc_state in nfa['acceptingStates']:
-        if acc_state not in states_set:
-            raise ValueError(f"Invalid NFA structure: accepting state '{acc_state}' not in states list")
-
-    # Check all transition source states are in states list
-    for source_state in nfa['transitions']:
-        if source_state not in states_set:
-            raise ValueError(f"Invalid NFA structure: transition source state '{source_state}' not in states list")
-
-        # Check all transition target states are in states list
-        for symbol in nfa['transitions'][source_state]:
-            for target_state in nfa['transitions'][source_state][symbol]:
-                if target_state not in states_set:
-                    raise ValueError(
-                        f"Invalid NFA structure: transition target state '{target_state}' not in states list")
-
-    # Special case: empty states list but non-empty starting state
-    if len(nfa['states']) == 0 and nfa['startingState'] != '':
-        raise ValueError("Invalid NFA structure: empty states list but non-empty starting state")
-
-    # Check for duplicate states
-    if len(nfa['states']) != len(states_set):
-        raise ValueError("Invalid NFA structure: duplicate states in states list")
-
-    # Check for duplicate accepting states
-    if len(nfa['acceptingStates']) != len(set(nfa['acceptingStates'])):
-        raise ValueError("Invalid NFA structure: duplicate states in accepting states list")

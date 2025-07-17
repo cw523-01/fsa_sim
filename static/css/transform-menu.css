@@ -26,21 +26,21 @@
     /* Inherits from base .menu-dropdown styles */
 }
 
-/* Minimization popup specific styles */
-.file-operation-popup.minimize {
+/* Minimisation popup specific styles */
+.file-operation-popup.minimise {
     /* Inherit styles from existing file operation popup */
 }
 
-/* Transform menu header for minimize popup */
-.file-operation-popup.minimize .popup-header {
+/* Transform menu header for minimise popup */
+.file-operation-popup.minimise .popup-header {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
 }
 
-.file-operation-popup.minimize .file-action-btn.primary {
+.file-operation-popup.minimise .file-action-btn.primary {
     background: var(--primary-color);
 }
 
-.file-operation-popup.minimize .file-action-btn.primary:hover:not(.disabled) {
+.file-operation-popup.minimise .file-action-btn.primary:hover:not(.disabled) {
     background: var(--primary-hover);
 }
 
@@ -157,8 +157,8 @@
     font-weight: var(--font-weight-bold);
 }
 
-/* Minimization-specific content styles */
-.file-operation-popup.minimize .minimization-info {
+/* Minimisation-specific content styles */
+.file-operation-popup.minimise .minimisation-info {
     margin: var(--spacing-lg) 0;
     padding: var(--spacing-md);
     background-color: var(--light-gray);
@@ -166,28 +166,28 @@
     border-left: 4px solid var(--primary-color);
 }
 
-.file-operation-popup.minimize .minimization-info .info-item {
+.file-operation-popup.minimise .minimisation-info .info-item {
     margin-bottom: var(--spacing-sm);
 }
 
-.file-operation-popup.minimize .minimization-info .info-item:last-child {
+.file-operation-popup.minimise .minimisation-info .info-item:last-child {
     margin-bottom: 0;
 }
 
-.file-operation-popup.minimize .minimization-info ul {
+.file-operation-popup.minimise .minimisation-info ul {
     margin: var(--spacing-sm) 0 0 0;
     padding-left: var(--spacing-xl);
     list-style-type: none;
 }
 
-.file-operation-popup.minimize .minimization-info li {
+.file-operation-popup.minimise .minimisation-info li {
     margin: var(--spacing-xs) 0;
     font-size: var(--font-size-sm);
     color: var(--text-color);
     position: relative;
 }
 
-.file-operation-popup.minimize .minimization-info li::before {
+.file-operation-popup.minimise .minimisation-info li::before {
     content: '✓';
     position: absolute;
     left: calc(-1 * var(--spacing-lg));
@@ -271,13 +271,13 @@
     font-weight: var(--font-weight-bold);
 }
 
-/* Loading state for minimize button */
-#minimize-confirm-btn.loading {
+/* Loading state for minimise button */
+#minimise-confirm-btn.loading {
     position: relative;
     color: transparent !important;
 }
 
-#minimize-confirm-btn.loading::after {
+#minimise-confirm-btn.loading::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -390,7 +390,7 @@
 @media (max-width: 768px) {
     /* Transform menu inherits responsive behavior from menu-bar.css */
 
-    .file-operation-popup.minimize,
+    .file-operation-popup.minimise,
     .file-operation-popup.convert,
     .file-operation-popup.complete,
     .file-operation-popup.complement {
@@ -398,14 +398,14 @@
         margin: var(--spacing-xl);
     }
 
-    .file-operation-popup.minimize .minimization-info,
+    .file-operation-popup.minimise .minimisation-info,
     .file-operation-popup.convert .conversion-info,
     .file-operation-popup.complete .completion-info,
     .file-operation-popup.complement .complement-info {
         padding: var(--spacing-sm);
     }
 
-    .file-operation-popup.minimize .minimization-info ul,
+    .file-operation-popup.minimise .minimisation-info ul,
     .file-operation-popup.convert .conversion-info ul,
     .file-operation-popup.complete .completion-info ul,
     .file-operation-popup.complement .complement-info ul {
@@ -415,7 +415,7 @@
 
 /* Dark mode support for transform menu */
 @media (prefers-color-scheme: dark) {
-    .file-operation-popup.minimize .minimization-info,
+    .file-operation-popup.minimise .minimisation-info,
     .file-operation-popup.convert .conversion-info,
     .file-operation-popup.complete .completion-info,
     .file-operation-popup.complement .complement-info {
@@ -435,7 +435,7 @@
         border-left-color: var(--error-color);
     }
 
-    .file-operation-popup.minimize .minimization-info li,
+    .file-operation-popup.minimise .minimisation-info li,
     .file-operation-popup.convert .conversion-info li,
     .file-operation-popup.complete .completion-info li,
     .file-operation-popup.complement .complement-info li {
@@ -585,4 +585,228 @@
     background-color: rgba(244, 67, 54, 0.1);
     color: var(--error-color);
     border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.file-operation-popup.minimise-nfa {
+    /* Inherit base styles but allow for larger content */
+    width: 650px;
+    max-width: 90vw;
+}
+
+/* Enhanced header styling for NFA minimise popup */
+.file-operation-popup.minimise-nfa .popup-header {
+    background: linear-gradient(135deg, var(--secondary-color) 0%, #1565C0 100%);
+}
+
+/* Enhanced description section with better limitation messaging */
+.file-operation-popup.minimise-nfa .file-operation-description {
+    font-size: 14px;
+    color: #495057;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: rgba(33, 150, 243, 0.03);
+    border-radius: 8px;
+    border-left: 4px solid var(--secondary-color);
+}
+
+/* Limitation highlight box - prominent but not alarming */
+.file-operation-popup.minimise-nfa .limitation-highlight {
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.08) 0%, rgba(255, 193, 7, 0.05) 100%);
+    border: 2px solid rgba(255, 152, 0, 0.2);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 20px 0;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle pattern overlay for the limitation box */
+.file-operation-popup.minimise-nfa .limitation-highlight::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+        var(--warning-color) 0%,
+        rgba(255, 152, 0, 0.5) 50%,
+        var(--warning-color) 100%);
+}
+
+/* Limitation header with icon */
+.file-operation-popup.minimise-nfa .limitation-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: #e65100;
+    font-size: 15px;
+}
+
+.file-operation-popup.minimise-nfa .limitation-icon {
+    color: var(--warning-color);
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+/* Limitation content styling */
+.file-operation-popup.minimise-nfa .limitation-content {
+    font-size: 13px;
+    color: #e65100;
+    line-height: 1.4;
+    margin-bottom: 12px;
+}
+
+/* Key points list styling */
+.file-operation-popup.minimise-nfa .limitation-points {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.file-operation-popup.minimise-nfa .limitation-points li {
+    position: relative;
+    padding-left: 20px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #bf360c;
+    line-height: 1.3;
+}
+
+.file-operation-popup.minimise-nfa .limitation-points li::before {
+    content: '●';
+    position: absolute;
+    left: 0;
+    color: var(--warning-color);
+    font-weight: bold;
+}
+
+/* Enhanced algorithm explanation section */
+.file-operation-popup.minimise-nfa .algorithm-explanation {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(33, 150, 243, 0.2);
+    border-radius: 8px;
+    padding: 14px;
+    margin: 16px 0;
+    border-left: 4px solid var(--secondary-color);
+}
+
+.file-operation-popup.minimise-nfa .algorithm-explanation h4 {
+    margin: 0 0 10px 0;
+    color: var(--secondary-color);
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.file-operation-popup.minimise-nfa .algorithm-explanation h4::before {
+    content: '🔬';
+    font-size: 12px;
+}
+
+.file-operation-popup.minimise-nfa .algorithm-explanation p {
+    margin: 0;
+    font-size: 12px;
+    color: #1565C0;
+    line-height: 1.4;
+}
+
+/* Enhanced size threshold warning for large NFAs */
+.file-operation-popup.minimise-nfa .size-threshold-warning {
+    background: linear-gradient(135deg, rgba(255, 87, 34, 0.08) 0%, rgba(244, 67, 54, 0.05) 100%);
+    border: 2px solid rgba(255, 87, 34, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 16px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.file-operation-popup.minimise-nfa .size-threshold-icon {
+    background: rgba(255, 87, 34, 0.2);
+    color: #ff5722;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.file-operation-popup.minimise-nfa .size-threshold-content {
+    flex: 1;
+}
+
+.file-operation-popup.minimise-nfa .size-threshold-title {
+    font-weight: 600;
+    color: #d84315;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.file-operation-popup.minimise-nfa .size-threshold-text {
+    font-size: 12px;
+    color: #bf360c;
+    line-height: 1.3;
+}
+
+.file-operation-popup .file-operation-content.scrollable-content {
+    overflow-y: auto;
+    max-height: calc(80vh - 140px); /* Account for header and actions */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(108, 117, 125, 0.5) transparent;
+}
+
+/* Webkit scrollbar styling */
+.file-operation-popup .file-operation-content.scrollable-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.file-operation-popup .file-operation-content.scrollable-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+.file-operation-popup .file-operation-content.scrollable-content::-webkit-scrollbar-thumb {
+    background: rgba(108, 117, 125, 0.5);
+    border-radius: 4px;
+}
+
+.file-operation-popup .file-operation-content.scrollable-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(108, 117, 125, 0.7);
+}
+
+/* Specific adjustments for NFA minimise popup with scrolling */
+.file-operation-popup.minimise-nfa .file-operation-content.scrollable-content {
+    padding: 20px;
+    padding-right: 16px; /* Account for scrollbar */
+}
+
+/* Responsive scrolling adjustments */
+@media (max-width: 768px) {
+    .file-operation-popup .file-operation-content.scrollable-content {
+        max-height: calc(90vh - 120px);
+        padding: 16px;
+    }
+
+    .file-operation-popup.minimise-nfa .file-operation-content.scrollable-content {
+        padding-right: 12px;
+    }
+}
+
+/* High contrast scrollbar for accessibility */
+@media (prefers-contrast: high) {
+    .file-operation-popup .file-operation-content.scrollable-content::-webkit-scrollbar-thumb {
+        background: rgba(108, 117, 125, 0.8);
+        border: 1px solid rgba(108, 117, 125, 0.6);
+    }
 }

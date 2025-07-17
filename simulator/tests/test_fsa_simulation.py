@@ -1661,7 +1661,6 @@ class TestFsaSimulation(TestCase):
             self.assertFalse(result['accepted'])
         else:
             # If it returns a list, it should be empty because S3 is unreachable with only 2 transitions
-            print(result)
             self.assertEqual(len(result), 0)
 
         # Test with insufficient depth (1)

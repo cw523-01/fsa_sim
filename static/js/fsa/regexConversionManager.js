@@ -25,7 +25,7 @@ class RegexConversionManager {
             headerGradient: 'var(--secondary-color) 0%, var(--secondary-hover) 100%',
             buttonColor: 'var(--secondary-color)',
             hoverColor: 'var(--secondary-hover)',
-            undoLabel: 'Convert REGEX to ε-NFA',
+            undoLabel: 'Convert REGEX to NFA',
             tags: ['regex-generated', 'epsilon-nfa']
         };
     }
@@ -122,7 +122,7 @@ class RegexConversionManager {
             </div>
             <div class="file-operation-content scrollable-content">
                 <div class="file-operation-description">
-                    Enter a regular expression to convert it into an equivalent ε-NFA using Thompson's construction algorithm.
+                    Enter a regular expression to convert it into an equivalent NFA using Thompson's construction algorithm.
                 </div>
                 
                 <div class="form-group">
@@ -160,9 +160,9 @@ class RegexConversionManager {
                             </label>
                         </div>
                         <div class="checkbox-option dependent disabled" data-depends="convert-to-dfa-option">
-                            <input type="checkbox" id="minimize-dfa-option" class="chain-checkbox" disabled>
-                            <label for="minimize-dfa-option">
-                                <span class="option-title">Minimize DFA</span>
+                            <input type="checkbox" id="minimise-dfa-option" class="chain-checkbox" disabled>
+                            <label for="minimise-dfa-option">
+                                <span class="option-title">Minimise DFA</span>
                                 <span class="option-description">Remove redundant states (only available if converting to DFA)</span>
                             </label>
                         </div>
@@ -184,7 +184,7 @@ class RegexConversionManager {
                 <button class="file-action-btn primary" id="regex-convert-btn" 
                         onclick="regexConversionManager.confirmRegexConversion()"
                         style="background: ${config.buttonColor};">
-                    Convert to ε-NFA
+                    Convert to NFA
                 </button>
             </div>
         `;
@@ -217,7 +217,7 @@ class RegexConversionManager {
         const convertBtn = document.getElementById('regex-convert-btn');
         const examplesSelect = document.getElementById('examples-select');
         const convertToDfaCheckbox = document.getElementById('convert-to-dfa-option');
-        const minimizeDfaCheckbox = document.getElementById('minimize-dfa-option');
+        const minimiseDfaCheckbox = document.getElementById('minimise-dfa-option');
 
         if (regexInput) {
             regexInput.addEventListener('input', () => {
@@ -265,15 +265,15 @@ class RegexConversionManager {
         // Handle chaining options
         if (convertToDfaCheckbox) {
             convertToDfaCheckbox.addEventListener('change', () => {
-                // Enable/disable minimize option based on convert to DFA
-                if (minimizeDfaCheckbox) {
-                    minimizeDfaCheckbox.disabled = !convertToDfaCheckbox.checked;
+                // Enable/disable minimise option based on convert to DFA
+                if (minimiseDfaCheckbox) {
+                    minimiseDfaCheckbox.disabled = !convertToDfaCheckbox.checked;
                     if (!convertToDfaCheckbox.checked) {
-                        minimizeDfaCheckbox.checked = false;
+                        minimiseDfaCheckbox.checked = false;
                     }
 
                     // Update dependent option styling
-                    const dependentOption = minimizeDfaCheckbox.closest('.checkbox-option');
+                    const dependentOption = minimiseDfaCheckbox.closest('.checkbox-option');
                     if (dependentOption) {
                         if (convertToDfaCheckbox.checked) {
                             dependentOption.classList.remove('disabled');
@@ -286,8 +286,8 @@ class RegexConversionManager {
             });
         }
 
-        if (minimizeDfaCheckbox) {
-            minimizeDfaCheckbox.addEventListener('change', () => {
+        if (minimiseDfaCheckbox) {
+            minimiseDfaCheckbox.addEventListener('change', () => {
                 this.updateConvertButtonText();
             });
         }
@@ -299,16 +299,16 @@ class RegexConversionManager {
     updateConvertButtonText() {
         const convertBtn = document.getElementById('regex-convert-btn');
         const convertToDfaCheckbox = document.getElementById('convert-to-dfa-option');
-        const minimizeDfaCheckbox = document.getElementById('minimize-dfa-option');
+        const minimiseDfaCheckbox = document.getElementById('minimise-dfa-option');
 
         if (!convertBtn) return;
 
-        if (minimizeDfaCheckbox && minimizeDfaCheckbox.checked) {
+        if (minimiseDfaCheckbox && minimiseDfaCheckbox.checked) {
             convertBtn.textContent = 'Convert to Minimal DFA';
         } else if (convertToDfaCheckbox && convertToDfaCheckbox.checked) {
             convertBtn.textContent = 'Convert to DFA';
         } else {
-            convertBtn.textContent = 'Convert to ε-NFA';
+            convertBtn.textContent = 'Convert to NFA';
         }
     }
 
@@ -350,10 +350,10 @@ class RegexConversionManager {
 
         // Get chaining options
         const convertToDfaCheckbox = document.getElementById('convert-to-dfa-option');
-        const minimizeDfaCheckbox = document.getElementById('minimize-dfa-option');
+        const minimiseDfaCheckbox = document.getElementById('minimise-dfa-option');
 
         const shouldConvertToDfa = convertToDfaCheckbox && convertToDfaCheckbox.checked;
-        const shouldMinimize = minimizeDfaCheckbox && minimizeDfaCheckbox.checked && shouldConvertToDfa;
+        const shouldMinimise = minimiseDfaCheckbox && minimiseDfaCheckbox.checked && shouldConvertToDfa;
 
         const config = this.conversionConfig;
 
@@ -368,9 +368,9 @@ class RegexConversionManager {
             // Create snapshot for undo/redo
             let snapshotCommand = null;
             if (undoRedoManager && !undoRedoManager.isProcessing()) {
-                const operationLabel = shouldMinimize ? 'Convert REGEX to Minimal DFA' :
+                const operationLabel = shouldMinimise ? 'Convert REGEX to Minimal DFA' :
                                      shouldConvertToDfa ? 'Convert REGEX to DFA' :
-                                     'Convert REGEX to ε-NFA';
+                                     'Convert REGEX to NFA';
                 snapshotCommand = undoRedoManager.createSnapshotCommand(operationLabel);
             }
 
@@ -388,13 +388,13 @@ class RegexConversionManager {
 
             const regexResult = await response.json();
             let finalResult = regexResult;
-            let operationChain = ['REGEX to ε-NFA'];
+            let operationChain = ['REGEX to NFA'];
 
             // Chain additional operations if requested
             if (shouldConvertToDfa) {
                 convertBtn.textContent = 'Converting to DFA...';
 
-                // Convert ε-NFA to DFA
+                // Convert NFA to DFA
                 const nfaToDfaResponse = await fetch('/api/nfa-to-dfa/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -411,25 +411,25 @@ class RegexConversionManager {
                 finalResult.conversion_statistics = dfaResult.statistics;
                 operationChain.push('NFA to DFA');
 
-                if (shouldMinimize) {
-                    convertBtn.textContent = 'Minimizing DFA...';
+                if (shouldMinimise) {
+                    convertBtn.textContent = 'Minimising DFA...';
 
-                    // Minimize the DFA
-                    const minimizeResponse = await fetch('/api/minimise-dfa/', {
+                    // Minimise the DFA
+                    const minimiseResponse = await fetch('/api/minimise-dfa/', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ fsa: dfaResult.converted_dfa })
                     });
 
-                    if (!minimizeResponse.ok) {
-                        const errorData = await minimizeResponse.json();
-                        throw new Error(errorData.error || `DFA minimization failed: ${minimizeResponse.status}`);
+                    if (!minimiseResponse.ok) {
+                        const errorData = await minimiseResponse.json();
+                        throw new Error(errorData.error || `DFA minimisation failed: ${minimiseResponse.status}`);
                     }
 
-                    const minimizeResult = await minimizeResponse.json();
-                    finalResult.minimised_dfa = minimizeResult.minimised_fsa;
-                    finalResult.minimization_statistics = minimizeResult.statistics;
-                    operationChain.push('Minimize DFA');
+                    const minimiseResult = await minimiseResponse.json();
+                    finalResult.minimised_dfa = minimiseResult.minimised_fsa;
+                    finalResult.minimisation_statistics = minimiseResult.statistics;
+                    operationChain.push('Minimise DFA');
                 }
             }
 
@@ -437,10 +437,10 @@ class RegexConversionManager {
             this.hideRegexPopup();
 
             // Replace FSA with final result
-            await this.replaceWithGeneratedFSA(finalResult, shouldMinimize, shouldConvertToDfa);
+            await this.replaceWithGeneratedFSA(finalResult, shouldMinimise, shouldConvertToDfa);
 
             // Show comprehensive results
-            this.showChainedConversionResults(finalResult, operationChain, shouldMinimize, shouldConvertToDfa);
+            this.showChainedConversionResults(finalResult, operationChain, shouldMinimise, shouldConvertToDfa);
 
             // Finish undo/redo snapshot
             if (snapshotCommand) {
@@ -455,7 +455,7 @@ class RegexConversionManager {
             notificationManager.showError(`${config.name} Failed`, error.message);
 
             // Reset button state
-            convertBtn.textContent = 'Convert to ε-NFA';
+            convertBtn.textContent = 'Convert to NFA';
             convertBtn.disabled = false;
 
             // Don't clear regex data on error - user might retry
@@ -465,7 +465,7 @@ class RegexConversionManager {
     /**
      * Replace current FSA with generated FSA
      */
-    async replaceWithGeneratedFSA(result, shouldMinimize, shouldConvertToDfa) {
+    async replaceWithGeneratedFSA(result, shouldMinimise, shouldConvertToDfa) {
         // Clear current FSA
         await fsaSerializationManager.clearCurrentFSA(this.jsPlumbInstance);
 
@@ -474,7 +474,7 @@ class RegexConversionManager {
         let tags = ['regex-generated'];
         let description = `Generated from regular expression: ${this.currentRegexInput}`;
 
-        if (shouldMinimize && result.minimised_dfa) {
+        if (shouldMinimise && result.minimised_dfa) {
             finalFSA = result.minimised_dfa;
             tags.push('minimal-dfa', 'converted');
             description += ' (converted to minimal DFA)';
@@ -507,19 +507,19 @@ class RegexConversionManager {
     /**
      * Show results for chained conversion operations
      */
-    showChainedConversionResults(result, operationChain, shouldMinimize, shouldConvertToDfa) {
+    showChainedConversionResults(result, operationChain, shouldMinimise, shouldConvertToDfa) {
         const regexString = this.currentRegexInput || 'regular expression';
 
-        if (shouldMinimize) {
+        if (shouldMinimise) {
             const originalStats = result.statistics;
             const conversionStats = result.conversion_statistics;
-            const minimizationStats = result.minimization_statistics;
+            const minimisationStats = result.minimisation_statistics;
 
             notificationManager.showSuccess(
                 'REGEX Conversion Complete',
                 `Successfully converted "${regexString}" through: ${operationChain.join(' → ')}.\n` +
-                `Final result: ${minimizationStats.minimised.states_count} states, ` +
-                `${minimizationStats.minimised.transitions_count} transitions.`
+                `Final result: ${minimisationStats.minimised.states_count} states, ` +
+                `${minimisationStats.minimised.transitions_count} transitions.`
             );
         } else if (shouldConvertToDfa) {
             const originalStats = result.statistics;

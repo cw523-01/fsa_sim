@@ -1168,7 +1168,7 @@ def min_nfa(request):
     Expects a POST request with a JSON body containing:
     - fsa: The FSA definition in the proper format (can be deterministic or non-deterministic)
 
-    Returns a JSON response with the minimised NFA.
+    Returns a JSON response with the minimised (not necessarily optimal) NFA.
     """
     try:
         # Parse the request body
@@ -1259,6 +1259,131 @@ def min_nfa(request):
             },
             'message': message
         })
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def check_fsa_equivalence(request):
+    """
+    Django view to check if two FSAs are language-equivalent.
+
+    Expects a POST request with a JSON body containing:
+    - fsa1: First FSA definition in the proper format
+    - fsa2: Second FSA definition in the proper format
+
+    Returns a JSON response with equivalence check results.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa1 = data.get('fsa1')
+        fsa2 = data.get('fsa2')
+
+        if not fsa1:
+            return JsonResponse({'error': 'Missing fsa1 definition'}, status=400)
+
+        if not fsa2:
+            return JsonResponse({'error': 'Missing fsa2 definition'}, status=400)
+
+        # Validate both FSA structures
+        validation1 = validate_fsa_structure(fsa1)
+        if not validation1['valid']:
+            return JsonResponse({
+                'error': f'Invalid fsa1 structure: {validation1["error"]}'
+            }, status=400)
+
+        validation2 = validate_fsa_structure(fsa2)
+        if not validation2['valid']:
+            return JsonResponse({
+                'error': f'Invalid fsa2 structure: {validation2["error"]}'
+            }, status=400)
+
+        # Import the equivalence checking function
+        from .fsa_equivalence import are_automata_equivalent
+
+        # Check equivalence
+        is_equivalent, details = are_automata_equivalent(fsa1, fsa2)
+
+        # Calculate statistics for both FSAs
+        fsa1_stats = {
+            'states_count': len(fsa1['states']),
+            'alphabet_size': len(fsa1['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in fsa1['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(fsa1['acceptingStates']),
+            'has_epsilon_transitions': any(
+                '' in fsa1['transitions'].get(state, {}) and fsa1['transitions'][state]['']
+                for state in fsa1['states']
+            ),
+            'is_deterministic': is_deterministic(fsa1)
+        }
+
+        fsa2_stats = {
+            'states_count': len(fsa2['states']),
+            'alphabet_size': len(fsa2['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in fsa2['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(fsa2['acceptingStates']),
+            'has_epsilon_transitions': any(
+                '' in fsa2['transitions'].get(state, {}) and fsa2['transitions'][state]['']
+                for state in fsa2['states']
+            ),
+            'is_deterministic': is_deterministic(fsa2)
+        }
+
+        # Build response
+        response_data = {
+            'equivalent': is_equivalent,
+            'fsa1_stats': fsa1_stats,
+            'fsa2_stats': fsa2_stats,
+            'comparison_details': details
+        }
+
+        # Add helpful analysis
+        analysis = {
+            'both_deterministic': fsa1_stats['is_deterministic'] and fsa2_stats['is_deterministic'],
+            'both_nondeterministic': not fsa1_stats['is_deterministic'] and not fsa2_stats['is_deterministic'],
+            'mixed_types': fsa1_stats['is_deterministic'] != fsa2_stats['is_deterministic'],
+            'same_alphabet': set(fsa1['alphabet']) == set(fsa2['alphabet']),
+            'alphabet_compatible': set(fsa1['alphabet']).issubset(set(fsa2['alphabet'])) or set(
+                fsa2['alphabet']).issubset(set(fsa1['alphabet']))
+        }
+
+        response_data['analysis'] = analysis
+
+        # Generate appropriate message
+        if is_equivalent:
+            if 'state_mapping' in details:
+                message = f'FSAs are equivalent. {details["reason"]}'
+            else:
+                message = f'FSAs are equivalent. {details["reason"]}'
+        else:
+            if 'error' in details:
+                message = f'Equivalence check failed: {details["error"]}'
+            else:
+                message = f'FSAs are not equivalent. {details["reason"]}'
+
+        response_data['message'] = message
+
+        # Add minimal DFA information if available
+        if 'minimal_dfa1_states' in details:
+            response_data['minimal_dfa_info'] = {
+                'fsa1_minimal_states': details['minimal_dfa1_states'],
+                'fsa2_minimal_states': details['minimal_dfa2_states'],
+                'fsa1_complete_states': details.get('complete_dfa1_states', 'N/A'),
+                'fsa2_complete_states': details.get('complete_dfa2_states', 'N/A')
+            }
+
+        return JsonResponse(response_data)
 
     except ValueError as e:
         return JsonResponse({'error': str(e)}, status=400)

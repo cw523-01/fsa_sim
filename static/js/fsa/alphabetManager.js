@@ -19,25 +19,10 @@ export function updateAlphabetDisplay(edgeSymbolMap, epsilonTransitionMap) {
     // Sort the symbols alphabetically
     const sortedSymbols = Array.from(allSymbols).sort();
 
-    // Check if we have any epsilon transitions
-    let hasEpsilon = false;
-    if (epsilonTransitionMap) {
-        epsilonTransitionMap.forEach(isEpsilon => {
-            // If any edge has an epsilon transition, set hasEpsilon to true
-            if (isEpsilon) {
-                hasEpsilon = true;
-            }
-        });
-    }
-
     // Update the alphabet display
     const alphabetDisplay = document.querySelector('.alphabet-info p');
     if (alphabetDisplay) {
         let displayText = 'Σ = {';
-
-        if(hasEpsilon){
-            sortedSymbols.push('ε')
-        }
 
         if (sortedSymbols.length > 0) {
             // Add spaces after commas to help with wrapping
