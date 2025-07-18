@@ -21,7 +21,6 @@ from .fsa_properties import (
 )
 from .fsa_transformations import minimise_dfa, nfa_to_dfa, complete_dfa, complement_dfa
 from .minimise_nfa import minimise_nfa
-from .regex_conversions import regex_to_epsilon_nfa
 
 def index(request):
     return render(request, 'simulator/index.html')
@@ -1373,6 +1372,287 @@ def check_fsa_equivalence(request):
                 message = f'FSAs are not equivalent. {details["reason"]}'
 
         response_data['message'] = message
+
+        # Add minimal DFA information if available
+        if 'minimal_dfa1_states' in details:
+            response_data['minimal_dfa_info'] = {
+                'fsa1_minimal_states': details['minimal_dfa1_states'],
+                'fsa2_minimal_states': details['minimal_dfa2_states'],
+                'fsa1_complete_states': details.get('complete_dfa1_states', 'N/A'),
+                'fsa2_complete_states': details.get('complete_dfa2_states', 'N/A')
+            }
+
+        return JsonResponse(response_data)
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+@csrf_exempt
+@require_POST
+def fsa_to_regex(request):
+    """
+    Django view to handle FSA to regular expression conversion requests.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: The FSA definition in the proper format (can be deterministic or non-deterministic)
+
+    Returns a JSON response with the generated regular expression plus detailed
+    statistics and verification results.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing FSA definition'}, status=400)
+
+        # Validate FSA structure
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({'error': validation['error']}, status=400)
+
+        from .regex_conversions import fsa_to_regex as convert_fsa_to_regex
+        result = convert_fsa_to_regex(fsa)
+
+        # Check if conversion was successful
+        if not result['valid']:
+            return JsonResponse({
+                'error': f'FSA to regex conversion failed: {result["error"]}'
+            }, status=400)
+
+        # Calculate FSA statistics for the response
+        fsa_stats = {
+            'states_count': len(fsa['states']),
+            'alphabet_size': len(fsa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in fsa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(fsa['acceptingStates']),
+            'has_epsilon_transitions': any(
+                '' in fsa['transitions'].get(state, {}) and fsa['transitions'][state]['']
+                for state in fsa['states']
+            ),
+            'is_deterministic': is_deterministic(fsa)
+        }
+
+        # Prepare response data
+        response_data = {
+            'success': True,
+            'fsa': fsa,
+            'regex': result['regex'],
+            'statistics': {
+                'original_fsa': fsa_stats,
+                'original_states': result['original_states'],
+                'minimized_states': result['minimized_states'],
+                'states_reduction': result['original_states'] - result['minimized_states'],
+                'states_reduction_percentage': round(
+                    ((result['original_states'] - result['minimized_states']) / result['original_states']) * 100, 2
+                ) if result['original_states'] > 0 else 0
+            },
+            'verification': result['verification']
+        }
+
+        # Generate appropriate message
+        if result['minimized_states'] == 0:
+            message = 'FSA represents the empty language, converted to regex: ∅'
+        elif result['original_states'] == 1:
+            message = 'Single-state FSA converted to regex successfully'
+        elif result['original_states'] == result['minimized_states']:
+            message = 'FSA was already minimal, converted to regex successfully'
+        else:
+            message = f'FSA minimized from {result["original_states"]} to {result["minimized_states"]} states, then converted to regex successfully'
+
+        # Add verification details to message
+        if result['verification'].get('equivalent'):
+            message += ' (verified equivalent)'
+        elif 'error' in result['verification']:
+            message += f' (verification failed: {result["verification"]["error"]})'
+        else:
+            message += ' (verification inconclusive)'
+
+        response_data['message'] = message
+
+        return JsonResponse(response_data)
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def check_regex_equivalence(request):
+    """
+    Django view to check if two regular expressions are equivalent.
+
+    Expects a POST request with a JSON body containing:
+    - regex1: First regular expression string
+    - regex2: Second regular expression string
+
+    Returns a JSON response with equivalence check results.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        regex1 = data.get('regex1')
+        regex2 = data.get('regex2')
+
+        if regex1 is None:
+            return JsonResponse({'error': 'Missing regex1 parameter'}, status=400)
+
+        if regex2 is None:
+            return JsonResponse({'error': 'Missing regex2 parameter'}, status=400)
+
+        # Step 1: Validate both regex patterns
+        from .regex_conversions import validate_regex_syntax
+        validation1 = validate_regex_syntax(regex1)
+        if not validation1['valid']:
+            return JsonResponse({
+                'error': f'Invalid regex1 syntax: {validation1["error"]}'
+            }, status=400)
+
+        validation2 = validate_regex_syntax(regex2)
+        if not validation2['valid']:
+            return JsonResponse({
+                'error': f'Invalid regex2 syntax: {validation2["error"]}'
+            }, status=400)
+
+        # If both regexes are identical, they are equivalent, other checks aren't needed
+        if regex1 == regex2:
+            # Create minimal FSA stats for identical regexes
+            from .regex_conversions import regex_to_epsilon_nfa
+            fsa1 = regex_to_epsilon_nfa(regex1)
+
+            fsa_stats = {
+                'states_count': len(fsa1['states']),
+                'alphabet_size': len(fsa1['alphabet']),
+                'transitions_count': sum(
+                    len(transitions) for state_transitions in fsa1['transitions'].values()
+                    for transitions in state_transitions.values()
+                ),
+                'accepting_states_count': len(fsa1['acceptingStates']),
+                'has_epsilon_transitions': any(
+                    '' in fsa1['transitions'].get(state, {}) and fsa1['transitions'][state]['']
+                    for state in fsa1['states']
+                )
+            }
+
+            return JsonResponse({
+                'equivalent': True,
+                'regex1': regex1,
+                'regex2': regex2,
+                'fsa1_stats': fsa_stats,
+                'fsa2_stats': fsa_stats,
+                'fsa_equivalence_details': {'reason': 'Regexes are identical'},
+                'analysis': {
+                    'both_alphabets_same': True,
+                    'alphabet_union': sorted(list(fsa1['alphabet'])),
+                    'regex1_length': len(regex1),
+                    'regex2_length': len(regex2),
+                    'fsa1_complexity': fsa_stats['states_count'] * fsa_stats['alphabet_size'],
+                    'fsa2_complexity': fsa_stats['states_count'] * fsa_stats['alphabet_size']
+                },
+                'message': f'Regular expressions are equivalent. {"Both regexes are empty." if regex1 == "" else "Regexes are identical."}',
+                'generated_fsas': {
+                    'fsa1': fsa1,
+                    'fsa2': fsa1  # Same FSA since regexes are identical
+                }
+            })
+
+        # Step 2: Convert both regex to FSAs
+        from .regex_conversions import regex_to_epsilon_nfa
+        try:
+            fsa1 = regex_to_epsilon_nfa(regex1)
+        except Exception as e:
+            return JsonResponse({
+                'error': f'Failed to convert regex1 to FSA: {str(e)}'
+            }, status=400)
+
+        try:
+            fsa2 = regex_to_epsilon_nfa(regex2)
+        except Exception as e:
+            return JsonResponse({
+                'error': f'Failed to convert regex2 to FSA: {str(e)}'
+            }, status=400)
+
+        # Step 3: Check equivalence of both FSAs
+        from .fsa_equivalence import are_automata_equivalent
+        is_equivalent, details = are_automata_equivalent(fsa1, fsa2)
+
+        # Calculate statistics for both FSAs
+        fsa1_stats = {
+            'states_count': len(fsa1['states']),
+            'alphabet_size': len(fsa1['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in fsa1['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(fsa1['acceptingStates']),
+            'has_epsilon_transitions': any(
+                '' in fsa1['transitions'].get(state, {}) and fsa1['transitions'][state]['']
+                for state in fsa1['states']
+            )
+        }
+
+        fsa2_stats = {
+            'states_count': len(fsa2['states']),
+            'alphabet_size': len(fsa2['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in fsa2['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(fsa2['acceptingStates']),
+            'has_epsilon_transitions': any(
+                '' in fsa2['transitions'].get(state, {}) and fsa2['transitions'][state]['']
+                for state in fsa2['states']
+            )
+        }
+
+        # Build response
+        response_data = {
+            'equivalent': is_equivalent,
+            'regex1': regex1,
+            'regex2': regex2,
+            'fsa1_stats': fsa1_stats,
+            'fsa2_stats': fsa2_stats,
+            'fsa_equivalence_details': details
+        }
+
+        # Add analysis of the regex patterns
+        analysis = {
+            'both_alphabets_same': set(fsa1['alphabet']) == set(fsa2['alphabet']),
+            'alphabet_union': sorted(list(set(fsa1['alphabet']) | set(fsa2['alphabet']))),
+            'regex1_length': len(regex1),
+            'regex2_length': len(regex2),
+            'fsa1_complexity': fsa1_stats['states_count'] * fsa1_stats['alphabet_size'],
+            'fsa2_complexity': fsa2_stats['states_count'] * fsa2_stats['alphabet_size']
+        }
+
+        response_data['analysis'] = analysis
+
+        # Generate appropriate message
+        if is_equivalent:
+            message = f'Regular expressions are equivalent. {details.get("reason", "")}'
+            if fsa1_stats['states_count'] != fsa2_stats['states_count']:
+                message += f' (FSA1: {fsa1_stats["states_count"]} states, FSA2: {fsa2_stats["states_count"]} states)'
+        else:
+            if 'error' in details:
+                message = f'Equivalence check failed: {details["error"]}'
+            else:
+                message = f'Regular expressions are not equivalent. {details.get("reason", "")}'
+
+        response_data['message'] = message
+
+        # Include the generated FSAs in the response for debugging/visualization
+        response_data['generated_fsas'] = {
+            'fsa1': fsa1,
+            'fsa2': fsa2
+        }
 
         # Add minimal DFA information if available
         if 'minimal_dfa1_states' in details:

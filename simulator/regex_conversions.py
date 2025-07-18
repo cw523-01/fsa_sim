@@ -1,5 +1,9 @@
 from typing import Dict, List, Set, Optional, Tuple
 from collections import defaultdict
+import re
+from .fsa_properties import validate_fsa_structure
+from .minimise_nfa import minimise_nfa
+from .fsa_equivalence import are_automata_equivalent
 
 
 class NFABuilder:
@@ -109,7 +113,6 @@ class RegexParser:
         if (next_char is not None and
                 next_char not in ['|', ')'] and
                 self.pos < len(self.regex)):
-
             second_start, second_accept = self.parse_concat()
 
             # Thompson construction for concatenation
@@ -123,8 +126,6 @@ class RegexParser:
         inner_start, inner_accept = self.parse_atom()
 
         # Handle postfix operators
-        # Note: Consecutive postfix operators (like a*+, a+*) are now allowed
-        # as they are mathematically valid even if semantically redundant
         while self.peek() in ['*', '+']:
             operator = self.consume()
 
@@ -142,7 +143,6 @@ class RegexParser:
 
             elif operator == '+':
                 # Thompson construction for plus (one or more)
-                # a+ is equivalent to aa*
                 new_start = self.nfa.new_state()
                 new_accept = self.nfa.new_state()
 
@@ -195,10 +195,351 @@ class RegexParser:
             return start, accept
 
 
+class GNFA:
+    """Generalized NFA for state elimination algorithm."""
+
+    def __init__(self):
+        self.states = set()
+        self.transitions = defaultdict(lambda: defaultdict(str))  # state -> state -> regex
+        self.start_state = None
+        self.accept_state = None
+
+    def add_state(self, state: str):
+        """Add a state to the GNFA."""
+        self.states.add(state)
+
+    def add_transition(self, from_state: str, to_state: str, regex: str):
+        """Add a transition labeled with a regex."""
+        if regex:  # Only add non-empty transitions
+            if self.transitions[from_state][to_state]:
+                # Union with existing transition
+                existing = self.transitions[from_state][to_state]
+                self.transitions[from_state][to_state] = f"({existing}|{regex})"
+            else:
+                self.transitions[from_state][to_state] = regex
+
+    def remove_state(self, state: str):
+        """Remove a state and update transitions using state elimination."""
+        if state == self.start_state or state == self.accept_state:
+            return  # Never remove start or accept state
+
+        # Get all transitions involving this state
+        incoming = []  # (from_state, regex_to_state)
+        outgoing = []  # (to_state, regex_from_state)
+        self_loop = ""
+
+        # Find incoming transitions
+        for from_state in self.states:
+            if from_state != state and self.transitions[from_state][state]:
+                incoming.append((from_state, self.transitions[from_state][state]))
+
+        # Find outgoing transitions
+        for to_state in self.states:
+            if to_state != state and self.transitions[state][to_state]:
+                outgoing.append((to_state, self.transitions[state][to_state]))
+
+        # Find self-loop
+        if self.transitions[state][state]:
+            self_loop = self.transitions[state][state]
+
+        # Create new transitions for all combinations of incoming and outgoing
+        for from_state, in_regex in incoming:
+            for to_state, out_regex in outgoing:
+                # Build new regex: incoming + (self_loop)* + outgoing
+                parts = []
+
+                # Add incoming part
+                if in_regex == "ε":
+                    pass  # Don't add epsilon to concatenation
+                else:
+                    parts.append(in_regex)
+
+                # Add self-loop part with Kleene star
+                if self_loop:
+                    if self_loop == "ε":
+                        pass  # ε* = ε, which doesn't affect concatenation
+                    else:
+                        # Need to parenthesize if it's a complex expression
+                        if '|' in self_loop or len(self_loop) > 1:
+                            parts.append(f"({self_loop})*")
+                        else:
+                            parts.append(f"{self_loop}*")
+
+                # Add outgoing part
+                if out_regex == "ε":
+                    pass  # Don't add epsilon to concatenation
+                else:
+                    parts.append(out_regex)
+
+                # Combine parts
+                if not parts:
+                    new_regex = "ε"
+                else:
+                    new_regex = "".join(parts)
+
+                # Add to existing transition or create new one
+                self.add_transition(from_state, to_state, new_regex)
+
+        # Remove the state
+        self.states.remove(state)
+
+        # Remove all transitions involving this state
+        for from_state in list(self.transitions.keys()):
+            if from_state == state:
+                del self.transitions[from_state]
+            else:
+                if state in self.transitions[from_state]:
+                    del self.transitions[from_state][state]
+
+
+def fsa_to_gnfa(fsa: Dict) -> GNFA:
+    """Convert an FSA to a GNFA for state elimination."""
+    gnfa = GNFA()
+
+    # Add new start and accept states
+    new_start = "gnfa_start"
+    new_accept = "gnfa_accept"
+    gnfa.add_state(new_start)
+    gnfa.add_state(new_accept)
+    gnfa.start_state = new_start
+    gnfa.accept_state = new_accept
+
+    # Add all original states
+    for state in fsa['states']:
+        gnfa.add_state(state)
+
+    # Add epsilon transition from new start to original start
+    gnfa.add_transition(new_start, fsa['startingState'], "ε")
+
+    # Add epsilon transitions from all original accepting states to new accept
+    for accept_state in fsa['acceptingStates']:
+        gnfa.add_transition(accept_state, new_accept, "ε")
+
+    # Add all original transitions
+    for from_state in fsa['states']:
+        if from_state in fsa['transitions']:
+            for symbol in fsa['transitions'][from_state]:
+                for to_state in fsa['transitions'][from_state][symbol]:
+                    if symbol == '':
+                        gnfa.add_transition(from_state, to_state, "ε")
+                    else:
+                        gnfa.add_transition(from_state, to_state, symbol)
+
+    return gnfa
+
+
+def simplify_regex(regex: str) -> str:
+    """Simplify a regular expression by removing redundant patterns - FIXED VERSION."""
+    if not regex:
+        return "ε"
+
+    # Handle the empty language symbol specifically
+    if regex == "∅":
+        return "∅"
+
+    # Apply simplifications iteratively until no more changes
+    prev_regex = None
+    iterations = 0
+    max_iterations = 10  # Prevent infinite loops
+
+    while prev_regex != regex and iterations < max_iterations:
+        prev_regex = regex
+        iterations += 1
+
+        # Apply simplifications in order
+        simplifications = [
+            # Remove epsilon symbols first
+            (r'ε', ''),
+            # Remove empty groups
+            (r'\(\)', ''),
+            # Remove redundant operators
+            (r'\*\*+', '*'),  # Multiple stars
+            (r'\+\++', '+'),  # Multiple plus
+            (r'\*\+', '*'),  # Star followed by plus
+            (r'\+\*', '*'),  # Plus followed by star
+            # FIXED: Only remove parentheses around single chars if NOT followed by postfix operators
+            (r'\(([^|*+()ε])\)(?![*+])', r'\1'),  # Single char not followed by * or +
+            # Remove nested parentheses for expressions that don't contain operators
+            (r'\(\(([^)]+)\)\)', r'(\1)'),
+            # Clean up epsilon in concatenations
+            (r'ε([^|*+])', r'\1'),  # εa -> a
+            (r'([^|*+])ε', r'\1'),  # aε -> a
+        ]
+
+        for pattern, replacement in simplifications:
+            try:
+                new_regex = re.sub(pattern, replacement, regex)
+                regex = new_regex
+            except re.error:
+                continue
+
+    # If the result is empty, return epsilon
+    if not regex:
+        return 'ε'
+
+    return regex
+
+
+def eliminate_states(gnfa: GNFA) -> str:
+    """Eliminate states from GNFA until only start and accept remain."""
+    # Continue until only start and accept states remain
+    while len(gnfa.states) > 2:
+        # Choose a state to eliminate (not start or accept)
+        # Strategy: eliminate states with fewer transitions first
+        best_state = None
+        min_transitions = float('inf')
+
+        for state in gnfa.states:
+            if state != gnfa.start_state and state != gnfa.accept_state:
+                # Count transitions involving this state
+                transition_count = 0
+                for from_state in gnfa.states:
+                    if gnfa.transitions[from_state][state]:
+                        transition_count += 1
+                    if gnfa.transitions[state][from_state]:
+                        transition_count += 1
+
+                if transition_count < min_transitions:
+                    min_transitions = transition_count
+                    best_state = state
+
+        if best_state is None:
+            break
+
+        gnfa.remove_state(best_state)
+
+    # Get the final regex from start to accept
+    final_regex = gnfa.transitions[gnfa.start_state][gnfa.accept_state]
+
+    if not final_regex:
+        return "∅"  # Empty language
+
+    return simplify_regex(final_regex)
+
+
+def fsa_to_regex(fsa: Dict) -> Dict:
+    """
+    Convert a finite state automaton to a regular expression.
+    """
+    result = {
+        'regex': '',
+        'valid': False,
+        'original_states': len(fsa.get('states', [])),
+        'minimized_states': 0,
+        'verification': {},
+        'error': None
+    }
+
+    try:
+        # Step 1: Strict validation first
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            result['error'] = f"Invalid FSA structure: {validation['error']}"
+            return result
+
+        # Step 2: Handle empty FSA early
+        if not fsa.get('states'):
+            result['regex'] = '∅'
+            result['valid'] = True
+            result['minimized_states'] = 0
+            result['verification'] = {'equivalent': True, 'empty_language': True}
+            return result
+
+        # Step 3: Minimize the automaton
+        try:
+            minimization_result = minimise_nfa(fsa)
+            minimized_fsa = minimization_result.nfa
+            result['minimized_states'] = len(minimized_fsa.get('states', []))
+        except Exception as e:
+            # If minimization fails, use original FSA
+            minimized_fsa = fsa
+            result['minimized_states'] = len(fsa.get('states', []))
+
+        # Handle FSA that became empty after minimization
+        if not minimized_fsa.get('states'):
+            result['regex'] = '∅'
+            result['valid'] = True
+            result['verification'] = {'equivalent': True, 'empty_language': True}
+            return result
+
+        # Handle single state FSA
+        if len(minimized_fsa['states']) == 1:
+            state = minimized_fsa['states'][0]
+            result['minimized_states'] = 1
+
+            if state in minimized_fsa.get('acceptingStates', []):
+                # Check for self-loops
+                self_loop_symbols = []
+                if state in minimized_fsa.get('transitions', {}):
+                    for symbol in minimized_fsa['transitions'][state]:
+                        if state in minimized_fsa['transitions'][state][symbol]:
+                            self_loop_symbols.append(symbol)
+
+                if self_loop_symbols:
+                    if len(self_loop_symbols) == 1:
+                        result['regex'] = f"({self_loop_symbols[0]})*"
+                    else:
+                        union = '|'.join(self_loop_symbols)
+                        result['regex'] = f"({union})*"
+                else:
+                    result['regex'] = 'ε'
+            else:
+                result['regex'] = '∅'
+
+            result['valid'] = True
+
+            # Verify the result
+            try:
+                converted_back = regex_to_epsilon_nfa(result['regex'])
+                is_equivalent, equiv_details = are_automata_equivalent(fsa, converted_back)
+                result['verification'] = {
+                    'equivalent': is_equivalent,
+                    'details': equiv_details
+                }
+            except Exception as e:
+                result['verification'] = {
+                    'equivalent': False,
+                    'error': str(e)
+                }
+
+            return result
+
+        # Step 4: Convert to GNFA
+        gnfa = fsa_to_gnfa(minimized_fsa)
+
+        # Step 5: Eliminate states to get regex
+        regex = eliminate_states(gnfa)
+
+        # Step 6: Final simplification
+        regex = simplify_regex(regex)
+
+        result['regex'] = regex
+        result['valid'] = True
+
+        # Step 7: Verify by converting back to NFA and checking equivalence
+        try:
+            converted_back = regex_to_epsilon_nfa(result['regex'])
+            is_equivalent, equiv_details = are_automata_equivalent(fsa, converted_back)
+            result['verification'] = {
+                'equivalent': is_equivalent,
+                'details': equiv_details
+            }
+        except Exception as e:
+            result['verification'] = {
+                'equivalent': False,
+                'error': f"Failed to verify: {str(e)}"
+            }
+
+        return result
+
+    except Exception as e:
+        result['error'] = str(e)
+        return result
+
+
 def regex_to_epsilon_nfa(regex: str) -> Dict:
     """
     Convert a regular expression to an ε-NFA using Thompson's construction.
-    No AST required - builds NFA directly during parsing.
 
     Args:
         regex (str): The regular expression to convert. Supports:
