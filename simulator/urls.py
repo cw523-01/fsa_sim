@@ -45,4 +45,7 @@ urlpatterns = [
 
     # Utility endpoint to check if two REGEX are equivalent
     path('api/check-regex-equivalence/', views.check_regex_equivalence, name='check_regex_equivalence'),
+
+    # Utility endpoint to check if an FSA and a REGEX are equivalent
+    path('api/check-fsa-regex-equivalence/', views.check_fsa_regex_equivalence, name='check_fsa_regex_equivalence'),
 ]

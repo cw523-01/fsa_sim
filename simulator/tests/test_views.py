@@ -1332,7 +1332,8 @@ class URLRoutingTests(TestCase):
             '/api/fsa-to-regex/',
             '/api/minimise-nfa/',
             '/api/check-regex-equivalence/',
-
+            '/api/check-fsa-regex-equivalence/',
+            '/api/check-fsa-equivalence/',
         ]
 
         for url in urls_to_test:
@@ -1389,6 +1390,140 @@ class IntegrationTests(FSAViewTestCase):
             })
 
         self.assertEqual(sim_response.status_code, 200)
+
+    def test_fsa_regex_conversion_roundtrip_workflow(self):
+        """Test complete workflow: FSA -> Regex -> FSA -> Check Equivalence"""
+        # 1. Convert FSA to regex
+        fsa_to_regex_response = self.post_json('/api/fsa-to-regex/', {
+            'fsa': self.sample_dfa
+        })
+        self.assertEqual(fsa_to_regex_response.status_code, 200)
+        generated_regex = fsa_to_regex_response.json()['regex']
+
+        # 2. Convert regex back to FSA
+        regex_to_fsa_response = self.post_json('/api/regex-to-epsilon-nfa/', {
+            'regex': generated_regex
+        })
+        self.assertEqual(regex_to_fsa_response.status_code, 200)
+        roundtrip_fsa = regex_to_fsa_response.json()['epsilon_nfa']
+
+        # 3. Check if original FSA and roundtrip FSA are equivalent
+        fsa_equivalence_response = self.post_json('/api/check-fsa-equivalence/', {
+            'fsa1': self.sample_dfa,
+            'fsa2': roundtrip_fsa
+        })
+        self.assertEqual(fsa_equivalence_response.status_code, 200)
+
+        # 4. Check if original FSA and generated regex are equivalent
+        fsa_regex_equivalence_response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa,
+            'regex': generated_regex
+        })
+        self.assertEqual(fsa_regex_equivalence_response.status_code, 200)
+
+        # Both equivalence checks should give the same result
+        fsa_equiv = fsa_equivalence_response.json()['equivalent']
+        fsa_regex_equiv = fsa_regex_equivalence_response.json()['equivalent']
+        self.assertEqual(fsa_equiv, fsa_regex_equiv)
+
+    def test_regex_equivalence_vs_fsa_regex_equivalence_consistency(self):
+        """Test that regex equivalence and FSA-regex equivalence give consistent results"""
+        test_regex1 = 'a*'
+        test_regex2 = '(a)*'
+
+        # 1. Check regex equivalence directly
+        regex_equiv_response = self.post_json('/api/check-regex-equivalence/', {
+            'regex1': test_regex1,
+            'regex2': test_regex2
+        })
+        self.assertEqual(regex_equiv_response.status_code, 200)
+        regex_equivalent = regex_equiv_response.json()['equivalent']
+
+        # 2. Convert first regex to FSA
+        regex1_to_fsa_response = self.post_json('/api/regex-to-epsilon-nfa/', {
+            'regex': test_regex1
+        })
+        self.assertEqual(regex1_to_fsa_response.status_code, 200)
+        fsa_from_regex1 = regex1_to_fsa_response.json()['epsilon_nfa']
+
+        # 3. Check FSA-regex equivalence
+        fsa_regex_equiv_response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': fsa_from_regex1,
+            'regex': test_regex2
+        })
+        self.assertEqual(fsa_regex_equiv_response.status_code, 200)
+        fsa_regex_equivalent = fsa_regex_equiv_response.json()['equivalent']
+
+        # Results should be consistent
+        self.assertEqual(regex_equivalent, fsa_regex_equivalent)
+
+    def test_minimize_then_check_fsa_regex_equivalence(self):
+        """Test minimizing an FSA then checking equivalence with regex"""
+        # 1. Start with a potentially non-minimal NFA
+        complex_nfa = {
+            'states': ['S0', 'S1', 'S2', 'S3'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S1', 'S2']},
+                'S1': {'b': ['S3']},
+                'S2': {'b': ['S3']},
+                'S3': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S3']
+        }
+
+        # 2. Minimize the NFA
+        minimize_response = self.post_json('/api/minimise-nfa/', {
+            'fsa': complex_nfa
+        })
+        self.assertEqual(minimize_response.status_code, 200)
+        minimized_fsa = minimize_response.json()['minimised_fsa']
+
+        # 3. Check equivalence with regex (both should accept strings of form 'ab')
+        fsa_regex_response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': minimized_fsa,
+            'regex': 'ab'
+        })
+        self.assertEqual(fsa_regex_response.status_code, 200)
+
+        # Should be equivalent as both accept exactly 'ab'
+        self.assertTrue(fsa_regex_response.json()['equivalent'])
+
+    def test_complete_transformation_pipeline_with_equivalence_check(self):
+        """Test complete transformation pipeline ending with FSA-regex equivalence"""
+        # 1. Start with NFA
+        # 2. Convert to DFA
+        nfa_to_dfa_response = self.post_json('/api/nfa-to-dfa/', {
+            'fsa': self.sample_nfa
+        })
+        self.assertEqual(nfa_to_dfa_response.status_code, 200)
+        dfa = nfa_to_dfa_response.json()['converted_dfa']
+
+        # 3. Minimize DFA
+        minimize_response = self.post_json('/api/minimise-dfa/', {
+            'fsa': dfa
+        })
+        self.assertEqual(minimize_response.status_code, 200)
+        minimal_dfa = minimize_response.json()['minimised_fsa']
+
+        # 4. Complete DFA (if needed)
+        complete_response = self.post_json('/api/complete-dfa/', {
+            'fsa': minimal_dfa
+        })
+        self.assertEqual(complete_response.status_code, 200)
+        complete_dfa = complete_response.json()['completed_fsa']
+
+        # 5. Check equivalence with a regex that should match the original NFA language
+        # The sample_nfa accepts strings ending in 'ab'
+        fsa_regex_response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': complete_dfa,
+            'regex': '(a|b)*ab'
+        })
+        self.assertEqual(fsa_regex_response.status_code, 200)
+
+        # Should be equivalent
+        self.assertTrue(fsa_regex_response.json()['equivalent'])
 
 
 class PerformanceTests(FSAViewTestCase):
@@ -1645,6 +1780,22 @@ class ComprehensiveErrorTests(FSAViewTestCase):
         self.assertIn('error', data)
         self.assertIn('Missing regex1 parameter', data['error'])
 
+        # FSA-Regex equivalence endpoint that expects both FSA and regex
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {})
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing fsa definition', data['error'])
+
+        # Test missing regex parameter for FSA-Regex equivalence
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa
+        })
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing regex parameter', data['error'])
+
     def test_all_endpoints_handle_invalid_fsa(self):
         """Test that all endpoints properly handle invalid FSA"""
         endpoints = [
@@ -1664,6 +1815,7 @@ class ComprehensiveErrorTests(FSAViewTestCase):
             '/api/check-fsa-equivalence/',
             '/api/fsa-to-regex/',
             '/api/minimise-nfa/',
+            '/api/check-fsa-regex-equivalence/',
         ]
 
         for endpoint in endpoints:
@@ -1696,6 +1848,7 @@ class ComprehensiveErrorTests(FSAViewTestCase):
             '/api/check-fsa-equivalence/',
             '/api/minimise-nfa/',
             '/api/check-regex-equivalence/',
+            '/api/check-fsa-regex-equivalence/',
         ]
 
         for endpoint in endpoints:
@@ -3701,3 +3854,467 @@ class CheckRegexEquivalenceViewTests(FSAViewTestCase):
             minimal_info = data['minimal_dfa_info']
             self.assertIn('fsa1_minimal_states', minimal_info)
             self.assertIn('fsa2_minimal_states', minimal_info)
+
+
+class CheckFSARegexEquivalenceViewTests(FSAViewTestCase):
+    """Tests for the FSA-regex equivalence checking endpoint"""
+
+    def test_check_equivalent_fsa_regex(self):
+        """Test checking equivalent FSA and regex"""
+        # DFA that accepts strings with odd number of 'a's
+        odd_a_dfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1']},
+                'S1': {'a': ['S0']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S1']
+        }
+
+        # Regex that also accepts strings with odd number of 'a's: a(aa)*
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': odd_a_dfa,
+            'regex': 'a(aa)*'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['equivalent'])
+        self.assertIn('fsa', data)
+        self.assertIn('regex', data)
+        self.assertIn('fsa_stats', data)
+        self.assertIn('regex_fsa_stats', data)
+        self.assertIn('equivalence_details', data)
+        self.assertIn('analysis', data)
+        self.assertIn('message', data)
+        self.assertIn('regex_derived_fsa', data)
+
+    def test_check_non_equivalent_fsa_regex(self):
+        """Test checking non-equivalent FSA and regex"""
+        # DFA that accepts strings with even number of 'a's
+        even_a_dfa = {
+            'states': ['S0', 'S1'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'a': ['S1']},
+                'S1': {'a': ['S0']}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S0']  # Accept even number (including 0)
+        }
+
+        # Regex that accepts strings with odd number of 'a's
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': even_a_dfa,
+            'regex': 'a(aa)*'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertFalse(data['equivalent'])
+        self.assertIn('equivalence_details', data)
+        self.assertIn('reason', data['equivalence_details'])
+
+    def test_check_fsa_regex_missing_fsa(self):
+        """Test request without FSA definition"""
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'regex': 'a*'
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing fsa definition', data['error'])
+
+    def test_check_fsa_regex_missing_regex(self):
+        """Test request without regex parameter"""
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing regex parameter', data['error'])
+
+    def test_check_fsa_regex_none_values(self):
+        """Test request with None values"""
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': None,
+            'regex': 'a*'
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing fsa definition', data['error'])
+
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa,
+            'regex': None
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Missing regex parameter', data['error'])
+
+    def test_check_fsa_regex_invalid_fsa_structure(self):
+        """Test request with invalid FSA structure"""
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.invalid_fsa,
+            'regex': 'a*'
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Invalid FSA structure', data['error'])
+
+    def test_check_fsa_regex_invalid_regex_syntax(self):
+        """Test request with invalid regex syntax"""
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa,
+            'regex': '((('  # Unbalanced parentheses
+        })
+
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Invalid regex syntax', data['error'])
+
+    def test_check_fsa_regex_complex_equivalence(self):
+        """Test equivalence with complex FSA and regex"""
+        # NFA that accepts strings ending in 'ab'
+        ab_ending_nfa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a', 'b'],
+            'transitions': {
+                'S0': {'a': ['S0', 'S1'], 'b': ['S0']},
+                'S1': {'b': ['S2']},
+                'S2': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        # Regex that also accepts strings ending in 'ab'
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': ab_ending_nfa,
+            'regex': '(a|b)*ab'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['equivalent'])
+
+    def test_check_fsa_regex_different_alphabets(self):
+        """Test FSA and regex with different alphabets"""
+        # FSA with alphabet {a, b}
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa,
+            'regex': 'x*'  # Regex with different alphabet
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertFalse(data['equivalent'])
+        self.assertFalse(data['analysis']['both_alphabets_same'])
+
+    def test_check_fsa_regex_statistics_accuracy(self):
+        """Test that statistics are calculated correctly"""
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa,
+            'regex': 'a*b*'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        fsa_stats = data['fsa_stats']
+        regex_fsa_stats = data['regex_fsa_stats']
+
+        # Check FSA stats match input
+        self.assertEqual(fsa_stats['states_count'], len(self.sample_dfa['states']))
+        self.assertEqual(fsa_stats['alphabet_size'], len(self.sample_dfa['alphabet']))
+        self.assertEqual(fsa_stats['accepting_states_count'], len(self.sample_dfa['acceptingStates']))
+        self.assertTrue(fsa_stats['is_deterministic'])
+        self.assertFalse(fsa_stats['has_epsilon_transitions'])
+
+        # Check regex-derived FSA stats are reasonable
+        self.assertGreater(regex_fsa_stats['states_count'], 0)
+        self.assertGreater(regex_fsa_stats['alphabet_size'], 0)
+        self.assertGreaterEqual(regex_fsa_stats['accepting_states_count'], 0)
+
+    def test_check_fsa_regex_analysis_completeness(self):
+        """Test that analysis section provides comprehensive information"""
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa,
+            'regex': '(a|b)*'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        analysis = data['analysis']
+
+        # Check all expected analysis fields are present
+        expected_fields = [
+            'both_alphabets_same', 'alphabet_union', 'alphabet_intersection',
+            'fsa_complexity', 'regex_fsa_complexity', 'regex_length',
+            'both_deterministic', 'both_nondeterministic', 'mixed_types'
+        ]
+        for field in expected_fields:
+            self.assertIn(field, analysis)
+
+        # Check specific values make sense
+        self.assertIsInstance(analysis['regex_length'], int)
+        self.assertGreaterEqual(analysis['regex_length'], 0)
+        self.assertIsInstance(analysis['alphabet_union'], list)
+        self.assertIsInstance(analysis['alphabet_intersection'], list)
+
+    def test_check_fsa_regex_minimal_dfa_info(self):
+        """Test that minimal DFA information is included when available"""
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa,
+            'regex': 'a*'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        if 'minimal_dfa_info' in data:
+            minimal_info = data['minimal_dfa_info']
+            self.assertIn('original_fsa_minimal_states', minimal_info)
+            self.assertIn('regex_fsa_minimal_states', minimal_info)
+            self.assertIsInstance(minimal_info['original_fsa_minimal_states'], int)
+            self.assertIsInstance(minimal_info['regex_fsa_minimal_states'], int)
+
+    def test_check_fsa_regex_includes_derived_fsa(self):
+        """Test that response includes the regex-derived FSA"""
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa,
+            'regex': 'a'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('regex_derived_fsa', data)
+
+        # Verify FSA structure
+        derived_fsa = data['regex_derived_fsa']
+        required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
+        for key in required_keys:
+            self.assertIn(key, derived_fsa)
+
+    def test_check_fsa_regex_malformed_json(self):
+        """Test endpoint with malformed JSON"""
+        response = self.client.post(
+            '/api/check-fsa-regex-equivalence/',
+            data='{"fsa": invalid json}',
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @patch('simulator.regex_conversions.validate_regex_syntax')
+    def test_check_fsa_regex_validation_exception(self, mock_validate):
+        """Test exception in regex validation"""
+        mock_validate.side_effect = Exception("Validation error")
+
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa,
+            'regex': 'a*'
+        })
+
+        self.assertEqual(response.status_code, 500)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Server error', data['error'])
+
+    @patch('simulator.regex_conversions.regex_to_epsilon_nfa')
+    def test_check_fsa_regex_conversion_exception(self, mock_convert):
+        """Test exception when converting regex to FSA"""
+        # Mock validation to pass first
+        with patch('simulator.regex_conversions.validate_regex_syntax') as mock_validate:
+            mock_validate.return_value = {'valid': True}
+            mock_convert.side_effect = Exception("Conversion error")
+
+            response = self.post_json('/api/check-fsa-regex-equivalence/', {
+                'fsa': self.sample_dfa,
+                'regex': 'a*'
+            })
+
+            self.assertEqual(response.status_code, 400)
+            data = response.json()
+            self.assertIn('error', data)
+            self.assertIn('Failed to convert regex to FSA', data['error'])
+
+    @patch('simulator.fsa_equivalence.are_automata_equivalent')
+    def test_check_fsa_regex_equivalence_exception(self, mock_equiv):
+        """Test exception in equivalence checking function"""
+        mock_equiv.side_effect = Exception("Equivalence check error")
+
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa,
+            'regex': 'a*'
+        })
+
+        self.assertEqual(response.status_code, 500)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Server error', data['error'])
+
+    @patch('simulator.views.validate_fsa_structure')
+    def test_check_fsa_regex_fsa_validation_exception(self, mock_validate):
+        """Test exception in FSA structure validation"""
+        mock_validate.side_effect = Exception("FSA validation error")
+
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa,
+            'regex': 'a*'
+        })
+
+        self.assertEqual(response.status_code, 500)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertIn('Server error', data['error'])
+
+    def test_check_fsa_regex_with_nfa_input(self):
+        """Test equivalence checking with NFA input"""
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_nfa,
+            'regex': '(a|b)*ab'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('equivalent', data)
+
+        # Check that NFA characteristics are properly detected
+        fsa_stats = data['fsa_stats']
+        self.assertFalse(fsa_stats['is_deterministic'])
+
+    def test_check_fsa_regex_complex_regex_patterns(self):
+        """Test with various complex regex patterns"""
+        test_cases = [
+            ('a+', 'One or more a'),
+            ('a*b+', 'Zero or more a, one or more b'),
+            ('(ab)+', 'One or more ab'),
+            ('a|b', 'a or b'),
+            ('(a|b)*', 'Zero or more of a or b'),
+        ]
+
+        for regex, description in test_cases:
+            with self.subTest(regex=regex, description=description):
+                response = self.post_json('/api/check-fsa-regex-equivalence/', {
+                    'fsa': self.sample_dfa,
+                    'regex': regex
+                })
+
+                self.assertEqual(response.status_code, 200)
+                data = response.json()
+                self.assertIn('equivalent', data)
+                self.assertIn('regex_derived_fsa', data)
+
+    def test_check_fsa_regex_message_generation(self):
+        """Test that appropriate messages are generated"""
+        # Test equivalent case
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': self.sample_dfa,
+            'regex': 'b*a(b*ab*a)*b*'  # Should be equivalent to sample_dfa (odd 'a' occurrences)
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        if data['equivalent']:
+            self.assertIn('equivalent', data['message'])
+        else:
+            self.assertIn('not equivalent', data['message'])
+
+        # Should include state count information
+        self.assertIn('states', data['message'])
+
+    def test_check_fsa_regex_epsilon_handling(self):
+        """Test handling of epsilon transitions in comparison"""
+        # FSA with epsilon transitions
+        epsilon_fsa = {
+            'states': ['S0', 'S1', 'S2'],
+            'alphabet': ['a'],
+            'transitions': {
+                'S0': {'': ['S1'], 'a': ['S2']},  # Epsilon transition
+                'S1': {'a': ['S2']},
+                'S2': {}
+            },
+            'startingState': 'S0',
+            'acceptingStates': ['S2']
+        }
+
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': epsilon_fsa,
+            'regex': 'a'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('equivalent', data)
+
+        # Check that epsilon transitions are detected
+        fsa_stats = data['fsa_stats']
+        self.assertTrue(fsa_stats['has_epsilon_transitions'])
+
+    def test_check_fsa_regex_edge_case_empty_fsa(self):
+        """Test edge case with empty FSA"""
+        empty_fsa = {
+            'states': [],
+            'alphabet': [],
+            'transitions': {},
+            'startingState': '',
+            'acceptingStates': []
+        }
+
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': empty_fsa,
+            'regex': 'a*'
+        })
+
+        # Should handle validation gracefully
+        self.assertIn(response.status_code, [200, 400])
+
+    def test_check_fsa_regex_single_state_cases(self):
+        """Test edge cases with single-state FSAs"""
+        # Single accepting state
+        single_accepting = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {'S0': {'a': ['S0']}},
+            'startingState': 'S0',
+            'acceptingStates': ['S0']
+        }
+
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': single_accepting,
+            'regex': 'a*'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['equivalent'])  # Both accept a*
+
+        # Single non-accepting state
+        single_non_accepting = {
+            'states': ['S0'],
+            'alphabet': ['a'],
+            'transitions': {'S0': {'a': ['S0']}},
+            'startingState': 'S0',
+            'acceptingStates': []
+        }
+
+        response = self.post_json('/api/check-fsa-regex-equivalence/', {
+            'fsa': single_non_accepting,
+            'regex': 'a+'  # One or more a (can't accept empty string)
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertFalse(data['equivalent'])  # FSA accepts nothing, regex accepts a+s

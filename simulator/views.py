@@ -1669,3 +1669,143 @@ def check_regex_equivalence(request):
         return JsonResponse({'error': str(e)}, status=400)
     except Exception as e:
         return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+@csrf_exempt
+@require_POST
+def check_fsa_regex_equivalence(request):
+    """
+    Django view to check if an FSA and a regular expression are equivalent.
+
+    Expects a POST request with a JSON body containing:
+    - fsa: FSA definition in the proper format
+    - regex: Regular expression string
+
+    Returns a JSON response with equivalence check results.
+    """
+    try:
+        # Parse the request body
+        data = json.loads(request.body)
+        fsa = data.get('fsa')
+        regex = data.get('regex')
+
+        if not fsa:
+            return JsonResponse({'error': 'Missing fsa definition'}, status=400)
+
+        if regex is None:
+            return JsonResponse({'error': 'Missing regex parameter'}, status=400)
+
+        # Validate FSA structure
+        validation = validate_fsa_structure(fsa)
+        if not validation['valid']:
+            return JsonResponse({
+                'error': f'Invalid FSA structure: {validation["error"]}'
+            }, status=400)
+
+        # Validate regex syntax
+        from .regex_conversions import validate_regex_syntax
+        regex_validation = validate_regex_syntax(regex)
+        if not regex_validation['valid']:
+            return JsonResponse({
+                'error': f'Invalid regex syntax: {regex_validation["error"]}'
+            }, status=400)
+
+        # Convert regex to FSA
+        from .regex_conversions import regex_to_epsilon_nfa
+        try:
+            regex_fsa = regex_to_epsilon_nfa(regex)
+        except Exception as e:
+            return JsonResponse({
+                'error': f'Failed to convert regex to FSA: {str(e)}'
+            }, status=400)
+
+        # Check equivalence between the original FSA and the regex-derived FSA
+        from .fsa_equivalence import are_automata_equivalent
+        is_equivalent, details = are_automata_equivalent(fsa, regex_fsa)
+
+        # Calculate statistics for both FSAs
+        fsa_stats = {
+            'states_count': len(fsa['states']),
+            'alphabet_size': len(fsa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in fsa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(fsa['acceptingStates']),
+            'has_epsilon_transitions': any(
+                '' in fsa['transitions'].get(state, {}) and fsa['transitions'][state]['']
+                for state in fsa['states']
+            ),
+            'is_deterministic': is_deterministic(fsa)
+        }
+
+        regex_fsa_stats = {
+            'states_count': len(regex_fsa['states']),
+            'alphabet_size': len(regex_fsa['alphabet']),
+            'transitions_count': sum(
+                len(transitions) for state_transitions in regex_fsa['transitions'].values()
+                for transitions in state_transitions.values()
+            ),
+            'accepting_states_count': len(regex_fsa['acceptingStates']),
+            'has_epsilon_transitions': any(
+                '' in regex_fsa['transitions'].get(state, {}) and regex_fsa['transitions'][state]['']
+                for state in regex_fsa['states']
+            ),
+            'is_deterministic': is_deterministic(regex_fsa)
+        }
+
+        # Build response
+        response_data = {
+            'equivalent': is_equivalent,
+            'fsa': fsa,
+            'regex': regex,
+            'fsa_stats': fsa_stats,
+            'regex_fsa_stats': regex_fsa_stats,
+            'equivalence_details': details
+        }
+
+        # Add analysis comparing the FSA and regex-derived FSA
+        analysis = {
+            'both_alphabets_same': set(fsa['alphabet']) == set(regex_fsa['alphabet']),
+            'alphabet_union': sorted(list(set(fsa['alphabet']) | set(regex_fsa['alphabet']))),
+            'alphabet_intersection': sorted(list(set(fsa['alphabet']) & set(regex_fsa['alphabet']))),
+            'fsa_complexity': fsa_stats['states_count'] * fsa_stats['alphabet_size'],
+            'regex_fsa_complexity': regex_fsa_stats['states_count'] * regex_fsa_stats['alphabet_size'],
+            'regex_length': len(regex),
+            'both_deterministic': fsa_stats['is_deterministic'] and regex_fsa_stats['is_deterministic'],
+            'both_nondeterministic': not fsa_stats['is_deterministic'] and not regex_fsa_stats['is_deterministic'],
+            'mixed_types': fsa_stats['is_deterministic'] != regex_fsa_stats['is_deterministic']
+        }
+
+        response_data['analysis'] = analysis
+
+        # Generate appropriate message
+        if is_equivalent:
+            message = f'FSA and regular expression are equivalent. {details.get("reason", "")}'
+            if fsa_stats['states_count'] != regex_fsa_stats['states_count']:
+                message += f' (Original FSA: {fsa_stats["states_count"]} states, Regex FSA: {regex_fsa_stats["states_count"]} states)'
+        else:
+            if 'error' in details:
+                message = f'Equivalence check failed: {details["error"]}'
+            else:
+                message = f'FSA and regular expression are not equivalent. {details.get("reason", "")}'
+
+        response_data['message'] = message
+
+        # Include the regex-derived FSA in the response for debugging/visualization
+        response_data['regex_derived_fsa'] = regex_fsa
+
+        # Add minimal DFA information if available
+        if 'minimal_dfa1_states' in details:
+            response_data['minimal_dfa_info'] = {
+                'original_fsa_minimal_states': details['minimal_dfa1_states'],
+                'regex_fsa_minimal_states': details['minimal_dfa2_states'],
+                'original_fsa_complete_states': details.get('complete_dfa1_states', 'N/A'),
+                'regex_fsa_complete_states': details.get('complete_dfa2_states', 'N/A')
+            }
+
+        return JsonResponse(response_data)
+
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
