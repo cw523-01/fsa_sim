@@ -1,4 +1,3 @@
-/* REGEX conversion popup - inherit base file operation popup styles and match transform modals */
 .file-operation-popup.regex-convert {
     /* Base popup styles inherited from file-operations-popup.css */
     position: fixed;
@@ -8,14 +7,14 @@
     width: 600px;
     max-width: 90vw;
     max-height: 80vh;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border: 2px solid #6c757d;
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, var(--light-gray) 0%, var(--medium-gray) 100%);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
     z-index: var(--z-modals);
     opacity: 0;
-    transition: all 0.3s ease;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    transition: var(--transition-normal);
+    font-family: var(--font-family-ui);
     display: flex;
     flex-direction: column;
 }
@@ -30,15 +29,316 @@
     transform: translate(-50%, -50%) scale(0.9);
 }
 
-/* REGEX popup header styling to match transform modals */
+/* FSA to REGEX result popup - updated to green theme */
+.file-operation-popup.fsa-to-regex {
+    /* Inherit base popup styles */
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    width: 650px;
+    max-width: 90vw;
+    max-height: 85vh;
+    background: linear-gradient(135deg, var(--light-gray) 0%, var(--medium-gray) 100%);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-modals);
+    opacity: 0;
+    transition: var(--transition-normal);
+    font-family: var(--font-family-ui);
+    display: flex;
+    flex-direction: column;
+}
+
+.file-operation-popup.fsa-to-regex.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.file-operation-popup.fsa-to-regex.hide {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+}
+
+/* Updated header with green theme */
+.file-operation-popup.fsa-to-regex .popup-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    color: var(--white);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.file-operation-popup.fsa-to-regex .popup-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-lg);
+}
+
+.file-operation-popup.fsa-to-regex .popup-icon {
+    font-size: var(--font-size-xl);
+    background: rgba(255, 255, 255, 0.2);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-circle);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-operation-popup.fsa-to-regex .popup-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: var(--white);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-circle);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-fast);
+}
+
+.file-operation-popup.fsa-to-regex .popup-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.file-operation-popup.fsa-to-regex .file-operation-actions {
+    padding: var(--spacing-lg) var(--spacing-xl);
+    background: rgba(255, 255, 255, 0.7);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+}
+
+.file-operation-popup.fsa-to-regex .file-operation-content {
+    flex: 1;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Scrollable content container */
+.file-operation-popup.fsa-to-regex .scrollable-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: var(--spacing-xl);
+    max-height: calc(85vh - 160px); /* Subtract header and footer heights */
+}
+
+.file-operation-popup.fsa-to-regex .file-action-btn {
+    background: var(--text-gray);
+    color: var(--white);
+    border: none;
+    padding: var(--spacing-sm) var(--spacing-xl);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.file-operation-popup.fsa-to-regex .file-action-btn:hover:not(.disabled) {
+    background: var(--dark-gray);
+    transform: translateY(-1px);
+}
+
+/* Updated primary button with green theme */
+.file-operation-popup.fsa-to-regex .file-action-btn.primary {
+    background: var(--primary-color);
+}
+
+.file-operation-popup.fsa-to-regex .file-action-btn.primary:hover:not(.disabled) {
+    background: var(--primary-hover);
+}
+
+/* REGEX result display section - updated with green accent */
+.regex-result-section {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    border-left: 4px solid var(--primary-color);
+}
+
+.regex-result-section h4 {
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--primary-color);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+}
+
+.regex-display {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    background: var(--light-gray);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+}
+
+.regex-code {
+    flex: 1;
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-color);
+    background: transparent;
+    border: none;
+    padding: 0;
+    word-break: break-all;
+    max-width: 100%;
+}
+
+/* Updated copy button with green theme */
+.copy-regex-btn {
+    background: var(--primary-color);
+    color: var(--white);
+    border: none;
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.copy-regex-btn:hover {
+    background: var(--primary-hover);
+}
+
+/* Verification section - updated with green theme */
+.verification-section {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    border-left: 4px solid var(--primary-color);
+}
+
+.verification-section h4 {
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--primary-color);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+}
+
+.verification-status {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+}
+
+.verification-status.verified {
+    background: var(--sim-final-bg);
+    color: var(--success-color);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.verification-status.unverified {
+    background: rgba(255, 152, 0, 0.1);
+    color: var(--warning-color);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.verification-error {
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: var(--sim-rejected-bg);
+    border-radius: var(--radius-sm);
+    color: var(--error-color);
+    font-size: var(--font-size-sm);
+}
+
+/* Important notice section */
+.important-notice {
+    background: linear-gradient(135deg, var(--sim-visited-bg) 0%, rgba(33, 150, 243, 0.05) 100%);
+    border: 2px solid rgba(33, 150, 243, 0.2);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+.notice-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.notice-icon {
+    color: var(--secondary-color);
+    font-size: var(--font-size-lg);
+}
+
+.notice-title {
+    color: var(--secondary-color);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-lg);
+}
+
+.notice-content {
+    color: #1565C0;
+    font-size: var(--font-size-md);
+    line-height: var(--line-height);
+}
+
+.notice-content p {
+    margin: 0 0 var(--spacing-md) 0;
+}
+
+.notice-content p:last-child {
+    margin-bottom: 0;
+}
+
+.notice-points {
+    list-style: none;
+    padding: 0;
+    margin: var(--spacing-md) 0 0 0;
+}
+
+.notice-points li {
+    position: relative;
+    padding-left: var(--spacing-xl);
+    margin-bottom: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    color: #1565C0;
+}
+
+.notice-points li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--secondary-color);
+    font-weight: var(--font-weight-bold);
+}
+
+/* REGEX conversion popup header styling to match transform modals */
 .file-operation-popup.regex-convert .popup-header {
     background: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-hover) 100%);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
-    color: white;
-    border-radius: 10px 10px 0 0;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    color: var(--white);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     border-bottom: 2px solid var(--border-color);
 }
 
@@ -46,17 +346,17 @@
 .file-operation-popup.regex-convert .popup-title {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-weight: bold;
-    font-size: 16px;
+    gap: var(--spacing-sm);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-lg);
 }
 
 /* Popup icon styling to match transform modals */
 .file-operation-popup.regex-convert .popup-icon {
-    font-size: 20px;
+    font-size: var(--font-size-xl);
     background: rgba(255, 255, 255, 0.2);
-    padding: 8px;
-    border-radius: 50%;
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-circle);
     width: 36px;
     height: 36px;
     display: flex;
@@ -68,17 +368,17 @@
 .file-operation-popup.regex-convert .popup-close {
     background: rgba(255, 255, 255, 0.2);
     border: none;
-    color: white;
-    font-size: 20px;
-    font-weight: bold;
+    color: var(--white);
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
     width: 32px;
     height: 32px;
-    border-radius: 50%;
+    border-radius: var(--radius-circle);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.3s ease;
+    transition: var(--transition-fast);
 }
 
 .file-operation-popup.regex-convert .popup-close:hover {
@@ -87,11 +387,11 @@
 
 /* File operation actions section to match transform modals */
 .file-operation-popup.regex-convert .file-operation-actions {
-    padding: 16px 20px;
+    padding: var(--spacing-lg) var(--spacing-xl);
     background: rgba(255, 255, 255, 0.7);
-    border-top: 1px solid #dee2e6;
+    border-top: 1px solid var(--border-color);
     display: flex;
-    gap: 12px;
+    gap: var(--spacing-md);
     justify-content: center;
 }
 
@@ -100,32 +400,32 @@
     flex: 1;
     overflow: hidden;
     background: rgba(255, 255, 255, 0.8);
-    padding: 20px;
+    padding: var(--spacing-xl);
 }
 
 /* File operation description to match transform modals */
 .file-operation-popup.regex-convert .file-operation-description {
-    font-size: 14px;
-    color: #495057;
-    line-height: 1.4;
-    margin-bottom: 20px;
+    font-size: var(--font-size-md);
+    color: var(--text-color);
+    line-height: var(--line-height);
+    margin-bottom: var(--spacing-xl);
 }
 
 /* Action buttons to match transform modals exactly */
 .file-operation-popup.regex-convert .file-action-btn {
-    background: #6c757d;
-    color: white;
+    background: var(--text-gray);
+    color: var(--white);
     border: none;
-    padding: 10px 20px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
+    padding: var(--spacing-sm) var(--spacing-xl);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: var(--transition-fast);
 }
 
 .file-operation-popup.regex-convert .file-action-btn:hover:not(.disabled) {
-    background: #5a6268;
+    background: var(--dark-gray);
     transform: translateY(-1px);
 }
 
@@ -138,27 +438,27 @@
 }
 
 .file-operation-popup.regex-convert .file-action-btn.disabled {
-    background: #adb5bd;
+    background: var(--medium-gray);
     cursor: not-allowed;
     opacity: 0.6;
 }
 
 .file-operation-popup.regex-convert .file-action-btn.disabled:hover {
-    background: #adb5bd;
+    background: var(--medium-gray);
     transform: none;
 }
 
 /* Form styling to match transform modals */
 .file-operation-popup.regex-convert .form-group {
-    margin-bottom: 20px;
+    margin-bottom: var(--spacing-xl);
 }
 
 .file-operation-popup.regex-convert .form-group label {
     display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
-    color: #495057;
-    font-size: 14px;
+    margin-bottom: var(--spacing-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-color);
+    font-size: var(--font-size-md);
 }
 
 /* REGEX input field styling */
@@ -200,7 +500,7 @@
     padding: var(--spacing-md);
     background: rgba(33, 150, 243, 0.05);
     border: 1px solid rgba(33, 150, 243, 0.2);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     border-left: 4px solid var(--secondary-color);
 }
 
@@ -252,30 +552,30 @@
 .file-operation-popup.regex-convert .warning-section {
     background: rgba(255, 152, 0, 0.1);
     border: 1px solid var(--warning-color);
-    border-radius: 6px;
-    padding: 12px;
-    margin-bottom: 16px;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: var(--spacing-sm);
 }
 
 .file-operation-popup.regex-convert .warning-icon {
     color: var(--warning-color);
-    font-size: 16px;
+    font-size: var(--font-size-lg);
     margin-top: 2px;
     flex-shrink: 0;
 }
 
 .file-operation-popup.regex-convert .warning-text {
-    font-size: 13px;
+    font-size: var(--font-size-sm);
     color: #e65100;
-    line-height: 1.3;
+    line-height: var(--line-height);
     margin: 0;
 }
 
 .file-operation-popup.regex-convert .warning-text strong {
-    font-weight: bold;
+    font-weight: var(--font-weight-bold);
     color: #e65100;
 }
 
@@ -284,7 +584,7 @@
     font-size: var(--font-size-xs);
     color: var(--text-gray);
     margin-top: var(--spacing-xs);
-    line-height: 1.3;
+    line-height: var(--line-height);
 }
 
 /* Input error text styling */
@@ -302,16 +602,16 @@
 /* Current FSA display styling to match transform modals */
 .file-operation-popup.regex-convert .states-info {
     background: rgba(255, 255, 255, 0.9);
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    padding: 10px;
-    margin-bottom: 16px;
-    font-size: 13px;
-    color: #495057;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+    font-size: var(--font-size-sm);
+    color: var(--text-color);
 }
 
 .file-operation-popup.regex-convert .states-count {
-    font-weight: bold;
+    font-weight: var(--font-weight-bold);
     color: var(--secondary-color);
 }
 
@@ -333,7 +633,7 @@
     border: 2px solid transparent;
     border-top: 2px solid var(--white);
     border-radius: var(--radius-circle);
-    animation: regex-spin 1s linear infinite;
+    animation: regex-spin var(--animation-fast) linear infinite;
 }
 
 @keyframes regex-spin {
@@ -346,8 +646,8 @@
     margin: var(--spacing-lg) 0;
     padding: var(--spacing-md);
     background: rgba(255, 255, 255, 0.9);
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
     border-left: 4px solid var(--secondary-color);
 }
 
@@ -370,13 +670,13 @@
 }
 
 .regex-type-indicator.epsilon-nfa {
-    background-color: rgba(33, 150, 243, 0.1);
+    background-color: var(--sim-visited-bg);
     color: var(--secondary-color);
     border: 1px solid rgba(33, 150, 243, 0.3);
 }
 
 .regex-type-indicator.thompson {
-    background-color: rgba(76, 175, 80, 0.1);
+    background-color: var(--sim-final-bg);
     color: var(--success-color);
     border: 1px solid rgba(76, 175, 80, 0.3);
 }
@@ -396,8 +696,8 @@
 /* REGEX results summary styling */
 .regex-results {
     background: rgba(255, 255, 255, 0.9);
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
     padding: var(--spacing-md);
     margin-top: var(--spacing-lg);
 }
@@ -435,7 +735,7 @@
     font-size: var(--font-size-xs);
     color: var(--text-gray);
     padding: var(--spacing-xs) var(--spacing-sm);
-    background-color: rgba(33, 150, 243, 0.1);
+    background-color: var(--sim-visited-bg);
     border-radius: var(--radius-sm);
     border: 1px solid rgba(33, 150, 243, 0.3);
     margin-left: var(--spacing-sm);
@@ -449,7 +749,7 @@
 
 .regex-operation-indicator.error {
     color: var(--error-color);
-    background-color: rgba(244, 67, 54, 0.1);
+    background-color: var(--sim-rejected-bg);
     border-color: rgba(244, 67, 54, 0.3);
 }
 
@@ -458,6 +758,15 @@
     .file-operation-popup.regex-convert {
         max-width: 90vw;
         margin: var(--spacing-xl);
+    }
+
+    .file-operation-popup.fsa-to-regex {
+        width: 95vw;
+        max-height: 90vh;
+    }
+
+    .file-operation-popup.fsa-to-regex .scrollable-content {
+        max-height: calc(90vh - 160px);
     }
 
     .examples-section {
@@ -471,11 +780,30 @@
     .examples-select {
         font-size: var(--font-size-xs);
     }
+
+    .regex-display {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .copy-regex-btn {
+        align-self: flex-end;
+    }
+
+    .regex-code {
+        font-size: var(--font-size-md);
+        word-break: break-word;
+    }
 }
 
 /* Focus styles for REGEX conversion accessibility */
 .examples-select:focus {
     outline: 2px solid var(--secondary-color);
+    outline-offset: 2px;
+}
+
+.copy-regex-btn:focus {
+    outline: 2px solid var(--primary-color);
     outline-offset: 2px;
 }
 
@@ -488,6 +816,22 @@
 
 .regex-operation-active {
     animation: regex-pulse 2s ease-in-out infinite;
+}
+
+/* Loading state for copy button */
+.copy-regex-btn.loading {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Animation for successful copy - updated to green */
+@keyframes copy-success {
+    0% { background: var(--primary-color); }
+    100% { background: var(--primary-hover); }
+}
+
+.copy-regex-btn.success {
+    animation: copy-success 0.5s ease;
 }
 
 /* Integration with control lock states */
@@ -515,4 +859,77 @@
 .file-operation-popup.regex-convert .examples-select option {
     background-color: var(--white);
     color: var(--text-color);
+}
+
+/* Chaining options styling */
+.chaining-options {
+    margin: var(--spacing-lg) 0;
+    padding: var(--spacing-md);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--secondary-color);
+}
+
+.chaining-options h4 {
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--secondary-color);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+}
+
+.option-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.checkbox-option {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    transition: var(--transition-fast);
+}
+
+.checkbox-option:hover:not(.disabled) {
+    background: var(--hover-bg);
+}
+
+.checkbox-option.disabled {
+    opacity: 0.6;
+}
+
+.checkbox-option .chain-checkbox {
+    margin-top: 2px;
+    cursor: pointer;
+}
+
+.checkbox-option.disabled .chain-checkbox {
+    cursor: not-allowed;
+}
+
+.checkbox-option label {
+    flex: 1;
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height);
+}
+
+.checkbox-option.disabled label {
+    cursor: not-allowed;
+}
+
+.option-title {
+    font-weight: var(--font-weight-medium);
+    color: var(--text-color);
+    display: block;
+    margin-bottom: var(--spacing-xs);
+}
+
+.option-description {
+    color: var(--text-gray);
+    font-size: var(--font-size-xs);
+    line-height: 1.3;
 }

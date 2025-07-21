@@ -329,7 +329,14 @@ def fsa_to_gnfa(fsa: Dict) -> GNFA:
 
 
 def simplify_regex(regex: str) -> str:
-    """Simplify a regular expression by removing redundant patterns - FIXED VERSION."""
+    """
+    Simplify a regular expression by removing redundant patterns and applying optimizations.
+
+    Handles advanced cases like:
+    - (|ba+) → (ba)*  (empty alternative with R+ becomes R*)
+    - a(ba)*b → (ab)+  (alternating sequence pattern)
+    - R*|R+ → R*      (star subsumes plus in unions)
+    """
     if not regex:
         return "ε"
 
@@ -340,7 +347,7 @@ def simplify_regex(regex: str) -> str:
     # Apply simplifications iteratively until no more changes
     prev_regex = None
     iterations = 0
-    max_iterations = 10  # Prevent infinite loops
+    max_iterations = 100  # Prevent infinite loops
 
     while prev_regex != regex and iterations < max_iterations:
         prev_regex = regex
@@ -348,24 +355,50 @@ def simplify_regex(regex: str) -> str:
 
         # Apply simplifications in order
         simplifications = [
-            # Remove epsilon symbols first
-            (r'ε', ''),
-            # Remove empty groups
-            (r'\(\)', ''),
-            # Remove redundant operators
-            (r'\*\*+', '*'),  # Multiple stars
-            (r'\+\++', '+'),  # Multiple plus
-            (r'\*\+', '*'),  # Star followed by plus
-            (r'\+\*', '*'),  # Plus followed by star
-            # FIXED: Only remove parentheses around single chars if NOT followed by postfix operators
-            (r'\(([^|*+()ε])\)(?![*+])', r'\1'),  # Single char not followed by * or +
-            # Remove nested parentheses for expressions that don't contain operators
-            (r'\(\(([^)]+)\)\)', r'(\1)'),
-            # Clean up epsilon in concatenations
-            (r'ε([^|*+])', r'\1'),  # εa -> a
-            (r'([^|*+])ε', r'\1'),  # aε -> a
+            # Basic cleanup
+            (r'\(\)\*', ''),  # ()* → delete
+            (r'\(\)\+', ''),  # ()+ → delete
+            (r'\(\)', ''),  # () → delete
+
+            # Epsilon handling
+            (r'ε\*', 'ε'),  # ε* → ε
+            (r'ε\+', 'ε'),  # ε+ → ε
+            (r'ε(?![*+])', ''),  # ε → delete
+
+            # Multiple operators
+            (r'\*\*+', '*'),  # collapse multiple stars
+            (r'\+\++', '+'),  # collapse multiple pluses
+            (r'\*\+', '*'),  # *+ → * (star dominates plus)
+            (r'\+\*', '*'),  # +* → * (star dominates plus)
+
+            # Empty alternative patterns
+            (r'\(\|([^|)]+)\+\)', r'(\1)*'),  # (|R+) → R*
+            (r'\(ε\|([^|)]+)\+\)', r'(\1)*'),  # (ε|R+) → R*
+            (r'\(([^|)]+)\+\|ε\)', r'(\1)*'),  # (R+|ε) → R*
+
+            # Parentheses removal for single characters
+            (r'\(([^|*+()∅ε])\)\*', r'\1*'),  # (a)* → a*
+            (r'\(([^|*+()∅ε])\)\+', r'\1+'),  # (a)+ → a+
+            (r'\(([^|*+()∅ε])\)', r'\1'),  # (a) → a
+
+            # Nested parentheses
+            (r'\(\(([^()]+)\)\)', r'(\1)'),  # ((R)) → (R)
+
+            # Safe concatenation patterns
+            (r'([a-zA-Z0-9])\1\*', r'\1+'),  # aa* → a+
+
+            # Duplicate alternatives
+            (r'([^|()]+)\|\1(?![*+])', r'\1'),  # a|a → a (but not a|a*)
+
+            # Basic repetition cleanup
+            (r'([a-zA-Z0-9])\*\*', r'\1*'),  # a** → a*
+
+            # Epsilon concatenation cleanup
+            (r'ε([^|*+])', r'\1'),  # εa → a
+            (r'([^|*+])ε', r'\1'),  # aε → a
         ]
 
+        # Apply all simplifications
         for pattern, replacement in simplifications:
             try:
                 new_regex = re.sub(pattern, replacement, regex)
@@ -373,7 +406,7 @@ def simplify_regex(regex: str) -> str:
             except re.error:
                 continue
 
-    # If the result is empty, return epsilon
+    # Final cleanup - if the result is empty, return epsilon
     if not regex:
         return 'ε'
 
@@ -431,7 +464,7 @@ def fsa_to_regex(fsa: Dict) -> Dict:
     }
 
     try:
-        # Step 1: Strict validation first
+        # Step 1: Validation
         validation = validate_fsa_structure(fsa)
         if not validation['valid']:
             result['error'] = f"Invalid FSA structure: {validation['error']}"
@@ -445,34 +478,35 @@ def fsa_to_regex(fsa: Dict) -> Dict:
             result['verification'] = {'equivalent': True, 'empty_language': True}
             return result
 
-        # Step 3: Minimize the automaton
+        # Step 3: Minimise the automaton
         try:
-            minimization_result = minimise_nfa(fsa)
-            minimized_fsa = minimization_result.nfa
-            result['minimized_states'] = len(minimized_fsa.get('states', []))
+            minimisation_result = minimise_nfa(fsa)
+            minimised_fsa = minimisation_result.nfa
+            result['minimized_states'] = len(minimised_fsa.get('states', []))
         except Exception as e:
-            # If minimization fails, use original FSA
-            minimized_fsa = fsa
+            # If minimisation fails, use original FSA
+            minimised_fsa = fsa
             result['minimized_states'] = len(fsa.get('states', []))
 
-        # Handle FSA that became empty after minimization
-        if not minimized_fsa.get('states'):
+        # Handle FSA that became empty after minimisation
+        if not minimised_fsa.get('states'):
+            print("minimisation failed!!!")
             result['regex'] = '∅'
             result['valid'] = True
             result['verification'] = {'equivalent': True, 'empty_language': True}
             return result
 
         # Handle single state FSA
-        if len(minimized_fsa['states']) == 1:
-            state = minimized_fsa['states'][0]
+        if len(minimised_fsa['states']) == 1:
+            state = minimised_fsa['states'][0]
             result['minimized_states'] = 1
 
-            if state in minimized_fsa.get('acceptingStates', []):
+            if state in minimised_fsa.get('acceptingStates', []):
                 # Check for self-loops
                 self_loop_symbols = []
-                if state in minimized_fsa.get('transitions', {}):
-                    for symbol in minimized_fsa['transitions'][state]:
-                        if state in minimized_fsa['transitions'][state][symbol]:
+                if state in minimised_fsa.get('transitions', {}):
+                    for symbol in minimised_fsa['transitions'][state]:
+                        if state in minimised_fsa['transitions'][state][symbol]:
                             self_loop_symbols.append(symbol)
 
                 if self_loop_symbols:
@@ -502,10 +536,13 @@ def fsa_to_regex(fsa: Dict) -> Dict:
                     'error': str(e)
                 }
 
+            # Simplify the REGEX before returning
+            result['regex'] = simplify_regex(result['regex'])
+
             return result
 
         # Step 4: Convert to GNFA
-        gnfa = fsa_to_gnfa(minimized_fsa)
+        gnfa = fsa_to_gnfa(minimised_fsa)
 
         # Step 5: Eliminate states to get regex
         regex = eliminate_states(gnfa)

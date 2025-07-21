@@ -240,7 +240,6 @@ class FSATransformManager {
             const shortcuts = {
                 'm': 'minimise',
                 'd': 'convert',
-                'n': 'minimiseNfa'
             };
 
             if ((e.ctrlKey || e.metaKey) && shortcuts[e.key]) {

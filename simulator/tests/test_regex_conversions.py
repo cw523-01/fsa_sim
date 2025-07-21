@@ -584,7 +584,7 @@ class TestRegexConversions(TestCase):
 
         result = fsa_to_regex(single_state_loop_fsa)
         self.assertTrue(result['valid'])
-        self.assertEqual(result['regex'], '(a)*')
+        self.assertEqual(result['regex'], 'a*')
         self.assertEqual(result['original_states'], 1)
         self.assertEqual(result['minimized_states'], 1)
 
@@ -855,6 +855,7 @@ class TestRegexConversions(TestCase):
             result = fsa_to_regex(fsa)
 
             self.assertTrue(result['valid'], f"Failed to convert FSA back to regex for: {original_regex}")
+            print(result)
             self.assertTrue(result['verification']['equivalent'],
                             f"Verification failed for: {original_regex}")
 

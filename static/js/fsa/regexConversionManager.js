@@ -5,17 +5,18 @@ import { undoRedoManager } from './undoRedoManager.js';
 import { menuManager } from './menuManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 import { calculateTransformLayout } from './positioningUtils.js';
-import { SafeStateNameGenerator } from './transformManager.js'; // Import from transformManager
+import { SafeStateNameGenerator } from './transformManager.js';
+import { convertFSAToBackendFormat } from './backendIntegration.js';
 
 /**
- * REGEX Conversion Manager - handles REGEX to FSA conversion operations
+ * REGEX Conversion Manager - handles REGEX to FSA conversion operations and FSA to REGEX conversion
  */
 class RegexConversionManager {
     constructor() {
         this.jsPlumbInstance = null;
         this.currentRegexData = null;
         this.currentRegexInput = null;
-        this.stateNameGenerator = new SafeStateNameGenerator(); // Add the safe name generator
+        this.stateNameGenerator = new SafeStateNameGenerator();
 
         // Conversion configuration
         this.conversionConfig = {
@@ -27,6 +28,18 @@ class RegexConversionManager {
             hoverColor: 'var(--secondary-hover)',
             undoLabel: 'Convert REGEX to NFA',
             tags: ['regex-generated', 'epsilon-nfa']
+        };
+
+        // FSA to REGEX conversion configuration
+        this.fsaToRegexConfig = {
+            name: 'FSA to REGEX',
+            apiEndpoint: '/api/fsa-to-regex/',
+            popupClass: 'fsa-to-regex',
+            headerGradient: 'var(--primary-color) 0%, var(--primary-hover) 100%',
+            buttonColor: 'var(--primary-color)',
+            hoverColor: 'var(--primary-hover)',
+            undoLabel: 'Convert FSA to REGEX',
+            tags: ['regex-result']
         };
     }
 
@@ -47,7 +60,6 @@ class RegexConversionManager {
         });
 
         this.setupRegexEventListeners();
-        this.setupKeyboardShortcuts();
     }
 
     /**
@@ -55,26 +67,8 @@ class RegexConversionManager {
      */
     setupRegexEventListeners() {
         menuManager.registerMenuItems({
-            'menu-regex-to-fsa': () => this.executeRegexConversion()
-        });
-    }
-
-    /**
-     * Setup keyboard shortcuts
-     */
-    setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
-            if (controlLockManager.isControlsLocked() ||
-                e.target.tagName === 'INPUT' ||
-                e.target.tagName === 'TEXTAREA') {
-                return;
-            }
-
-            // Ctrl+R for REGEX conversion
-            if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-                e.preventDefault();
-                this.executeRegexConversion();
-            }
+            'menu-regex-to-fsa': () => this.executeRegexConversion(),
+            'menu-fsa-to-regex': () => this.executeFSAToRegexConversion()
         });
     }
 
@@ -94,6 +88,206 @@ class RegexConversionManager {
 
         // Show REGEX input popup
         this.showRegexInputPopup();
+    }
+
+    /**
+     * Execute FSA to REGEX conversion operation
+     */
+    async executeFSAToRegexConversion() {
+        if (!this.jsPlumbInstance) {
+            notificationManager.showError(`${this.fsaToRegexConfig.name} Error`, 'FSA not initialized');
+            return;
+        }
+
+        if (controlLockManager.isControlsLocked()) {
+            notificationManager.showWarning(`Cannot ${this.fsaToRegexConfig.name}`, 'Cannot perform operation while simulation is running');
+            return;
+        }
+
+        // Check if FSA exists
+        const states = document.querySelectorAll('.state, .accepting-state');
+        if (states.length === 0) {
+            notificationManager.showWarning('Nothing to Convert', 'Create an FSA before converting to REGEX');
+            return;
+        }
+
+        // Convert FSA and call backend
+        try {
+            const fsa = convertFSAToBackendFormat(this.jsPlumbInstance);
+
+            // Call backend API
+            const response = await fetch(this.fsaToRegexConfig.apiEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fsa: fsa })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // Show result in modal
+            this.showFSAToRegexResultModal(result);
+
+        } catch (error) {
+            console.error('FSA to REGEX conversion error:', error);
+            notificationManager.showError(`${this.fsaToRegexConfig.name} Failed`, error.message);
+        }
+    }
+
+    /**
+     * Show FSA to REGEX result modal with proper scrollable container
+     */
+    showFSAToRegexResultModal(result) {
+        const config = this.fsaToRegexConfig;
+
+        // Remove any existing popup
+        const existingPopup = document.getElementById('fsa-to-regex-result-popup');
+        if (existingPopup) existingPopup.remove();
+
+        const popup = document.createElement('div');
+        popup.id = 'fsa-to-regex-result-popup';
+        popup.className = `file-operation-popup ${config.popupClass}`;
+
+        const regex = result.regex || '∅';
+        const stats = result.statistics || {};
+        const verification = result.verification || {};
+
+        popup.innerHTML = `
+            <div class="popup-header" style="background: linear-gradient(135deg, ${config.headerGradient});">
+                <div class="popup-title">
+                    <div class="popup-icon">
+                        <img src="static/img/alert.png" alt="Success" style="width: 20px; height: 20px;">
+                    </div>
+                    <span>FSA to REGEX Conversion Result</span>
+                </div>
+                <button class="popup-close" onclick="regexConversionManager.hideFSAToRegexResultModal()">×</button>
+            </div>
+            
+            <div class="file-operation-content">
+                <div class="scrollable-content">
+                    <div class="regex-result-section">
+                        <h4>Generated Regular Expression</h4>
+                        <div class="regex-display">
+                            <code class="regex-code">${this.escapeHtml(regex)}</code>
+                            <button class="copy-regex-btn" onclick="regexConversionManager.copyRegexToClipboard('${this.escapeHtml(regex)}')">
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+    
+                    ${verification.equivalent !== undefined ? `
+                    <div class="verification-section">
+                        <h4>Verification</h4>
+                        <div class="verification-status ${verification.equivalent ? 'verified' : 'unverified'}">
+                            ${verification.equivalent ? 
+                                '✅ The generated REGEX has been verified to be equivalent to the original FSA' : 
+                                '⚠️ Verification could not be completed'}
+                        </div>
+                        ${verification.error ? `
+                        <div class="verification-error">
+                            <small>Verification error: ${verification.error}</small>
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+    
+                    <div class="important-notice">
+                        <div class="notice-header">
+                            <span class="notice-icon">ℹ️</span>
+                            <span class="notice-title">Important Notice</span>
+                        </div>
+                        <div class="notice-content">
+                            <p><strong>The generated regular expression may not be the smallest or most optimal possible.</strong></p>
+                            <p>Regular expression minimisation is a complex problem, and the conversion algorithm prioritises correctness over brevity. The resulting expression is guaranteed to be equivalent to your FSA, but there may exist shorter equivalent expressions.</p>
+                            <ul class="notice-points">
+                                <li>The REGEX is functionally correct and equivalent to your FSA</li>
+                                <li>Manual optimisation may be possible for shorter expressions</li>
+                                <li>Complex FSAs may produce verbose regular expressions</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="file-operation-actions">
+                <button class="file-action-btn cancel" onclick="regexConversionManager.hideFSAToRegexResultModal()">
+                    Close
+                </button>
+                <button class="file-action-btn primary" onclick="regexConversionManager.copyRegexToClipboard('${this.escapeHtml(regex)}')"
+                        style="background: ${config.buttonColor};">
+                    Copy REGEX
+                </button>
+            </div>
+        `;
+
+        const canvas = document.getElementById('fsa-canvas');
+        if (canvas) {
+            canvas.appendChild(popup);
+
+            // Trigger show animation
+            setTimeout(() => {
+                popup.classList.add('show');
+            }, 100);
+        }
+    }
+
+    /**
+     * Hide FSA to REGEX result modal
+     */
+    hideFSAToRegexResultModal() {
+        const popup = document.getElementById('fsa-to-regex-result-popup');
+        if (popup) {
+            popup.classList.add('hide');
+            setTimeout(() => popup.parentNode?.removeChild(popup), 300);
+        }
+    }
+
+    /**
+     * Copy REGEX to clipboard
+     */
+    async copyRegexToClipboard(regex) {
+        try {
+            await navigator.clipboard.writeText(regex);
+            notificationManager.showSuccess('REGEX Copied', 'Regular expression copied to clipboard');
+        } catch (error) {
+            console.error('Failed to copy REGEX:', error);
+
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = regex;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                document.execCommand('copy');
+                notificationManager.showSuccess('REGEX Copied', 'Regular expression copied to clipboard');
+            } catch (fallbackError) {
+                notificationManager.showError('Copy Failed', 'Could not copy REGEX to clipboard');
+            }
+
+            document.body.removeChild(textArea);
+        }
+    }
+
+    /**
+     * Escape HTML characters for safe display
+     */
+    escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
     }
 
     /**
