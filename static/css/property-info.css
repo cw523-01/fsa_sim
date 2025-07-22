@@ -114,7 +114,7 @@
     padding: var(--spacing-lg);
     min-width: 300px;
     max-width: 400px;
-    border-left: 4px solid var(--secondary-color);
+    border-left: 4px solid var(--secondary-colour);
     font-family: var(--font-family-ui);
     transform: scale(0.9);
     opacity: 0;
@@ -144,7 +144,7 @@
 .property-info-popup #property-info-title {
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold);
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
     margin: 0;
     flex: 1;
 }
@@ -189,27 +189,27 @@
 
 /* Positioning for different property types */
 .property-info-popup.connected {
-    border-left-color: var(--primary-color);
+    border-left-color: var(--primary-colour);
 }
 
 .property-info-popup.connected #property-info-title {
-    color: var(--primary-color);
+    color: var(--primary-colour);
 }
 
 .property-info-popup.deterministic {
-    border-left-color: var(--secondary-color);
+    border-left-color: var(--secondary-colour);
 }
 
 .property-info-popup.deterministic #property-info-title {
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
 }
 
 .property-info-popup.complete {
-    border-left-color: var(--accent-color);
+    border-left-color: var(--accent-colour);
 }
 
 .property-info-popup.complete #property-info-title {
-    color: var(--accent-color);
+    color: var(--accent-colour);
 }
 
 .property-info-popup.alphabet {
@@ -221,11 +221,11 @@
 }
 
 .property-info-popup.transition-table {
-    border-left-color: var(--error-color);
+    border-left-color: var(--error-colour);
 }
 
 .property-info-popup.transition-table #property-info-title {
-    color: var(--error-color);
+    color: var(--error-colour);
 }
 
 .property-info-popup.epsilon-transition {

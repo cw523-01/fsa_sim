@@ -23,8 +23,8 @@ class RegexConversionManager {
             name: 'REGEX to FSA',
             apiEndpoint: '/api/regex-to-epsilon-nfa/',
             popupClass: 'regex-convert',
-            headerGradient: 'var(--secondary-color) 0%, var(--secondary-hover) 100%',
-            buttonColor: 'var(--secondary-color)',
+            headerGradient: 'var(--secondary-colour) 0%, var(--secondary-hover) 100%',
+            buttonColor: 'var(--secondary-colour)',
             hoverColor: 'var(--secondary-hover)',
             undoLabel: 'Convert REGEX to NFA',
             tags: ['regex-generated', 'epsilon-nfa']
@@ -35,8 +35,8 @@ class RegexConversionManager {
             name: 'FSA to REGEX',
             apiEndpoint: '/api/fsa-to-regex/',
             popupClass: 'fsa-to-regex',
-            headerGradient: 'var(--primary-color) 0%, var(--primary-hover) 100%',
-            buttonColor: 'var(--primary-color)',
+            headerGradient: 'var(--primary-colour) 0%, var(--primary-hover) 100%',
+            buttonColor: 'var(--primary-colour)',
             hoverColor: 'var(--primary-hover)',
             undoLabel: 'Convert FSA to REGEX',
             tags: ['regex-result']

@@ -26,16 +26,16 @@
 
 /* Enhanced source state selection with GPU acceleration */
 .selected-source {
-    box-shadow: 0 0 0 3px var(--primary-color) !important;
+    box-shadow: 0 0 0 3px var(--primary-colour) !important;
     background-color: rgba(76, 175, 80, 0.1) !important;
-    border-color: var(--primary-color) !important;
+    border-color: var(--primary-colour) !important;
     transform: scale(1.1);
     z-index: 15 !important;
     will-change: transform, box-shadow;
 }
 
 .selected-source:before {
-    border-color: var(--primary-color) !important;
+    border-color: var(--primary-colour) !important;
 }
 
 /* Pulsing animation for selected source - only when not dragging */
@@ -59,7 +59,7 @@ body:not(.no-animation) .selected-source {
 .edge-creation-active .state:hover,
 .edge-creation-active .accepting-state:hover {
     box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.6) !important;
-    border-color: var(--secondary-color) !important;
+    border-color: var(--secondary-colour) !important;
     background-color: rgba(33, 150, 243, 0.1) !important;
     transform: scale(1.05);
     will-change: transform, box-shadow;
@@ -67,8 +67,8 @@ body:not(.no-animation) .selected-source {
 
 /* Prevent hover effects on the source state when it's selected */
 .edge-creation-active .selected-source:hover {
-    box-shadow: 0 0 0 3px var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px var(--primary-colour) !important;
+    border-color: var(--primary-colour) !important;
     background-color: rgba(76, 175, 80, 0.1) !important;
     transform: scale(1.1);
 }
@@ -125,7 +125,7 @@ body:not(.no-animation) .selected-source {
 /* Enhanced tool selection feedback */
 .tool.edge-tool-active {
     background-color: rgba(76, 175, 80, 0.2);
-    border: 2px solid var(--primary-color);
+    border: 2px solid var(--primary-colour);
     border-radius: 8px;
 }
 
@@ -156,7 +156,7 @@ body:not(.no-animation) .selected-source {
     position: absolute;
     width: 12px;
     height: 12px;
-    background-color: var(--secondary-color);
+    background-color: var(--secondary-colour);
     border: 2px solid white;
     border-radius: 50%;
     pointer-events: none;
@@ -188,7 +188,7 @@ body:not(.no-animation) .selected-source {
 /* Enhanced visual feedback for edge tool selection */
 #edge-tool.tool-selected {
     background-color: rgba(76, 175, 80, 0.3);
-    box-shadow: 0 0 0 2px var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-colour);
     border-radius: 8px;
 }
 

@@ -61,8 +61,10 @@
 /* 21. Chaining Options for Transform and REGEX Operations */
 @import url('chaining-options.css');
 
+/* 22. Equivalence Checking */
+@import url('equivalence-menu.css');
 
-/* 22. Responsive Styles - Must be last */
+/* 23. Responsive Styles - Must be last */
 @import url('responsive.css');
 
 /* Hide drag‑and‑drop overlay unless actively dragging a file */

@@ -138,7 +138,7 @@
 
 .close-table-btn {
     padding: var(--spacing-sm) var(--spacing-md);
-    background-color: var(--error-color);
+    background-color: var(--error-colour);
     color: var(--white);
     border: none;
     border-radius: var(--radius-md);

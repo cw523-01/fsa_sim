@@ -43,7 +43,7 @@
 .delete-mode .state:hover,
 .delete-mode .accepting-state:hover {
     box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.6) !important;
-    border-color: var(--error-color) !important;
+    border-color: var(--error-colour) !important;
     background-color: rgba(244, 67, 54, 0.1) !important;
     transform: scale(1.05);
     transition: all 0.2s ease;
@@ -74,7 +74,7 @@
 .delete-mode ._jsPlumb_overlay:hover .edge-label,
 .delete-mode .edge-label-style:hover {
     background-color: rgba(244, 67, 54, 0.2) !important;
-    border-color: var(--error-color) !important;
+    border-color: var(--error-colour) !important;
     color: #f44336 !important;
     transform: scale(1.1);
     box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3) !important;
@@ -98,7 +98,7 @@
 /* Base tool selection style */
 .tool-selected {
     background-color: rgba(76, 175, 80, 0.3) !important;
-    box-shadow: 0 0 0 2px var(--primary-color) !important;
+    box-shadow: 0 0 0 2px var(--primary-colour) !important;
     border-radius: 8px !important;
     transform: scale(1.05);
     transition: all 0.2s ease;
@@ -107,7 +107,7 @@
 /* Specific tool selection styles */
 .state-tool-selected {
     background-color: rgba(33, 150, 243, 0.3) !important;
-    box-shadow: 0 0 0 2px var(--secondary-color) !important;
+    box-shadow: 0 0 0 2px var(--secondary-colour) !important;
 }
 
 .accepting-state-tool-selected {
@@ -117,12 +117,12 @@
 
 .edge-tool-selected {
     background-color: rgba(76, 175, 80, 0.3) !important;
-    box-shadow: 0 0 0 2px var(--primary-color) !important;
+    box-shadow: 0 0 0 2px var(--primary-colour) !important;
 }
 
 .delete-tool-selected {
     background-color: rgba(244, 67, 54, 0.3) !important;
-    box-shadow: 0 0 0 2px var(--error-color) !important;
+    box-shadow: 0 0 0 2px var(--error-colour) !important;
 }
 
 /* State creation hover effects */
@@ -211,13 +211,13 @@
 
 @keyframes toolSelectedPulse {
     0% {
-        box-shadow: 0 0 0 2px var(--primary-color);
+        box-shadow: 0 0 0 2px var(--primary-colour);
     }
     50% {
         box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.3);
     }
     100% {
-        box-shadow: 0 0 0 2px var(--primary-color);
+        box-shadow: 0 0 0 2px var(--primary-colour);
     }
 }
 
@@ -228,13 +228,13 @@
 
 @keyframes stateToolPulse {
     0% {
-        box-shadow: 0 0 0 2px var(--secondary-color);
+        box-shadow: 0 0 0 2px var(--secondary-colour);
     }
     50% {
         box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.3);
     }
     100% {
-        box-shadow: 0 0 0 2px var(--secondary-color);
+        box-shadow: 0 0 0 2px var(--secondary-colour);
     }
 }
 
@@ -260,13 +260,13 @@
 
 @keyframes deleteToolPulse {
     0% {
-        box-shadow: 0 0 0 2px var(--error-color);
+        box-shadow: 0 0 0 2px var(--error-colour);
     }
     50% {
         box-shadow: 0 0 0 4px rgba(244, 67, 54, 0.3);
     }
     100% {
-        box-shadow: 0 0 0 2px var(--error-color);
+        box-shadow: 0 0 0 2px var(--error-colour);
     }
 }
 

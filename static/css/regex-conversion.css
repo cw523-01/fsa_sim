@@ -63,7 +63,7 @@
 
 /* Updated header with green theme */
 .file-operation-popup.fsa-to-regex .popup-header {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+    background: linear-gradient(135deg, var(--primary-colour) 0%, var(--primary-hover) 100%);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -158,7 +158,7 @@
 
 /* Updated primary button with green theme */
 .file-operation-popup.fsa-to-regex .file-action-btn.primary {
-    background: var(--primary-color);
+    background: var(--primary-colour);
 }
 
 .file-operation-popup.fsa-to-regex .file-action-btn.primary:hover:not(.disabled) {
@@ -172,12 +172,12 @@
     border-radius: var(--radius-md);
     padding: var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
-    border-left: 4px solid var(--primary-color);
+    border-left: 4px solid var(--primary-colour);
 }
 
 .regex-result-section h4 {
     margin: 0 0 var(--spacing-md) 0;
-    color: var(--primary-color);
+    color: var(--primary-colour);
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold);
 }
@@ -207,7 +207,7 @@
 
 /* Updated copy button with green theme */
 .copy-regex-btn {
-    background: var(--primary-color);
+    background: var(--primary-colour);
     color: var(--white);
     border: none;
     padding: var(--spacing-xs) var(--spacing-md);
@@ -229,12 +229,12 @@
     border-radius: var(--radius-md);
     padding: var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
-    border-left: 4px solid var(--primary-color);
+    border-left: 4px solid var(--primary-colour);
 }
 
 .verification-section h4 {
     margin: 0 0 var(--spacing-md) 0;
-    color: var(--primary-color);
+    color: var(--primary-colour);
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold);
 }
@@ -248,13 +248,13 @@
 
 .verification-status.verified {
     background: var(--sim-final-bg);
-    color: var(--success-color);
+    color: var(--success-colour);
     border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
 .verification-status.unverified {
     background: rgba(255, 152, 0, 0.1);
-    color: var(--warning-color);
+    color: var(--warning-colour);
     border: 1px solid rgba(255, 152, 0, 0.3);
 }
 
@@ -263,7 +263,7 @@
     padding: var(--spacing-sm);
     background: var(--sim-rejected-bg);
     border-radius: var(--radius-sm);
-    color: var(--error-color);
+    color: var(--error-colour);
     font-size: var(--font-size-sm);
 }
 
@@ -284,12 +284,12 @@
 }
 
 .notice-icon {
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
     font-size: var(--font-size-lg);
 }
 
 .notice-title {
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
     font-weight: var(--font-weight-bold);
     font-size: var(--font-size-lg);
 }
@@ -326,13 +326,13 @@
     content: '•';
     position: absolute;
     left: 0;
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
     font-weight: var(--font-weight-bold);
 }
 
 /* REGEX conversion popup header styling to match transform modals */
 .file-operation-popup.regex-convert .popup-header {
-    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-hover) 100%);
+    background: linear-gradient(135deg, var(--secondary-colour) 0%, var(--secondary-hover) 100%);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -430,7 +430,7 @@
 }
 
 .file-operation-popup.regex-convert .file-action-btn.primary {
-    background: var(--secondary-color);
+    background: var(--secondary-colour);
 }
 
 .file-operation-popup.regex-convert .file-action-btn.primary:hover:not(.disabled) {
@@ -476,7 +476,7 @@
 
 #regex-input-field:focus {
     outline: none;
-    border-color: var(--secondary-color);
+    border-color: var(--secondary-colour);
     box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
 }
 
@@ -487,11 +487,11 @@
 
 /* Form group validation states */
 .form-group.valid #regex-input-field {
-    border-color: var(--success-color);
+    border-color: var(--success-colour);
 }
 
 .form-group.invalid #regex-input-field {
-    border-color: var(--error-color);
+    border-color: var(--error-colour);
 }
 
 /* Examples section styling with proper highlighting to match transform modals */
@@ -501,7 +501,7 @@
     background: rgba(33, 150, 243, 0.05);
     border: 1px solid rgba(33, 150, 243, 0.2);
     border-radius: var(--radius-md);
-    border-left: 4px solid var(--secondary-color);
+    border-left: 4px solid var(--secondary-colour);
 }
 
 .examples-dropdown {
@@ -513,7 +513,7 @@
 .examples-dropdown label {
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
     margin-bottom: var(--spacing-xs);
 }
 
@@ -532,12 +532,12 @@
 
 .examples-select:focus {
     outline: none;
-    border-color: var(--secondary-color);
+    border-color: var(--secondary-colour);
     box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
 }
 
 .examples-select:hover {
-    border-color: var(--secondary-color);
+    border-color: var(--secondary-colour);
     background-color: rgba(33, 150, 243, 0.02);
 }
 
@@ -551,7 +551,7 @@
 /* Warning section styling to match transform modals exactly */
 .file-operation-popup.regex-convert .warning-section {
     background: rgba(255, 152, 0, 0.1);
-    border: 1px solid var(--warning-color);
+    border: 1px solid var(--warning-colour);
     border-radius: var(--radius-md);
     padding: var(--spacing-md);
     margin-bottom: var(--spacing-lg);
@@ -561,7 +561,7 @@
 }
 
 .file-operation-popup.regex-convert .warning-icon {
-    color: var(--warning-color);
+    color: var(--warning-colour);
     font-size: var(--font-size-lg);
     margin-top: 2px;
     flex-shrink: 0;
@@ -590,7 +590,7 @@
 /* Input error text styling */
 .input-error {
     font-size: var(--font-size-xs);
-    color: var(--error-color);
+    color: var(--error-colour);
     margin-top: var(--spacing-xs);
     display: none;
 }
@@ -612,7 +612,7 @@
 
 .file-operation-popup.regex-convert .states-count {
     font-weight: var(--font-weight-bold);
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
 }
 
 /* Loading state for convert button */
@@ -648,7 +648,7 @@
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    border-left: 4px solid var(--secondary-color);
+    border-left: 4px solid var(--secondary-colour);
 }
 
 .file-operation-popup.regex-convert .conversion-info .info-item {
@@ -671,25 +671,25 @@
 
 .regex-type-indicator.epsilon-nfa {
     background-color: var(--sim-visited-bg);
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
     border: 1px solid rgba(33, 150, 243, 0.3);
 }
 
 .regex-type-indicator.thompson {
     background-color: var(--sim-final-bg);
-    color: var(--success-color);
+    color: var(--success-colour);
     border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
 /* Success state for completed conversions */
 .regex-success-indicator {
-    color: var(--success-color);
+    color: var(--success-colour);
     font-weight: var(--font-weight-medium);
     font-size: var(--font-size-sm);
     padding: var(--spacing-xs) var(--spacing-sm);
     background-color: var(--sim-final-bg);
     border-radius: var(--radius-sm);
-    border: 1px solid var(--success-color);
+    border: 1px solid var(--success-colour);
     margin-top: var(--spacing-sm);
 }
 
@@ -724,7 +724,7 @@
 
 .regex-results .result-value {
     font-weight: var(--font-weight-medium);
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
 }
 
 /* REGEX operation indicator */
@@ -742,13 +742,13 @@
 }
 
 .regex-operation-indicator.processing {
-    color: var(--warning-color);
+    color: var(--warning-colour);
     background-color: rgba(255, 152, 0, 0.1);
     border-color: rgba(255, 152, 0, 0.3);
 }
 
 .regex-operation-indicator.error {
-    color: var(--error-color);
+    color: var(--error-colour);
     background-color: var(--sim-rejected-bg);
     border-color: rgba(244, 67, 54, 0.3);
 }
@@ -798,12 +798,12 @@
 
 /* Focus styles for REGEX conversion accessibility */
 .examples-select:focus {
-    outline: 2px solid var(--secondary-color);
+    outline: 2px solid var(--secondary-colour);
     outline-offset: 2px;
 }
 
 .copy-regex-btn:focus {
-    outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--primary-colour);
     outline-offset: 2px;
 }
 
@@ -826,7 +826,7 @@
 
 /* Animation for successful copy - updated to green */
 @keyframes copy-success {
-    0% { background: var(--primary-color); }
+    0% { background: var(--primary-colour); }
     100% { background: var(--primary-hover); }
 }
 
@@ -868,12 +868,12 @@
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    border-left: 4px solid var(--secondary-color);
+    border-left: 4px solid var(--secondary-colour);
 }
 
 .chaining-options h4 {
     margin: 0 0 var(--spacing-md) 0;
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
     font-size: var(--font-size-md);
     font-weight: var(--font-weight-bold);
 }

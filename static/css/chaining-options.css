@@ -84,12 +84,12 @@
     background: rgba(76, 175, 80, 0.05);
     border: 1px solid rgba(76, 175, 80, 0.2);
     border-radius: 6px;
-    border-left: 4px solid var(--primary-color);
+    border-left: 4px solid var(--primary-colour);
 }
 
 .chaining-options h4 {
     margin: 0 0 var(--spacing-md) 0;
-    color: var(--primary-color);
+    color: var(--primary-colour);
     font-size: var(--font-size-md);
     font-weight: var(--font-weight-medium);
     display: flex;
@@ -153,7 +153,7 @@
     height: 18px;
     margin: 0;
     cursor: pointer;
-    accent-color: var(--primary-color);
+    accent-color: var(--primary-colour);
     flex-shrink: 0;
     margin-top: 2px; /* Align with first line of text */
 }
@@ -183,11 +183,11 @@
 .file-operation-popup.regex-convert .chaining-options {
     background: rgba(33, 150, 243, 0.05);
     border-color: rgba(33, 150, 243, 0.2);
-    border-left-color: var(--secondary-color);
+    border-left-color: var(--secondary-colour);
 }
 
 .file-operation-popup.regex-convert .chaining-options h4 {
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
 }
 
 .file-operation-popup.regex-convert .checkbox-option {
@@ -201,18 +201,18 @@
 }
 
 .file-operation-popup.regex-convert .chain-checkbox {
-    accent-color: var(--secondary-color);
+    accent-color: var(--secondary-colour);
 }
 
 /* NFA to DFA Conversion Chaining Options */
 .file-operation-popup.convert .chaining-options {
     background: rgba(33, 150, 243, 0.05);
     border-color: rgba(33, 150, 243, 0.2);
-    border-left-color: var(--secondary-color);
+    border-left-color: var(--secondary-colour);
 }
 
 .file-operation-popup.convert .chaining-options h4 {
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
 }
 
 .file-operation-popup.convert .checkbox-option {
@@ -226,7 +226,7 @@
 }
 
 .file-operation-popup.convert .chain-checkbox {
-    accent-color: var(--secondary-color);
+    accent-color: var(--secondary-colour);
 }
 
 /* Dependent Option Indicators */
@@ -252,37 +252,37 @@
 
 /* Checkbox States and Focus */
 .chain-checkbox:focus {
-    outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--primary-colour);
     outline-offset: 2px;
 }
 
 .file-operation-popup.regex-convert .chain-checkbox:focus,
 .file-operation-popup.convert .chain-checkbox:focus {
-    outline-color: var(--secondary-color);
+    outline-color: var(--secondary-colour);
 }
 
 /* Checked State Styling */
 .checkbox-option:has(.chain-checkbox:checked) {
     background: rgba(76, 175, 80, 0.15);
-    border-color: var(--primary-color);
+    border-color: var(--primary-colour);
     box-shadow: 0 2px 6px rgba(76, 175, 80, 0.2);
 }
 
 .file-operation-popup.regex-convert .checkbox-option:has(.chain-checkbox:checked),
 .file-operation-popup.convert .checkbox-option:has(.chain-checkbox:checked) {
     background: rgba(33, 150, 243, 0.15);
-    border-color: var(--secondary-color);
+    border-color: var(--secondary-colour);
     box-shadow: 0 2px 6px rgba(33, 150, 243, 0.2);
 }
 
 .checkbox-option:has(.chain-checkbox:checked) .option-title {
-    color: var(--primary-color);
+    color: var(--primary-colour);
     font-weight: var(--font-weight-bold);
 }
 
 .file-operation-popup.regex-convert .checkbox-option:has(.chain-checkbox:checked) .option-title,
 .file-operation-popup.convert .checkbox-option:has(.chain-checkbox:checked) .option-title {
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
 }
 
 /* Animation for checking/unchecking */
@@ -322,7 +322,7 @@
     width: 16px;
     height: 16px;
     border: 2px solid transparent;
-    border-top: 2px solid var(--primary-color);
+    border-top: 2px solid var(--primary-colour);
     border-radius: 50%;
     animation: chain-spin 1s linear infinite;
 }
@@ -497,24 +497,24 @@
 }
 
 .operation-chain-indicator .chain-arrow {
-    color: var(--primary-color);
+    color: var(--primary-colour);
     font-weight: bold;
 }
 
 .file-operation-popup.regex-convert .operation-chain-indicator .chain-arrow,
 .file-operation-popup.convert .operation-chain-indicator .chain-arrow {
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
 }
 
 /* Success state for completed chain operations */
 .chain-success-indicator {
-    color: var(--success-color);
+    color: var(--success-colour);
     font-weight: var(--font-weight-medium);
     font-size: var(--font-size-sm);
     padding: var(--spacing-xs) var(--spacing-sm);
     background-color: rgba(76, 175, 80, 0.1);
     border-radius: var(--radius-sm);
-    border: 1px solid var(--success-color);
+    border: 1px solid var(--success-colour);
     margin-top: var(--spacing-sm);
     display: inline-flex;
     align-items: center;

@@ -1,16 +1,16 @@
 :root {
-    /* Colors */
-    --primary-color: #4CAF50;
+    /* Colours */
+    --primary-colour: #4CAF50;
     --primary-hover: #45a049;
-    --secondary-color: #2196F3;
+    --secondary-colour: #2196F3;
     --secondary-hover: #1976D2;
-    --accent-color: #FF9800;
-    --error-color: #f44336;
+    --accent-colour: #FF9800;
+    --error-colour: #f44336;
     --error-hover: #c62828;
-    --warning-color: #ff9800;
-    --success-color: #4CAF50;
+    --warning-colour: #ff9800;
+    --success-colour: #4CAF50;
 
-    /* Neutral Colors */
+    /* Neutral Colours */
     --white: #ffffff;
     --light-gray: #f8f8f8;
     --medium-gray: #f0f0f0;
@@ -19,31 +19,31 @@
     --dark-gray: #333;
     --black: #000000;
 
-    /* Specific UI Colors */
-    --background-color: var(--white);
+    /* Specific UI Colours */
+    --background-colour: var(--white);
     --header-bg: var(--light-gray);
     --panel-bg: var(--medium-gray);
     --border-color: var(--border-gray);
     --text-color: var(--dark-gray);
     --muted-text: var(--text-gray);
 
-    /* State Colors */
+    /* State Colours */
     --hover-bg: #eee;
-    --selected-border: var(--primary-color);
-    --starting-border: var(--primary-color);
+    --selected-border: var(--primary-colour);
+    --starting-border: var(--primary-colour);
     --accepting-border: var(--black);
 
-    /* Simulation Colors */
-    --sim-current: var(--accent-color);
+    /* Simulation Colours */
+    --sim-current: var(--accent-colour);
     --sim-current-bg: rgba(255, 152, 0, 0.2);
     --sim-current-shadow: rgba(255, 152, 0, 0.8);
-    --sim-visited: var(--secondary-color);
+    --sim-visited: var(--secondary-colour);
     --sim-visited-bg: rgba(33, 150, 243, 0.1);
     --sim-visited-shadow: rgba(33, 150, 243, 0.4);
-    --sim-final: var(--success-color);
+    --sim-final: var(--success-colour);
     --sim-final-bg: rgba(76, 175, 80, 0.1);
     --sim-final-shadow: rgba(76, 175, 80, 0.6);
-    --sim-rejected: var(--error-color);
+    --sim-rejected: var(--error-colour);
     --sim-rejected-bg: rgba(244, 67, 54, 0.2);
     --sim-rejected-shadow: rgba(244, 67, 54, 0.8);
 

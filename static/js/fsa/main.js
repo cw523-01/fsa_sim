@@ -58,6 +58,8 @@ import { calculateStatePositions, findNonOverlappingPositions } from './position
 
 import { tutorialModalManager } from './tutorialModalManager.js';
 
+import { equivalenceManager } from './equivalenceManager.js';
+
 // Make managers globally available
 window.nfaResultsManager = nfaResultsManager;
 window.toolManager = toolManager;
@@ -126,6 +128,9 @@ export function initialiseSimulator() {
 
     // Initialise property info manager
     initialisePropertyInfoManager();
+
+    // Initialise equivalence checking system
+    initialiseEquivalenceChecking();
 
     // Setup performance monitoring
     setupPerformanceMonitoring();
@@ -212,7 +217,7 @@ function setupPerformanceMonitoring() {
 }
 
 /**
- * Initialize enhanced edge creation manager
+ * Initialise enhanced edge creation manager
  */
 function initialiseEdgeCreationManager() {
     const canvas = document.getElementById('fsa-canvas');
@@ -223,7 +228,7 @@ function initialiseEdgeCreationManager() {
 }
 
 /**
- * Initialize enhanced tool manager
+ * Initialise enhanced tool manager
  */
 function initialiseToolManager() {
     const canvas = document.getElementById('fsa-canvas');
@@ -234,10 +239,10 @@ function initialiseToolManager() {
 }
 
 /**
- * Initialize FSA transformation system
+ * Initialise FSA transformation system
  */
 function initializeFSATransformation() {
-    // Initialize transform manager with JSPlumb instance
+    // Initialise transform manager with JSPlumb instance
     fsaTransformManager.initialize(jsPlumbInstance);
 
     // Make transform functions globally available
@@ -245,10 +250,10 @@ function initializeFSATransformation() {
 }
 
 /**
- * Initialize REGEX conversion system
+ * Initialise REGEX conversion system
  */
 function initializeRegexConversion() {
-    // Initialize REGEX conversion manager with JSPlumb instance
+    // Initialise REGEX conversion manager with JSPlumb instance
     regexConversionManager.initialize(jsPlumbInstance);
 
     // Make REGEX conversion functions globally available
@@ -256,10 +261,10 @@ function initializeRegexConversion() {
 }
 
 /**
- * Initialize property info manager
+ * Initialise property info manager
  */
 function initialisePropertyInfoManager() {
-    // Initialize property info manager
+    // Initialise property info manager
     propertyInfoManager.initialize();
 
     // Make property info manager globally available
@@ -269,10 +274,21 @@ function initialisePropertyInfoManager() {
 }
 
 /**
- * Initialize undo/redo system
+ * Initialise equivalence checking system
+ */
+function initialiseEquivalenceChecking() {
+    // Initialise equivalence manager with JSPlumb instance
+    equivalenceManager.initialize(jsPlumbInstance);
+
+    // Make equivalence checking functions globally available
+    window.equivalenceManager = equivalenceManager;
+}
+
+/**
+ * Initialise undo/redo system
  */
 function initialiseUndoRedoSystem() {
-    // Initialize undo/redo manager with JSPlumb instance
+    // Initialise undo/redo manager with JSPlumb instance
     undoRedoManager.initialize(jsPlumbInstance);
 
     // Make undo/redo functions globally available
@@ -282,13 +298,13 @@ function initialiseUndoRedoSystem() {
 }
 
 /**
- * Initialize FSA serialization system with unified menu bar
+ * Initialise FSA serialization system with unified menu bar
  */
 function initializeFSASerialization() {
-    // Initialize menu manager first
+    // Initialise menu manager first
     menuManager.initialize();
 
-    // Initialize file UI manager with JSPlumb instance
+    // Initialise file UI manager with JSPlumb instance
     fsaFileUIManager.initialize(jsPlumbInstance);
 
     // Setup edit menu with universal menu manager
@@ -499,11 +515,19 @@ function integrateWithControlLockManager() {
     controlLockManager.lockControls = function() {
         originalLockControls();
         menuManager.updateMenuStates(true);
+
+        if (equivalenceManager) {
+            equivalenceManager.updateMenuStates(true);
+        }
     };
 
     controlLockManager.unlockControls = function() {
         originalUnlockControls();
         menuManager.updateMenuStates(false);
+
+        if (equivalenceManager) {
+            equivalenceManager.updateMenuStates(false);
+        }
     };
 }
 

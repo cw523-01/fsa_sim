@@ -23,9 +23,9 @@
 
 /* Active Button (stop button during simulation) */
 .active-button {
-    background-color: var(--error-color) !important;
+    background-color: var(--error-colour) !important;
     color: var(--white) !important;
-    border-color: var(--error-color) !important;
+    border-color: var(--error-colour) !important;
     box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
 }
 

@@ -36,9 +36,9 @@
 }
 
 #confirm-symbol-btn {
-    background-color: var(--primary-color);
+    background-color: var(--primary-colour);
     color: var(--white);
-    border-color: var(--primary-color);
+    border-color: var(--primary-colour);
 }
 
 #cancel-symbol-btn {
@@ -179,7 +179,7 @@
 }
 
 .remove-symbol-btn:hover {
-    color: var(--error-color);
+    color: var(--error-colour);
 }
 
 .disabled-remove-btn {
@@ -197,5 +197,5 @@
 
 .symbol-edit-input:invalid,
 .symbol-edit-input[style*="red"] {
-    border: 2px solid var(--error-color);
+    border: 2px solid var(--error-colour);
 }

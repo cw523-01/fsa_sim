@@ -98,7 +98,7 @@
 }
 
 .btn-primary {
-    background-color: var(--primary-color);
+    background-color: var(--primary-colour);
     color: var(--white);
 }
 
@@ -174,7 +174,7 @@
 }
 
 .form-control:focus {
-    border-color: var(--primary-color);
+    border-color: var(--primary-colour);
     outline: none;
     box-shadow: var(--shadow-focus);
 }
@@ -206,16 +206,16 @@
 
 /* Status Indicators */
 .checkmark {
-    color: var(--success-color);
+    color: var(--success-colour);
     font-weight: bold;
 }
 
 .crossmark {
-    color: var(--error-color);
+    color: var(--error-colour);
     font-weight: bold;
 }
 
 /* Selected State Indicator */
 .selected-source {
-    box-shadow: 0 0 0 2px var(--primary-color) !important;
+    box-shadow: 0 0 0 2px var(--primary-colour) !important;
 }

@@ -449,7 +449,7 @@
 
 /* Focus styles for better accessibility when scrolling */
 .tools-panel:focus {
-    outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--primary-colour);
     outline-offset: -2px;
 }
 

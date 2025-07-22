@@ -55,7 +55,7 @@
 }
 
 .menu-button.active {
-    background-color: var(--primary-color);
+    background-color: var(--primary-colour);
     color: var(--white);
 }
 
@@ -150,13 +150,13 @@
 }
 
 .auto-save-status.saving {
-    color: var(--warning-color);
+    color: var(--warning-colour);
     background-color: rgba(255, 152, 0, 0.1);
     border-color: rgba(255, 152, 0, 0.3);
 }
 
 .auto-save-status.error {
-    color: var(--error-color);
+    color: var(--error-colour);
     background-color: rgba(244, 67, 54, 0.1);
     border-color: rgba(244, 67, 54, 0.3);
 }
@@ -223,12 +223,12 @@
 
 /* Focus styles for accessibility */
 .menu-button:focus {
-    outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--primary-colour);
     outline-offset: 2px;
 }
 
 .menu-option:focus {
-    background-color: var(--primary-color);
+    background-color: var(--primary-colour);
     color: var(--white);
     outline: none;
 }

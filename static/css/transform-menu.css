@@ -33,11 +33,11 @@
 
 /* Transform menu header for minimise popup */
 .file-operation-popup.minimise .popup-header {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+    background: linear-gradient(135deg, var(--primary-colour) 0%, var(--primary-hover) 100%);
 }
 
 .file-operation-popup.minimise .file-action-btn.primary {
-    background: var(--primary-color);
+    background: var(--primary-colour);
 }
 
 .file-operation-popup.minimise .file-action-btn.primary:hover:not(.disabled) {
@@ -51,11 +51,11 @@
 
 /* Transform menu header for convert popup */
 .file-operation-popup.convert .popup-header {
-    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-hover) 100%);
+    background: linear-gradient(135deg, var(--secondary-colour) 0%, var(--secondary-hover) 100%);
 }
 
 .file-operation-popup.convert .file-action-btn.primary {
-    background: var(--secondary-color);
+    background: var(--secondary-colour);
 }
 
 .file-operation-popup.convert .file-action-btn.primary:hover:not(.disabled) {
@@ -69,11 +69,11 @@
 
 /* Transform menu header for complete popup */
 .file-operation-popup.complete .popup-header {
-    background: linear-gradient(135deg, var(--accent-color) 0%, #ef6c00 100%);
+    background: linear-gradient(135deg, var(--accent-colour) 0%, #ef6c00 100%);
 }
 
 .file-operation-popup.complete .file-action-btn.primary {
-    background: var(--accent-color);
+    background: var(--accent-colour);
 }
 
 .file-operation-popup.complete .file-action-btn.primary:hover:not(.disabled) {
@@ -87,11 +87,11 @@
 
 /* Transform menu header for complement popup */
 .file-operation-popup.complement .popup-header {
-    background: linear-gradient(135deg, var(--error-color) 0%, var(--error-hover) 100%);
+    background: linear-gradient(135deg, var(--error-colour) 0%, var(--error-hover) 100%);
 }
 
 .file-operation-popup.complement .file-action-btn.primary {
-    background: var(--error-color);
+    background: var(--error-colour);
 }
 
 .file-operation-popup.complement .file-action-btn.primary:hover:not(.disabled) {
@@ -101,14 +101,14 @@
 /* Info section styling for complete popup */
 .file-operation-popup.complete .info-section {
     background: rgba(255, 152, 0, 0.1);
-    border: 1px solid var(--accent-color);
+    border: 1px solid var(--accent-colour);
     border-radius: 6px;
     padding: 12px;
     margin-bottom: 16px;
 }
 
 .file-operation-popup.complete .info-icon {
-    color: var(--accent-color);
+    color: var(--accent-colour);
     font-size: 16px;
     margin-right: 8px;
 }
@@ -125,7 +125,7 @@
     padding: var(--spacing-md);
     background-color: var(--light-gray);
     border-radius: var(--radius-md);
-    border-left: 4px solid var(--secondary-color);
+    border-left: 4px solid var(--secondary-colour);
 }
 
 .file-operation-popup.convert .conversion-info .info-item {
@@ -153,7 +153,7 @@
     content: '→';
     position: absolute;
     left: calc(-1 * var(--spacing-lg));
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
     font-weight: var(--font-weight-bold);
 }
 
@@ -163,7 +163,7 @@
     padding: var(--spacing-md);
     background-color: var(--light-gray);
     border-radius: var(--radius-md);
-    border-left: 4px solid var(--primary-color);
+    border-left: 4px solid var(--primary-colour);
 }
 
 .file-operation-popup.minimise .minimisation-info .info-item {
@@ -191,7 +191,7 @@
     content: '✓';
     position: absolute;
     left: calc(-1 * var(--spacing-lg));
-    color: var(--success-color);
+    color: var(--success-colour);
     font-weight: var(--font-weight-bold);
 }
 
@@ -201,7 +201,7 @@
     padding: var(--spacing-md);
     background-color: var(--light-gray);
     border-radius: var(--radius-md);
-    border-left: 4px solid var(--accent-color);
+    border-left: 4px solid var(--accent-colour);
 }
 
 .file-operation-popup.complete .completion-info .info-item {
@@ -229,7 +229,7 @@
     content: '⚡';
     position: absolute;
     left: calc(-1 * var(--spacing-lg));
-    color: var(--accent-color);
+    color: var(--accent-colour);
     font-weight: var(--font-weight-bold);
 }
 
@@ -239,7 +239,7 @@
     padding: var(--spacing-md);
     background-color: var(--light-gray);
     border-radius: var(--radius-md);
-    border-left: 4px solid var(--error-color);
+    border-left: 4px solid var(--error-colour);
 }
 
 .file-operation-popup.complement .complement-info .info-item {
@@ -267,7 +267,7 @@
     content: '⟷';
     position: absolute;
     left: calc(-1 * var(--spacing-lg));
-    color: var(--error-color);
+    color: var(--error-colour);
     font-weight: var(--font-weight-bold);
 }
 
@@ -375,13 +375,13 @@
 }
 
 .transform-operation-indicator.processing {
-    color: var(--warning-color);
+    color: var(--warning-colour);
     background-color: rgba(255, 152, 0, 0.1);
     border-color: rgba(255, 152, 0, 0.3);
 }
 
 .transform-operation-indicator.error {
-    color: var(--error-color);
+    color: var(--error-colour);
     background-color: rgba(244, 67, 54, 0.1);
     border-color: rgba(244, 67, 54, 0.3);
 }
@@ -420,19 +420,19 @@
     .file-operation-popup.complete .completion-info,
     .file-operation-popup.complement .complement-info {
         background-color: #2d3748;
-        border-left-color: var(--primary-color);
+        border-left-color: var(--primary-colour);
     }
 
     .file-operation-popup.convert .conversion-info {
-        border-left-color: var(--secondary-color);
+        border-left-color: var(--secondary-colour);
     }
 
     .file-operation-popup.complete .completion-info {
-        border-left-color: var(--accent-color);
+        border-left-color: var(--accent-colour);
     }
 
     .file-operation-popup.complement .complement-info {
-        border-left-color: var(--error-color);
+        border-left-color: var(--error-colour);
     }
 
     .file-operation-popup.minimise .minimisation-info li,
@@ -446,7 +446,7 @@
 /* Focus styles for transform menu accessibility */
 #transform-dropdown .menu-option:focus {
     /* Inherits base focus styles from menu-bar.css */
-    background-color: var(--primary-color);
+    background-color: var(--primary-colour);
     color: var(--white);
     outline: none;
 }
@@ -474,13 +474,13 @@
 
 /* Success state for completed transforms */
 .transform-success-indicator {
-    color: var(--success-color);
+    color: var(--success-colour);
     font-weight: var(--font-weight-medium);
     font-size: var(--font-size-sm);
     padding: var(--spacing-xs) var(--spacing-sm);
     background-color: var(--sim-final-bg);
     border-radius: var(--radius-sm);
-    border: 1px solid var(--success-color);
+    border: 1px solid var(--success-colour);
     margin-top: var(--spacing-sm);
 }
 
@@ -515,29 +515,29 @@
 
 .transform-results .result-value {
     font-weight: var(--font-weight-medium);
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
 }
 
 .transform-results .result-improvement {
-    color: var(--success-color);
+    color: var(--success-colour);
     font-weight: var(--font-weight-medium);
 }
 
 /* Conversion-specific result improvements */
 .transform-results .result-conversion {
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
     font-weight: var(--font-weight-medium);
 }
 
 /* Completion-specific result improvements */
 .transform-results .result-completion {
-    color: var(--accent-color);
+    color: var(--accent-colour);
     font-weight: var(--font-weight-medium);
 }
 
 /* Complement-specific result improvements */
 .transform-results .result-complement {
-    color: var(--error-color);
+    color: var(--error-colour);
     font-weight: var(--font-weight-medium);
 }
 
@@ -553,37 +553,37 @@
 
 .fsa-type-indicator.dfa {
     background-color: rgba(76, 175, 80, 0.1);
-    color: var(--success-color);
+    color: var(--success-colour);
     border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
 .fsa-type-indicator.nfa {
     background-color: rgba(255, 152, 0, 0.1);
-    color: var(--warning-color);
+    color: var(--warning-colour);
     border: 1px solid rgba(255, 152, 0, 0.3);
 }
 
 .fsa-type-indicator.epsilon {
     background-color: rgba(33, 150, 243, 0.1);
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
     border: 1px solid rgba(33, 150, 243, 0.3);
 }
 
 .fsa-type-indicator.complete {
     background-color: rgba(255, 152, 0, 0.1);
-    color: var(--accent-color);
+    color: var(--accent-colour);
     border: 1px solid rgba(255, 152, 0, 0.3);
 }
 
 .fsa-type-indicator.incomplete {
     background-color: rgba(244, 67, 54, 0.1);
-    color: var(--error-color);
+    color: var(--error-colour);
     border: 1px solid rgba(244, 67, 54, 0.3);
 }
 
 .fsa-type-indicator.complement {
     background-color: rgba(244, 67, 54, 0.1);
-    color: var(--error-color);
+    color: var(--error-colour);
     border: 1px solid rgba(244, 67, 54, 0.3);
 }
 
@@ -595,7 +595,7 @@
 
 /* Enhanced header styling for NFA minimise popup */
 .file-operation-popup.minimise-nfa .popup-header {
-    background: linear-gradient(135deg, var(--secondary-color) 0%, #1565C0 100%);
+    background: linear-gradient(135deg, var(--secondary-colour) 0%, #1565C0 100%);
 }
 
 /* Enhanced description section with better limitation messaging */
@@ -607,7 +607,7 @@
     padding: 16px;
     background: rgba(33, 150, 243, 0.03);
     border-radius: 8px;
-    border-left: 4px solid var(--secondary-color);
+    border-left: 4px solid var(--secondary-colour);
 }
 
 /* Limitation highlight box - prominent but not alarming */
@@ -630,9 +630,9 @@
     right: 0;
     height: 3px;
     background: linear-gradient(90deg,
-        var(--warning-color) 0%,
+        var(--warning-colour) 0%,
         rgba(255, 152, 0, 0.5) 50%,
-        var(--warning-color) 100%);
+        var(--warning-colour) 100%);
 }
 
 /* Limitation header with icon */
@@ -647,7 +647,7 @@
 }
 
 .file-operation-popup.minimise-nfa .limitation-icon {
-    color: var(--warning-color);
+    color: var(--warning-colour);
     font-size: 16px;
     flex-shrink: 0;
 }
@@ -680,7 +680,7 @@
     content: '●';
     position: absolute;
     left: 0;
-    color: var(--warning-color);
+    color: var(--warning-colour);
     font-weight: bold;
 }
 
@@ -691,12 +691,12 @@
     border-radius: 8px;
     padding: 14px;
     margin: 16px 0;
-    border-left: 4px solid var(--secondary-color);
+    border-left: 4px solid var(--secondary-colour);
 }
 
 .file-operation-popup.minimise-nfa .algorithm-explanation h4 {
     margin: 0 0 10px 0;
-    color: var(--secondary-color);
+    color: var(--secondary-colour);
     font-size: 13px;
     font-weight: 600;
     display: flex;

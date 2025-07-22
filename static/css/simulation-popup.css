@@ -22,17 +22,17 @@
 }
 
 #simulation-result-popup.accepted {
-    border-left-color: var(--success-color);
+    border-left-color: var(--success-colour);
     background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
 }
 
 #simulation-result-popup.rejected {
-    border-left-color: var(--error-color);
+    border-left-color: var(--error-colour);
     background: linear-gradient(135deg, #ffeaea 0%, #fff5f5 100%);
 }
 
 #simulation-result-popup.error {
-    border-left-color: var(--warning-color);
+    border-left-color: var(--warning-colour);
     background: linear-gradient(135deg, #fff3e0 0%, #fafafa 100%);
 }
 
@@ -75,15 +75,15 @@
 }
 
 .popup-icon.accepted {
-    background-color: var(--success-color);
+    background-color: var(--success-colour);
 }
 
 .popup-icon.rejected {
-    background-color: var(--error-color);
+    background-color: var(--error-colour);
 }
 
 .popup-icon.error {
-    background-color: var(--warning-color);
+    background-color: var(--warning-colour);
 }
 
 .popup-close {
@@ -194,11 +194,11 @@
 }
 
 .popup-progress-bar.accepted {
-    background-color: var(--success-color);
+    background-color: var(--success-colour);
 }
 
 .popup-progress-bar.rejected {
-    background-color: var(--error-color);
+    background-color: var(--error-colour);
 }
 
 /* Slide Out Animation */
@@ -262,22 +262,22 @@
 
 /* Notification Type Styling */
 .notification-popup.error {
-    border-left-color: var(--error-color);
+    border-left-color: var(--error-colour);
     background: linear-gradient(135deg, #ffeaea 0%, #fff5f5 100%);
 }
 
 .notification-popup.warning {
-    border-left-color: var(--warning-color);
+    border-left-color: var(--warning-colour);
     background: linear-gradient(135deg, #fff3e0 0%, #fafafa 100%);
 }
 
 .notification-popup.success {
-    border-left-color: var(--success-color);
+    border-left-color: var(--success-colour);
     background: linear-gradient(135deg, #e8f5e8 0%, #f1f8e9 100%);
 }
 
 .notification-popup.info {
-    border-left-color: var(--secondary-color);
+    border-left-color: var(--secondary-colour);
     background: linear-gradient(135deg, #e3f2fd 0%, #f3f8ff 100%);
 }
 
@@ -300,36 +300,36 @@
 
 /* Icon Styling for Notifications */
 .notification-popup .popup-icon.error {
-    background-color: var(--error-color);
+    background-color: var(--error-colour);
 }
 
 .notification-popup .popup-icon.warning {
-    background-color: var(--warning-color);
+    background-color: var(--warning-colour);
 }
 
 .notification-popup .popup-icon.success {
-    background-color: var(--success-color);
+    background-color: var(--success-colour);
 }
 
 .notification-popup .popup-icon.info {
-    background-color: var(--secondary-color);
+    background-color: var(--secondary-colour);
 }
 
 /* Progress Bar Styling for Notifications */
 .notification-popup .popup-progress-bar.error {
-    background-color: var(--error-color);
+    background-color: var(--error-colour);
 }
 
 .notification-popup .popup-progress-bar.warning {
-    background-color: var(--warning-color);
+    background-color: var(--warning-colour);
 }
 
 .notification-popup .popup-progress-bar.success {
-    background-color: var(--success-color);
+    background-color: var(--success-colour);
 }
 
 .notification-popup .popup-progress-bar.info {
-    background-color: var(--secondary-color);
+    background-color: var(--secondary-colour);
 }
 
 /* Mobile Responsiveness for Notifications */

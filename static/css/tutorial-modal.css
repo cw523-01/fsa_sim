@@ -76,7 +76,7 @@
 
 .tutorial-category:hover h3,
 .tutorial-category.active h3 {
-    background: var(--primary-color);
+    background: var(--primary-colour);
     color: var(--white);
 }
 
@@ -105,7 +105,7 @@
 }
 
 .tutorial-item.active {
-    background: var(--primary-color);
+    background: var(--primary-colour);
     color: var(--white);
 }
 
@@ -206,9 +206,9 @@
 }
 
 .tutorial-nav-btn:hover:not(:disabled) {
-    background: var(--primary-color);
+    background: var(--primary-colour);
     color: var(--white);
-    border-color: var(--primary-color);
+    border-color: var(--primary-colour);
 }
 
 .tutorial-nav-btn:disabled {
@@ -231,7 +231,7 @@ header h1 {
 
 /* Help Button Styles */
 .help-btn {
-    background: var(--secondary-color) !important;
+    background: var(--secondary-colour) !important;
     border: none;
     padding: var(--spacing-sm);
     border-radius: var(--radius-circle) !important;
