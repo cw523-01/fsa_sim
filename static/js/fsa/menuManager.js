@@ -5,20 +5,19 @@ class MenuManager {
     constructor() {
         this.currentOpenMenu = null;
         this.menuConfigs = new Map();
-        this.initialized = false;
+        this.initialised = false;
     }
 
     /**
-     * Initialize the menu manager
+     * Initialise the menu manager
      */
-    initialize() {
-        if (this.initialized) {
+    initialise() {
+        if (this.initialised) {
             return;
         }
 
         this.setupGlobalEventListeners();
-        this.initialized = true;
-        console.log('Universal Menu Manager initialized');
+        this.initialised = true;
     }
 
     /**
@@ -248,7 +247,7 @@ class MenuManager {
         this.closeAllMenus();
         this.menuConfigs.clear();
         this.currentOpenMenu = null;
-        this.initialized = false;
+        this.initialised = false;
         console.log('Menu Manager destroyed');
     }
 

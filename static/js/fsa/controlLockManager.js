@@ -13,10 +13,10 @@ class ControlLockManager {
     }
 
     /**
-     * Initialize the control lock manager with JSPlumb instance
+     * Initialise the control lock manager with JSPlumb instance
      * @param {Object} jsPlumbInstance - The JSPlumb instance to lock/unlock
      */
-    initialize(jsPlumbInstance) {
+    initialise(jsPlumbInstance) {
         this.jsPlumbInstance = jsPlumbInstance;
 
         // Store original JSPlumb methods so we can restore them later

@@ -1,6 +1,5 @@
 /**
- * Enhanced Edge Creation Visual Feedback Manager
- * Optimized to prevent interference with state dragging
+ * Edge Creation Visual Feedback Manager
  */
 
 class EdgeCreationManager {
@@ -16,7 +15,7 @@ class EdgeCreationManager {
         this.mouseMoveHandler = null;
         this.keydownHandler = null;
 
-        // Performance optimization: throttle mouse move events
+        // Performance optimisation: throttle mouse move events
         this.mouseThrottleTimeout = null;
         this.lastMouseUpdate = 0;
         this.mouseUpdateInterval = 16; // ~60fps
@@ -35,10 +34,10 @@ class EdgeCreationManager {
     }
 
     /**
-     * Initialize the edge creation manager
+     * Initialise the edge creation manager
      * @param {HTMLElement} canvasElement - The FSA canvas element
      */
-    initialize(canvasElement) {
+    initialise(canvasElement) {
         this.canvas = canvasElement;
         this.setupEventListeners();
         this.setupDragDetection();
@@ -173,7 +172,7 @@ class EdgeCreationManager {
         this.createCursorFollower();
 
         // Start optimized mouse tracking
-        this.startOptimizedMouseTracking();
+        this.startOptimisedMouseTracking();
 
         // Update instructions
         this.showInstructions('Click on a target state to create the edge');
@@ -256,7 +255,7 @@ class EdgeCreationManager {
     }
 
     /**
-     * Create preview edge SVG element with performance optimizations
+     * Create preview edge SVG element
      */
     createPreviewEdge() {
         if (this.previewEdge) return;
@@ -319,7 +318,7 @@ class EdgeCreationManager {
     }
 
     /**
-     * Create cursor follower element with performance optimizations
+     * Create cursor follower element
      */
     createCursorFollower() {
         if (this.cursorFollower) return;
@@ -371,12 +370,12 @@ class EdgeCreationManager {
     /**
      * Start mouse tracking
      */
-    startOptimizedMouseTracking() {
+    startOptimisedMouseTracking() {
         if (this.mouseMoveHandler) return;
 
-        // Create throttled mouse move handler with enhanced drag detection
+        // Create throttled mouse move handler with drag detection
         this.mouseMoveHandler = (e) => {
-            // Enhanced drag detection - check multiple indicators
+            // Drag detection - check multiple indicators
             if (this.isDragInProgress ||
                 document.querySelector('.ui-draggable-dragging') ||
                 document.body.classList.contains('no-animation')) {
@@ -414,7 +413,7 @@ class EdgeCreationManager {
         if (!this.isDragInProgress) {
             this.canvas.addEventListener('mousemove', this.mouseMoveHandler, { passive: true });
         }
-        console.log('Optimized mouse tracking started');
+        console.log('Optimised mouse tracking started');
     }
 
     /**
@@ -431,7 +430,7 @@ class EdgeCreationManager {
             this.mouseThrottleTimeout = null;
         }
 
-        console.log('Optimized mouse tracking stopped');
+        console.log('Optimised mouse tracking stopped');
     }
 
     /**
@@ -449,7 +448,7 @@ class EdgeCreationManager {
         if (this.cursorFollower) {
             this.cursorFollower.style.transform = `translate(${mouseX - 6}px, ${mouseY - 6}px)`;
 
-            // Optimized state proximity check
+            // State proximity check
             const isNearState = this.isMouseNearState(mouseX, mouseY);
             this.cursorFollower.classList.toggle('large', isNearState);
         }

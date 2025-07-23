@@ -46,13 +46,13 @@ class EquivalenceManager {
     }
 
     /**
-     * Initialize with JSPlumb instance
+     * Initialise with JSPlumb instance
      */
-    initialize(jsPlumbInstance) {
+    initialise(jsPlumbInstance) {
         this.jsPlumbInstance = jsPlumbInstance;
 
-        if (!menuManager.initialized) {
-            menuManager.initialize();
+        if (!menuManager.initialised) {
+            menuManager.initialise();
         }
 
         // Register equivalence menu with the universal menu manager
@@ -86,7 +86,7 @@ class EquivalenceManager {
         }
 
         if (!this.jsPlumbInstance) {
-            notificationManager.showError(`${config.name} Error`, 'FSA not initialized');
+            notificationManager.showError(`${config.name} Error`, 'FSA not initialised');
             return;
         }
 
@@ -761,14 +761,14 @@ class EquivalenceManager {
         } else {
             const fsa1File = document.getElementById('fsa1-file-input').files[0];
             const fsa1Data = await this.readJSONFile(fsa1File);
-            fsa1 = this.convertSerializedFSAToBackendFormat(fsa1Data);
+            fsa1 = this.convertSerialisedFSAToBackendFormat(fsa1Data);
             fsa1Name = fsa1File.name;
         }
 
         // Get second FSA (always from file)
         const fsa2File = document.getElementById('fsa2-file-input').files[0];
         const fsa2Data = await this.readJSONFile(fsa2File);
-        fsa2 = this.convertSerializedFSAToBackendFormat(fsa2Data);
+        fsa2 = this.convertSerialisedFSAToBackendFormat(fsa2Data);
         fsa2Name = fsa2File.name;
 
         // Call backend API
@@ -806,7 +806,7 @@ class EquivalenceManager {
         } else {
             const fsaFile = document.getElementById('regex-fsa-file-input').files[0];
             const fsaData = await this.readJSONFile(fsaFile);
-            fsa = this.convertSerializedFSAToBackendFormat(fsaData);
+            fsa = this.convertSerialisedFSAToBackendFormat(fsaData);
             fsaName = fsaFile.name;
         }
 
@@ -875,18 +875,18 @@ class EquivalenceManager {
     }
 
     /**
-     * Convert serialized FSA data to backend format
+     * Convert serialised FSA data to backend format
      */
-    convertSerializedFSAToBackendFormat(serializedFSA) {
+    convertSerialisedFSAToBackendFormat(serialisedFSA) {
         const backendTransitions = {};
 
-        // Initialize transitions object for all states
-        serializedFSA.states.forEach(state => {
+        // Initialise transitions object for all states
+        serialisedFSA.states.forEach(state => {
             backendTransitions[state.id] = {};
         });
 
         // Process transitions
-        serializedFSA.transitions.forEach(transition => {
+        serialisedFSA.transitions.forEach(transition => {
             const sourceId = transition.sourceId;
 
             // Handle epsilon transitions
@@ -908,18 +908,18 @@ class EquivalenceManager {
 
         // Create alphabet from all transition symbols
         const alphabet = new Set();
-        serializedFSA.transitions.forEach(transition => {
+        serialisedFSA.transitions.forEach(transition => {
             transition.symbols.forEach(symbol => {
                 if (symbol !== '') alphabet.add(symbol);
             });
         });
 
         return {
-            states: serializedFSA.states.map(state => state.id),
+            states: serialisedFSA.states.map(state => state.id),
             alphabet: Array.from(alphabet),
             transitions: backendTransitions,
-            startingState: serializedFSA.startingState,
-            acceptingStates: serializedFSA.states.filter(state => state.isAccepting).map(state => state.id)
+            startingState: serialisedFSA.startingState,
+            acceptingStates: serialisedFSA.states.filter(state => state.isAccepting).map(state => state.id)
         };
     }
 

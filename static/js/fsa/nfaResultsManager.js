@@ -199,11 +199,11 @@ class NFAResultsManager {
             stopBtn.onclick = () => this.handlePopupClose();
         }
 
-        const visualizeBtn = document.getElementById('nfa-visualize-btn');
-        if (visualizeBtn && this.acceptingPaths.length > 0) {
-            visualizeBtn.disabled = false;
-            visualizeBtn.classList.remove('disabled');
-            visualizeBtn.onclick = () => this.visualizeSelectedPath();
+        const visualiseBtn = document.getElementById('nfa-visualise-btn');
+        if (visualiseBtn && this.acceptingPaths.length > 0) {
+            visualiseBtn.disabled = false;
+            visualiseBtn.classList.remove('disabled');
+            visualiseBtn.onclick = () => this.visualiseSelectedPath();
         }
     }
 
@@ -291,8 +291,8 @@ class NFAResultsManager {
                 <button class="nfa-action-btn" id="nfa-stop-btn" onclick="nfaResultsManager.stopStreaming()">
                     Stop Simulation
                 </button>
-                <button class="nfa-action-btn disabled" id="nfa-visualize-btn" disabled>
-                    Visualize Path
+                <button class="nfa-action-btn disabled" id="nfa-visualise-btn" disabled>
+                    Visualise Path
                 </button>
             </div>
             
@@ -484,13 +484,13 @@ class NFAResultsManager {
         this.updateCounters();
         this.addPathToUI(data, type, pathNumber);
 
-        // Enable visualize button for first accepting path
+        // Enable visualise button for first accepting path
         if (isAccepting && this.acceptingPaths.length === 1) {
-            const visualizeBtn = document.getElementById('nfa-visualize-btn');
-            if (visualizeBtn) {
-                visualizeBtn.disabled = false;
-                visualizeBtn.classList.remove('disabled');
-                visualizeBtn.onclick = () => this.visualizeSelectedPath();
+            const visualiseBtn = document.getElementById('nfa-visualise-btn');
+            if (visualiseBtn) {
+                visualiseBtn.disabled = false;
+                visualiseBtn.classList.remove('disabled');
+                visualiseBtn.onclick = () => this.visualiseSelectedPath();
             }
         }
     }
@@ -742,46 +742,46 @@ class NFAResultsManager {
         // Select this path
         pathElement.classList.add('selected');
 
-        // Update visualize button
-        const visualizeBtn = document.getElementById('nfa-visualize-btn');
-        if (visualizeBtn) {
-            visualizeBtn.disabled = false;
-            visualizeBtn.classList.remove('disabled');
+        // Update visualise button
+        const visualiseBtn = document.getElementById('nfa-visualise-btn');
+        if (visualiseBtn) {
+            visualiseBtn.disabled = false;
+            visualiseBtn.classList.remove('disabled');
 
             const pathIndex = parseInt(pathElement.getAttribute('data-path-index'));
-            visualizeBtn.onclick = () => this.visualizePath(pathIndex, type);
+            visualiseBtn.onclick = () => this.visualisePath(pathIndex, type);
         }
     }
 
     /**
-     * Visualize a specific path
+     * Visualise a specific path
      */
-    visualizePath(pathIndex, type) {
+    visualisePath(pathIndex, type) {
         const pathData = type === 'accepting' ? this.acceptingPaths[pathIndex] : this.rejectedPaths[pathIndex];
 
         if (!pathData || !this.jsPlumbInstance) {
-            console.error('Cannot visualize path: missing data or JSPlumb instance');
+            console.error('Cannot visualise path: missing data or JSPlumb instance');
             return;
         }
 
-        // Set up callbacks to reopen popup after visualization
-        this.setupVisualizationCallbacks();
+        // Set up callbacks to reopen popup after visualisation
+        this.setupVisualisationCallbacks();
 
         // Hide current popup temporarily
         this.hidePopupTemporarily();
 
         // Start visual simulation
-        visualSimulationManager.initialize(this.jsPlumbInstance);
+        visualSimulationManager.initialise(this.jsPlumbInstance);
         const isAccepted = type === 'accepting';
         visualSimulationManager.startVisualSimulation(pathData.path || [], this.currentInputString, isAccepted);
 
-        console.log(`Starting visualization of ${type} path ${pathIndex + 1}`);
+        console.log(`Starting visualisation of ${type} path ${pathIndex + 1}`);
     }
 
     /**
-     * Setup callbacks for visualization completion
+     * Setup callbacks for visualisation completion
      */
-    setupVisualizationCallbacks() {
+    setupVisualisationCallbacks() {
         const originalStopSimulation = visualSimulationManager.stopSimulation.bind(visualSimulationManager);
         const originalAutoClickStopButton = visualSimulationManager.autoClickStopButton.bind(visualSimulationManager);
 
@@ -793,7 +793,7 @@ class NFAResultsManager {
 
             // Reopen NFA popup with stored data
             setTimeout(() => {
-                console.log('Reopening NFA popup after path visualization');
+                console.log('Reopening NFA popup after path visualisation');
                 this.showNFAResultsPopup(
                     this.currentFSA,
                     this.currentInputString,
@@ -805,7 +805,7 @@ class NFAResultsManager {
         };
 
         visualSimulationManager.autoClickStopButton = () => {
-            console.log('Path visualization completed - reopening NFA popup');
+            console.log('Path visualisation completed - reopening NFA popup');
             visualSimulationManager.stopSimulation();
 
             setTimeout(() => {
@@ -815,7 +815,7 @@ class NFAResultsManager {
     }
 
     /**
-     * Hide popup temporarily for visualization
+     * Hide popup temporarily for visualisation
      */
     hidePopupTemporarily() {
         if (this.currentPopup) {
@@ -832,18 +832,18 @@ class NFAResultsManager {
     }
 
     /**
-     * Visualize the first available accepting path (or selected path)
+     * Visualise the first available accepting path (or selected path)
      */
-    visualizeSelectedPath() {
+    visualiseSelectedPath() {
         const selectedPath = document.querySelector('.nfa-path-item.selected');
 
         if (selectedPath) {
             const pathIndex = parseInt(selectedPath.getAttribute('data-path-index'));
             const isAccepting = selectedPath.classList.contains('accepting');
-            this.visualizePath(pathIndex, isAccepting ? 'accepting' : 'rejected');
+            this.visualisePath(pathIndex, isAccepting ? 'accepting' : 'rejected');
         } else if (this.acceptingPaths.length > 0) {
-            // Visualize first accepting path as fallback
-            this.visualizePath(0, 'accepting');
+            // Visualise first accepting path as fallback
+            this.visualisePath(0, 'accepting');
         }
     }
 

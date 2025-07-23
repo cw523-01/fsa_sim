@@ -225,6 +225,12 @@ export function openInlineEdgeEditor(connection, jsPlumbInstance) {
  * Close the inline edge editor
  */
 export function closeInlineEdgeEditor() {
+    // Finalise any pending edge symbol updates
+    if (currentEditingEdge && undoRedoManager) {
+        const operationType = `edge_symbols_${currentEditingEdge.sourceId}_${currentEditingEdge.targetId}`;
+        undoRedoManager.finaliseAllDebouncedCommands();
+    }
+
     const edgeInlineEditor = document.getElementById('edge-inline-editor');
     edgeInlineEditor.style.display = 'none';
     currentEditingEdge = null;
@@ -442,16 +448,68 @@ function removeStateUpdateListeners() {
     }
 }
 
+/**
+ * Debounced version of updateCurrentEdgeLabel to prevent excessive undo commands
+ */
+function updateCurrentEdgeLabelDebounced() {
+    if (!currentEditingEdge || !editorJsPlumbInstance) return;
+
+    const container = document.getElementById('edge-symbols-edit-container');
+    const inputs = container.querySelectorAll('.symbol-edit-input');
+    const hasEpsilon = document.getElementById('edge-epsilon-checkbox').checked;
+
+    const symbols = [];
+    const seen = new Set();
+    let hasDuplicates = false;
+
+    inputs.forEach(input => {
+        const val = input.value.trim();
+
+        if (val.length === 1) {
+            if (!seen.has(val)) {
+                seen.add(val);
+                symbols.push(val);
+                input.style.borderColor = '';
+            } else {
+                hasDuplicates = true;
+                input.style.borderColor = 'red';
+            }
+        } else {
+            input.style.borderColor = '';
+        }
+    });
+
+    if (!hasDuplicates && (symbols.length > 0 || hasEpsilon)) {
+        // Use debounced snapshot command for live updates
+        const operationType = `edge_symbols_${currentEditingEdge.sourceId}_${currentEditingEdge.targetId}`;
+
+        if (undoRedoManager && !undoRedoManager.isOperationInProgress(operationType)) {
+            // Create or update debounced command
+            undoRedoManager.createDebouncedSnapshotCommand(
+                operationType,
+                `Update edge symbols ${currentEditingEdge.sourceId} → ${currentEditingEdge.targetId}`,
+                800 // 800ms delay
+            );
+        }
+
+        // Immediately update the visual (without creating undo command)
+        updateEdgeSymbols(currentEditingEdge, symbols, hasEpsilon, editorJsPlumbInstance);
+        clearNFAStoredResults();
+        editorJsPlumbInstance.repaintEverything();
+    }
+}
+
+
 // Setup live update event listeners for edge editor
 function setupEdgeLiveUpdates() {
     const container = document.getElementById('edge-symbols-edit-container');
-    container.addEventListener('input', updateCurrentEdgeLabel);
+    container.addEventListener('input', updateCurrentEdgeLabelDebounced);
 
     // Add epsilon checkbox change listener
     const epsilonCheckbox = document.getElementById('edge-epsilon-checkbox');
-    epsilonCheckbox.addEventListener('change', updateCurrentEdgeLabel);
+    epsilonCheckbox.addEventListener('change', updateCurrentEdgeLabelDebounced);
 
-    // Add curve style checkbox change listener
+    // Add curve style checkbox change listener - immediate since it's not typed
     const curveStyleCheckbox = document.getElementById('edge-curve-checkbox');
     curveStyleCheckbox.addEventListener('change', updateEdgeCurveStyleChange);
 }
@@ -461,10 +519,15 @@ function updateEdgeCurveStyleChange() {
 
     const curveStyleCheckbox = document.getElementById('edge-curve-checkbox');
     const isCurved = curveStyleCheckbox.checked;
+    const operationType = `edge_curve_${currentEditingEdge.sourceId}_${currentEditingEdge.targetId}`;
 
     // Create snapshot before edge curve style change for undo/redo
-    if (undoRedoManager && !undoRedoManager.isProcessing()) {
-        const snapshotCommand = undoRedoManager.createSnapshotCommand(`Change edge curve style`);
+    if (undoRedoManager && !undoRedoManager.isOperationInProgress(operationType)) {
+        undoRedoManager.markOperationInProgress(operationType);
+
+        const snapshotCommand = undoRedoManager.createSnapshotCommand(
+            `Change edge curve style ${currentEditingEdge.sourceId} → ${currentEditingEdge.targetId}`
+        );
 
         // Update the curve style for the edge - will return a new connection
         const newConnection = updateEdgeCurveStyle(editorJsPlumbInstance, currentEditingEdge, isCurved);
@@ -480,29 +543,26 @@ function updateEdgeCurveStyleChange() {
         // Deselect both edge style buttons since we now have a mix of styles
         deselectEdgeStyleButtons();
 
-        undoRedoManager.finishSnapshotCommand(snapshotCommand);
-    } else {
-        // Fallback without undo/redo
-        const newConnection = updateEdgeCurveStyle(editorJsPlumbInstance, currentEditingEdge, isCurved);
-        if (newConnection) {
-            currentEditingEdge = newConnection;
+        if (snapshotCommand) {
+            undoRedoManager.finishSnapshotCommand(snapshotCommand);
         }
-        clearNFAStoredResults();
-        deselectEdgeStyleButtons();
+
+        undoRedoManager.markOperationComplete(operationType);
     }
 }
+
 
 // Remove live update event listeners for edge editor
 function removeEdgeLiveUpdateListeners() {
     const container = document.getElementById('edge-symbols-edit-container');
     if (!container) return;
 
-    container.removeEventListener('input', updateCurrentEdgeLabel);
+    container.removeEventListener('input', updateCurrentEdgeLabelDebounced);
 
     // Remove epsilon checkbox change listener
     const epsilonCheckbox = document.getElementById('edge-epsilon-checkbox');
     if (epsilonCheckbox) {
-        epsilonCheckbox.removeEventListener('change', updateCurrentEdgeLabel);
+        epsilonCheckbox.removeEventListener('change', updateCurrentEdgeLabelDebounced);
     }
 
     // Remove curve style checkbox change listener
@@ -518,6 +578,7 @@ function updateStateLabel(jsPlumbInstance) {
 
     const newLabel = document.getElementById('inline-state-label-input').value.trim();
     const oldId = currentEditingState.id;
+    const operationType = `state_rename_${oldId}`;
 
     // Prevent empty labels
     if (!newLabel) {
@@ -546,15 +607,18 @@ function updateStateLabel(jsPlumbInstance) {
     }
 
     // Create snapshot before state label change for undo/redo
-    if (undoRedoManager && !undoRedoManager.isProcessing()) {
+    if (undoRedoManager && !undoRedoManager.isOperationInProgress(operationType)) {
+        undoRedoManager.markOperationInProgress(operationType);
+
         const snapshotCommand = undoRedoManager.createSnapshotCommand(`Rename state ${oldId} to ${newLabel}`);
 
         performStateLabelUpdate(jsPlumbInstance, newLabel, oldId);
 
-        undoRedoManager.finishSnapshotCommand(snapshotCommand);
-    } else {
-        // Fallback without undo/redo
-        performStateLabelUpdate(jsPlumbInstance, newLabel, oldId);
+        if (snapshotCommand) {
+            undoRedoManager.finishSnapshotCommand(snapshotCommand);
+        }
+
+        undoRedoManager.markOperationComplete(operationType);
     }
 }
 
@@ -685,18 +749,25 @@ function performStateLabelUpdate(jsPlumbInstance, newLabel, oldId) {
 
 function updateStateType(jsPlumbInstance) {
     if (!currentEditingState) return;
+
     const isAccepting = document.getElementById('inline-accepting-state-checkbox').checked;
+    const operationType = `state_type_${currentEditingState.id}`;
 
     // Create snapshot before state type change for undo/redo
-    if (undoRedoManager && !undoRedoManager.isProcessing()) {
-        const snapshotCommand = undoRedoManager.createSnapshotCommand(`Change state ${currentEditingState.id} to ${isAccepting ? 'accepting' : 'non-accepting'}`);
+    if (undoRedoManager && !undoRedoManager.isOperationInProgress(operationType)) {
+        undoRedoManager.markOperationInProgress(operationType);
+
+        const snapshotCommand = undoRedoManager.createSnapshotCommand(
+            `Change state ${currentEditingState.id} to ${isAccepting ? 'accepting' : 'non-accepting'}`
+        );
 
         performStateTypeUpdate(isAccepting);
 
-        undoRedoManager.finishSnapshotCommand(snapshotCommand);
-    } else {
-        // Fallback without undo/redo
-        performStateTypeUpdate(isAccepting);
+        if (snapshotCommand) {
+            undoRedoManager.finishSnapshotCommand(snapshotCommand);
+        }
+
+        undoRedoManager.markOperationComplete(operationType);
     }
 }
 
@@ -715,19 +786,39 @@ function performStateTypeUpdate(isAccepting) {
 
 function updateStartingState(jsPlumbInstance) {
     if (!currentEditingState) return;
+
     const isStarting = document.getElementById('inline-starting-state-checkbox').checked;
+    const operationType = `starting_state_${currentEditingState.id}`;
 
     // Create snapshot before starting state change for undo/redo
-    if (undoRedoManager && !undoRedoManager.isProcessing()) {
-        const snapshotCommand = undoRedoManager.createSnapshotCommand(`${isStarting ? 'Set' : 'Unset'} ${currentEditingState.id} as starting state`);
+    if (undoRedoManager && !undoRedoManager.isOperationInProgress(operationType)) {
+        undoRedoManager.markOperationInProgress(operationType);
+
+        const snapshotCommand = undoRedoManager.createSnapshotCommand(
+            `${isStarting ? 'Set' : 'Unset'} ${currentEditingState.id} as starting state`
+        );
 
         performStartingStateUpdate(jsPlumbInstance, isStarting);
 
-        undoRedoManager.finishSnapshotCommand(snapshotCommand);
-    } else {
-        // Fallback without undo/redo
-        performStartingStateUpdate(jsPlumbInstance, isStarting);
+        if (snapshotCommand) {
+            undoRedoManager.finishSnapshotCommand(snapshotCommand);
+        }
+
+        undoRedoManager.markOperationComplete(operationType);
     }
+}
+
+/**
+ * Close inline editors and finalise any pending commands
+ */
+export function closeInlineEditorsSafely() {
+    // Finalise any pending debounced commands before closing
+    if (undoRedoManager) {
+        undoRedoManager.finaliseAllDebouncedCommands();
+    }
+
+    closeInlineStateEditor();
+    closeInlineEdgeEditor();
 }
 
 function performStartingStateUpdate(jsPlumbInstance, isStarting) {

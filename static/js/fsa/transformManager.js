@@ -197,11 +197,11 @@ class FSATransformManager {
     /**
      * Initialise with JSPlumb instance
      */
-    initialize(jsPlumbInstance) {
+    initialise(jsPlumbInstance) {
         this.jsPlumbInstance = jsPlumbInstance;
 
-        if (!menuManager.initialized) {
-            menuManager.initialize();
+        if (!menuManager.initialised) {
+            menuManager.initialise();
         }
 
         menuManager.registerMenu('transform', {
@@ -703,10 +703,12 @@ class FSATransformManager {
             }
 
             let result = await response.json();
-            let hasChanges = this.checkForChanges(this.currentTransformType, result);
+            let primaryHasChanges = this.checkForChanges(this.currentTransformType, result);
+            let minimisationPerformed = false;
+            let minimisationHasChanges = false;
 
             // Chain minimisation if requested for convert operation
-            if (this.currentTransformType === 'convert' && shouldMinimise && hasChanges) {
+            if (this.currentTransformType === 'convert' && shouldMinimise) {
                 confirmBtn.textContent = 'Minimising DFA...';
 
                 const minimiseResponse = await fetch('/api/minimise-dfa/', {
@@ -723,28 +725,35 @@ class FSATransformManager {
                 const minimiseResult = await minimiseResponse.json();
                 result.minimised_dfa = minimiseResult.minimised_fsa;
                 result.minimisation_statistics = minimiseResult.statistics;
+                minimisationPerformed = true;
 
-                // Check if minimisation also had no changes
-                if (minimiseResult.statistics.reduction.is_already_minimal) {
-                    hasChanges = false;
-                }
+                // Check if minimisation made changes
+                minimisationHasChanges = !minimiseResult.statistics.reduction.is_already_minimal;
             }
+
+            // Determine overall changes: either primary operation OR minimization made changes
+            const hasOverallChanges = primaryHasChanges || minimisationHasChanges ||
+                                    (this.currentTransformType === 'complement'); // Complement always makes changes
 
             // Hide popup
             this.hideTransformPopup();
 
-            // Only replace FSA if there are actual changes
-            if (hasChanges) {
+            // Replace FSA if there are any changes from either operation
+            if (hasOverallChanges) {
                 // Replace FSA
-                await this.replaceWithTransformedFSA(this.currentTransformType, result, shouldMinimise);
+                await this.replaceWithTransformedFSA(this.currentTransformType, result, shouldMinimise && minimisationPerformed);
             }
 
-            // Show results (this will show the appropriate "no changes" message)
-            this.showTransformResults(this.currentTransformType, result, shouldMinimise);
+            // Show results with detailed change information
+            this.showTransformResults(this.currentTransformType, result, shouldMinimise, minimisationPerformed, {
+                primaryHasChanges,
+                minimisationHasChanges,
+                hasOverallChanges
+            });
 
-            // Finish undo/redo snapshot only if there were changes
+            // Finish undo/redo snapshot only if there were overall changes
             if (snapshotCommand) {
-                if (hasChanges) {
+                if (hasOverallChanges) {
                     undoRedoManager.finishSnapshotCommand(snapshotCommand);
                 } else {
                     // Cancel the snapshot since no changes were made
@@ -972,9 +981,9 @@ class FSATransformManager {
     /**
      * Show transform results
      */
-    showTransformResults(type, result, shouldMinimise = false) {
-        if (type === 'convert' && shouldMinimise) {
-            this.showChainedConversionResults(result);
+    showTransformResults(type, result, shouldMinimise = false, minimisationPerformed = false, changeInfo = null) {
+        if (type === 'convert' && shouldMinimise && minimisationPerformed) {
+            this.showChainedConversionResults(result, changeInfo);
         } else {
             const resultHandlers = {
                 minimise: () => this.showMinimisationResults(result),
@@ -991,17 +1000,43 @@ class FSATransformManager {
     /**
      * Show results for chained conversion + minimisation
      */
-    showChainedConversionResults(result) {
+    showChainedConversionResults(result, changeInfo = null) {
         const conversionStats = result.statistics;
         const minimisationStats = result.minimisation_statistics;
 
-        notificationManager.showSuccess(
-            'NFA to Minimal DFA Complete',
-            `Successfully converted NFA to DFA and minimised.\n` +
-            `Conversion: ${conversionStats.original.states_count} → ${conversionStats.converted.states_count} states\n` +
-            `Minimisation: ${conversionStats.converted.states_count} → ${minimisationStats.minimised.states_count} states\n` +
-            `Final result: ${minimisationStats.minimised.states_count} states, ${minimisationStats.minimised.transitions_count} transitions`
-        );
+        // Determine what actually happened
+        const conversionMadeChanges = changeInfo ? changeInfo.primaryHasChanges :
+                                     !conversionStats.conversion.was_already_deterministic ||
+                                     conversionStats.conversion.epsilon_transitions_removed;
+
+        const minimisationMadeChanges = changeInfo ? changeInfo.minimisationHasChanges :
+                                       !minimisationStats.reduction.is_already_minimal;
+
+        let title, message;
+
+        if (!conversionMadeChanges && !minimisationMadeChanges) {
+            title = 'Already Optimal DFA';
+            message = 'The FSA was already a minimal DFA. No changes were made.';
+            notificationManager.showInfo(title, message);
+        } else if (conversionMadeChanges && !minimisationMadeChanges) {
+            title = 'Conversion Complete, Already Minimal';
+            message = `Converted to DFA (${conversionStats.original.states_count} → ${conversionStats.converted.states_count} states). ` +
+                     `The resulting DFA was already minimal.`;
+            notificationManager.showSuccess(title, message);
+        } else if (!conversionMadeChanges && minimisationMadeChanges) {
+            title = 'Minimisation Applied to DFA';
+            message = `The FSA was already deterministic, but minimisation reduced it from ` +
+                     `${minimisationStats.original.states_count} → ${minimisationStats.minimised.states_count} states ` +
+                     `(${minimisationStats.reduction.states_reduction_percentage}% reduction).`;
+            notificationManager.showSuccess(title, message);
+        } else {
+            title = 'NFA to Minimal DFA Complete';
+            message = `Successfully converted NFA to DFA and minimised.\n` +
+                     `Conversion: ${conversionStats.original.states_count} → ${conversionStats.converted.states_count} states\n` +
+                     `Minimisation: ${conversionStats.converted.states_count} → ${minimisationStats.minimised.states_count} states\n` +
+                     `Final result: ${minimisationStats.minimised.states_count} states, ${minimisationStats.minimised.transitions_count} transitions`;
+            notificationManager.showSuccess(title, message);
+        }
     }
 
     /**

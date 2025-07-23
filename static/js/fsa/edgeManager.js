@@ -94,7 +94,7 @@ export function createConnection(jsPlumbInstance, source, target, symbolsString,
         });
     }
 
-    // Use centralized update function
+    // Use centralised update function
     updateFSADisplays(jsPlumbInstance);
 
     return connection;
@@ -142,7 +142,7 @@ export function deleteEdge(jsPlumbInstance, connection) {
 
     jsPlumbInstance.deleteConnection(connection);
 
-    // Use centralized update function
+    // Use centralised update function
     updateFSADisplays(jsPlumbInstance);
 }
 
@@ -171,7 +171,7 @@ export function updateEdgeSymbols(connection, symbols, hasEpsilon, jsPlumbInstan
         }
     }
 
-    // Use centralized update function if jsPlumbInstance is provided
+    // Use centralised update function if jsPlumbInstance is provided
     if (jsPlumbInstance) {
         updateFSADisplays(jsPlumbInstance);
     }

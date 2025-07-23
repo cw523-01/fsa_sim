@@ -31,6 +31,11 @@ const jsPlumbCleanup = {
         try {
             console.log(`Starting complete JSPlumb removal of element: ${elementId}`);
 
+            const element = document.getElementById(elementId);
+            if (!element) {
+                return true; // Element doesn't exist
+            }
+
             // 1. Remove all connections involving this element
             const connections = jsPlumbInstance.getConnections({
                 source: elementId
@@ -55,9 +60,16 @@ const jsPlumbCleanup = {
 
             // 3. Remove the element from JSPlumb's management
             try {
-                jsPlumbInstance.remove(elementId);
+                // Check if element is managed by JSPlumb before attempting removal
+                const managedElements = jsPlumbInstance.getManagedElements();
+                if (managedElements && managedElements[elementId]) {
+                    jsPlumbInstance.remove(elementId);
+                } else {
+                    console.log(`Element ${elementId} was not managed by JSPlumb, skipping remove() call`);
+                }
             } catch (error) {
                 console.warn(`Error removing element ${elementId} from JSPlumb:`, error);
+                // Continue with manual cleanup even if remove() failed
             }
 
             // 4. CRITICAL: Clean up managed elements cache manually
@@ -172,7 +184,7 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks, expli
         ensureCounterIsUpToDate(stateId);
     }
 
-    // CRITICAL: Ensure JSPlumb has no lingering references to this ID
+    // Ensure JSPlumb has no lingering references to this ID
     // This prevents the connection issue when IDs are reused
     jsPlumbCleanup.prepareForIdReuse(jsPlumbInstance, stateId);
 
@@ -194,7 +206,7 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks, expli
         createStartingStateIndicator(jsPlumbInstance, stateId);
     }
 
-    // Make state draggable with performance optimizations
+    // Make state draggable with performance optimisations
     $(state).draggable({
         containment: "parent",
         stack: ".state, .accepting-state",
@@ -272,7 +284,7 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks, expli
         // Force revalidation before registration
         jsPlumbInstance.revalidate(state.id);
 
-        // Make state a connection source and target with enhanced error handling
+        // Make state a connection source and target with error handling
         try {
             jsPlumbInstance.makeSource(state, {
                 filter: ".edge-source",
@@ -373,13 +385,13 @@ export function deleteState(jsPlumbInstance, stateElement, edgeSymbolMap) {
         epsilonTransitionMap.delete(conn.id);
     });
 
-    // Use enhanced cleanup to completely remove state from JSPlumb
+    // Use cleanup to completely remove state from JSPlumb
     jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, stateId);
 
     // Remove from DOM
     stateElement.remove();
 
-    // Use centralized update function
+    // Use centralised update function
     updateFSADisplays(jsPlumbInstance);
 
     console.log(`State ${stateId} completely removed from JSPlumb and DOM`);
@@ -428,13 +440,13 @@ export function createStartingStateIndicator(jsPlumbInstance, stateId) {
         // Position the start source relative to the target state
         positionStartSource(startSource, currentStateElement);
 
-        // Force JSPlumb to recognize both elements
+        // Force JSPlumb to recognise both elements
         jsPlumbInstance.revalidate('start-source');
         jsPlumbInstance.revalidate(stateId);
 
         // Create the connection with multiple fallback attempts
         createStartingConnection(jsPlumbInstance, startSource, stateId);
-    }, 50); // Small delay to ensure DOM and JSPlumb are synchronized
+    }, 50); // Small delay to ensure DOM and JSPlumb are synchronised
 }
 
 /**
@@ -689,21 +701,21 @@ export function forceCleanupStateReferences(jsPlumbInstance, stateId) {
 }
 
 /**
- * Reinitialize JSPlumb registration for an existing state element
+ * Reinitialise JSPlumb registration for an existing state element
  * Useful after state renames or when registration fails
  * @param {Object} jsPlumbInstance - The JSPlumb instance
- * @param {HTMLElement} stateElement - The state element to reinitialize
+ * @param {HTMLElement} stateElement - The state element to reinitialise
  * @returns {boolean} - True if successful
  */
-export function reinitializeStateWithJSPlumb(jsPlumbInstance, stateElement) {
+export function reinitialiseStateWithJSPlumb(jsPlumbInstance, stateElement) {
     if (!jsPlumbInstance || !stateElement) return false;
 
     const stateId = stateElement.id;
 
     try {
-        console.log(`Reinitializing JSPlumb registration for state: ${stateId}`);
+        console.log(`Reinitialising JSPlumb registration for state: ${stateId}`);
 
-        // First, clean up any existing registration using our enhanced cleanup
+        // First, clean up any existing registration
         jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, stateId);
 
         // Force revalidation
@@ -722,11 +734,11 @@ export function reinitializeStateWithJSPlumb(jsPlumbInstance, stateElement) {
             connectionType: "basic"
         });
 
-        console.log(`Successfully reinitialized JSPlumb registration for state: ${stateId}`);
+        console.log(`Successfully reinitialised JSPlumb registration for state: ${stateId}`);
         return true;
 
     } catch (error) {
-        console.error(`Failed to reinitialize JSPlumb registration for state ${stateId}:`, error);
+        console.error(`Failed to reinitialise JSPlumb registration for state ${stateId}:`, error);
         return false;
     }
 }
@@ -753,14 +765,14 @@ export function handleStateIdChange(oldStateId, newStateId, jsPlumbInstance) {
         }, 100);
     }
 
-    // CRITICAL: Use enhanced cleanup for the old ID to prevent connection issues
+    // Cleanup for the old ID to prevent connection issues
     jsPlumbCleanup.completelyRemoveElement(jsPlumbInstance, oldStateId);
 
     // Ensure the new state element is properly registered
     const newStateElement = document.getElementById(newStateId);
     if (newStateElement) {
         setTimeout(() => {
-            reinitializeStateWithJSPlumb(jsPlumbInstance, newStateElement);
+            reinitialiseStateWithJSPlumb(jsPlumbInstance, newStateElement);
         }, 150);
     }
 

@@ -468,9 +468,9 @@ export async function runFSASimulation(jsPlumbInstance, inputString, visualMode 
  * @returns {Promise<Object>} - Promise resolving to simulation result
  */
 async function runDFASimulation(jsPlumbInstance, inputString, visualMode, fsa) {
-    // Initialize visual simulation manager with JSPlumb instance
+    // Initialise visual simulation manager with JSPlumb instance
     if (visualMode) {
-        visualSimulationManager.initialize(jsPlumbInstance);
+        visualSimulationManager.initialise(jsPlumbInstance);
     }
 
     // Simulate on backend

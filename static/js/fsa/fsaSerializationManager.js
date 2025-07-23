@@ -207,11 +207,11 @@ class FSASerializationManager {
             // Clear current FSA
             await this.clearCurrentFSA(jsPlumbInstance);
 
-            // Optimize positions if needed
-            const optimizedStatesData = this.optimizeStatePositions(data);
+            // Optimise positions if needed
+            const optimisedStatesData = this.optimiseStatePositions(data);
 
             // Load states first
-            await this.deserializeStates(optimizedStatesData.states, jsPlumbInstance);
+            await this.deserializeStates(optimisedStatesData.states, jsPlumbInstance);
 
             // Then load transitions
             await this.deserializeTransitions(data.transitions, jsPlumbInstance);
@@ -247,11 +247,11 @@ class FSASerializationManager {
     }
 
     /**
-     * Optimize state positions using positioning utilities
+     * Optimise state positions using positioning utilities
      * @param {Object} data - Serialized FSA data
-     * @returns {Object} - Data with optimized positions
+     * @returns {Object} - Data with optimised positions
      */
-    optimizeStatePositions(data) {
+    optimiseStatePositions(data) {
         // Convert to FSA format for positioning utility
         const fsa = {
             states: data.states.map(state => state.id),
@@ -266,21 +266,21 @@ class FSASerializationManager {
             existingPositions[state.id] = state.position;
         });
 
-        // Calculate optimized positions
-        const optimizedPositions = calculateStatePositions(fsa, existingPositions, {
+        // Calculate optimised positions
+        const optimisedPositions = calculateStatePositions(fsa, existingPositions, {
             preserveExisting: true,
             maxIterations: 50
         });
 
-        // Update states data with optimized positions
-        const optimizedStates = data.states.map(state => ({
+        // Update states data with optimised positions
+        const optimisedStates = data.states.map(state => ({
             ...state,
-            position: optimizedPositions[state.id] || state.position
+            position: optimisedPositions[state.id] || state.position
         }));
 
         return {
             ...data,
-            states: optimizedStates
+            states: optimisedStates
         };
     }
 

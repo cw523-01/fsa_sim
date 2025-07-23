@@ -456,7 +456,7 @@ function refineWithForceDirected(fsa, positions, config) {
     for (let iter = 0; iter < iterations; iter++) {
         const forces = {};
 
-        // Initialize forces
+        // Initialise forces
         fsa.states.forEach(state => {
             forces[state] = { x: 0, y: 0 };
         });
@@ -612,7 +612,7 @@ function findConnectedComponents(fsa) {
 function buildUndirectedAdjacencyList(fsa) {
     const adjacencyList = new Map();
 
-    // Initialize
+    // Initialise
     fsa.states.forEach(state => {
         adjacencyList.set(state, []);
     });

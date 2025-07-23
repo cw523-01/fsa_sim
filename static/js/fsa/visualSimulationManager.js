@@ -21,10 +21,10 @@ class VisualSimulationManager {
     }
 
     /**
-     * Initialize the visual simulator with JSPlumb instance
+     * Initialise the visual simulator with JSPlumb instance
      * @param {Object} jsPlumbInstance - The JSPlumb instance
      */
-    initialize(jsPlumbInstance) {
+    initialise(jsPlumbInstance) {
         this.jsPlumbInstance = jsPlumbInstance;
         this.inputField = document.getElementById('fsa-input');
     }

@@ -106,25 +106,25 @@ export function initialiseSimulator() {
     });
 
     // Initialise the control lock manager with the JSPlumb instance
-    controlLockManager.initialize(jsPlumbInstance);
+    controlLockManager.initialise(jsPlumbInstance);
 
-    // Initialise enhanced edge creation manager
+    // Initialise edge creation manager
     initialiseEdgeCreationManager();
 
-    // Initialise enhanced tool manager
+    // Initialise tool manager
     initialiseToolManager();
 
     // Initialise undo/redo system FIRST (before any menu setup)
     initialiseUndoRedoSystem();
 
     // Initialise FSA serialization system with unified menu bar
-    initializeFSASerialization();
+    initialiseFSASerialization();
 
     // Initialise FSA transformation system
-    initializeFSATransformation();
+    initialiseFSATransformation();
 
     // Initialise REGEX conversion system
-    initializeRegexConversion();
+    initialiseRegexConversion();
 
     // Initialise property info manager
     initialisePropertyInfoManager();
@@ -135,7 +135,7 @@ export function initialiseSimulator() {
     // Setup performance monitoring
     setupPerformanceMonitoring();
 
-    // Initial displays update using centralized function
+    // Initial displays update using centralised function
     updateFSADisplays(jsPlumbInstance);
 
     // Setup JSPlumb connection event binding
@@ -217,33 +217,31 @@ function setupPerformanceMonitoring() {
 }
 
 /**
- * Initialise enhanced edge creation manager
+ * Initialise edge creation manager
  */
 function initialiseEdgeCreationManager() {
     const canvas = document.getElementById('fsa-canvas');
     if (canvas && edgeCreationManager) {
-        edgeCreationManager.initialize(canvas);
-        console.log('Enhanced edge creation manager initialized');
+        edgeCreationManager.initialise(canvas);
     }
 }
 
 /**
- * Initialise enhanced tool manager
+ * Initialise tool manager
  */
 function initialiseToolManager() {
     const canvas = document.getElementById('fsa-canvas');
     if (canvas && toolManager) {
-        toolManager.initialize(canvas, edgeCreationManager, jsPlumbInstance);
-        console.log('Enhanced tool manager initialized');
+        toolManager.initialise(canvas, edgeCreationManager, jsPlumbInstance);
     }
 }
 
 /**
  * Initialise FSA transformation system
  */
-function initializeFSATransformation() {
+function initialiseFSATransformation() {
     // Initialise transform manager with JSPlumb instance
-    fsaTransformManager.initialize(jsPlumbInstance);
+    fsaTransformManager.initialise(jsPlumbInstance);
 
     // Make transform functions globally available
     window.fsaTransformManager = fsaTransformManager;
@@ -252,9 +250,9 @@ function initializeFSATransformation() {
 /**
  * Initialise REGEX conversion system
  */
-function initializeRegexConversion() {
+function initialiseRegexConversion() {
     // Initialise REGEX conversion manager with JSPlumb instance
-    regexConversionManager.initialize(jsPlumbInstance);
+    regexConversionManager.initialise(jsPlumbInstance);
 
     // Make REGEX conversion functions globally available
     window.regexConversionManager = regexConversionManager;
@@ -265,12 +263,12 @@ function initializeRegexConversion() {
  */
 function initialisePropertyInfoManager() {
     // Initialise property info manager
-    propertyInfoManager.initialize();
+    propertyInfoManager.initialise();
 
     // Make property info manager globally available
     window.propertyInfoManager = propertyInfoManager;
 
-    console.log('Property info system initialized');
+    console.log('Property info system initialised');
 }
 
 /**
@@ -278,7 +276,7 @@ function initialisePropertyInfoManager() {
  */
 function initialiseEquivalenceChecking() {
     // Initialise equivalence manager with JSPlumb instance
-    equivalenceManager.initialize(jsPlumbInstance);
+    equivalenceManager.initialise(jsPlumbInstance);
 
     // Make equivalence checking functions globally available
     window.equivalenceManager = equivalenceManager;
@@ -289,23 +287,23 @@ function initialiseEquivalenceChecking() {
  */
 function initialiseUndoRedoSystem() {
     // Initialise undo/redo manager with JSPlumb instance
-    undoRedoManager.initialize(jsPlumbInstance);
+    undoRedoManager.initialise(jsPlumbInstance);
 
     // Make undo/redo functions globally available
     window.undoRedoManager = undoRedoManager;
 
-    console.log('Undo/Redo system initialized');
+    console.log('Undo/Redo system initialised');
 }
 
 /**
  * Initialise FSA serialization system with unified menu bar
  */
-function initializeFSASerialization() {
+function initialiseFSASerialization() {
     // Initialise menu manager first
-    menuManager.initialize();
+    menuManager.initialise();
 
     // Initialise file UI manager with JSPlumb instance
-    fsaFileUIManager.initialize(jsPlumbInstance);
+    fsaFileUIManager.initialise(jsPlumbInstance);
 
     // Setup edit menu with universal menu manager
     setupEditMenu();
@@ -535,7 +533,7 @@ function integrateWithControlLockManager() {
  * Setup all event listeners
  */
 export function setupEventListeners() {
-    // Enhanced tool selection with unified tool manager
+    // Tool selection with tool manager
     document.getElementById('state-tool').addEventListener('click', function() {
         if (controlLockManager.isControlsLocked()) return;
         closeInlineStateEditor();
@@ -550,7 +548,7 @@ export function setupEventListeners() {
         selectTool('accepting-state');
     });
 
-    // Enhanced edge tool event listener with unified tool manager
+    // Edge tool event listener with tool manager
     document.getElementById('edge-tool').addEventListener('click', function() {
         if (controlLockManager.isControlsLocked()) return;
 
@@ -561,7 +559,7 @@ export function setupEventListeners() {
         selectTool('edge');
     });
 
-    // Enhanced delete tool event listener with unified tool manager
+    // Delete tool event listener with tool manager
     document.getElementById('delete-tool').addEventListener('click', function() {
         if (controlLockManager.isControlsLocked()) return;
         closeInlineStateEditor();
@@ -569,25 +567,30 @@ export function setupEventListeners() {
         selectTool('delete');
     });
 
-    // Edge style buttons with centralized updates
+    // Edge style buttons with centralised updates
     document.getElementById('straight-edges-btn').addEventListener('click', function() {
         if (controlLockManager.isControlsLocked()) return;
 
-        // Close any open inline editors or modals
-        closeInlineStateEditor();
-        closeInlineEdgeEditor();
+        const operationType = 'bulk_edge_style_straight';
+
+        // Close any open inline editors or modals and finalise pending commands
+        if (window.closeInlineEditorsSafely) {
+            window.closeInlineEditorsSafely();
+        }
         closeEdgeSymbolModal();
 
         console.log("Setting all edges to straight");
 
         // Create snapshot before bulk edge style change for undo/redo
-        if (undoRedoManager && !undoRedoManager.isProcessing()) {
+        if (undoRedoManager && !undoRedoManager.isOperationInProgress(operationType)) {
+            undoRedoManager.markOperationInProgress(operationType);
+
             const snapshotCommand = undoRedoManager.createSnapshotCommand('Set all edges to straight');
 
             // Add performance mode during edge style changes
             document.body.classList.add('performance-mode');
 
-            // Apply straight edges to all connections with our improved function
+            // Apply straight edges to all connections
             setAllEdgeStyles(jsPlumbInstance, false);
 
             // Update button styling
@@ -599,37 +602,37 @@ export function setupEventListeners() {
                 document.body.classList.remove('performance-mode');
             }, 100);
 
-            undoRedoManager.finishSnapshotCommand(snapshotCommand);
-        } else {
-            // Fallback without undo/redo
-            document.body.classList.add('performance-mode');
-            setAllEdgeStyles(jsPlumbInstance, false);
-            this.classList.add('active');
-            document.getElementById('curved-edges-btn').classList.remove('active');
-            setTimeout(() => {
-                document.body.classList.remove('performance-mode');
-            }, 100);
+            if (snapshotCommand) {
+                undoRedoManager.finishSnapshotCommand(snapshotCommand);
+            }
+
+            undoRedoManager.markOperationComplete(operationType);
         }
     });
 
     document.getElementById('curved-edges-btn').addEventListener('click', function() {
         if (controlLockManager.isControlsLocked()) return;
 
-        // Close any open inline editors or modals
-        closeInlineStateEditor();
-        closeInlineEdgeEditor();
+        const operationType = 'bulk_edge_style_curved';
+
+        // Close any open inline editors or modals and finalise pending commands
+        if (window.closeInlineEditorsSafely) {
+            window.closeInlineEditorsSafely();
+        }
         closeEdgeSymbolModal();
 
         console.log("Setting all edges to curved");
 
         // Create snapshot before bulk edge style change for undo/redo
-        if (undoRedoManager && !undoRedoManager.isProcessing()) {
+        if (undoRedoManager && !undoRedoManager.isOperationInProgress(operationType)) {
+            undoRedoManager.markOperationInProgress(operationType);
+
             const snapshotCommand = undoRedoManager.createSnapshotCommand('Set all edges to curved');
 
             // Add performance mode during edge style changes
             document.body.classList.add('performance-mode');
 
-            // Apply curved edges to all connections with our improved function
+            // Apply curved edges to all connections
             setAllEdgeStyles(jsPlumbInstance, true);
 
             // Update button styling
@@ -641,23 +644,18 @@ export function setupEventListeners() {
                 document.body.classList.remove('performance-mode');
             }, 100);
 
-            undoRedoManager.finishSnapshotCommand(snapshotCommand);
-        } else {
-            // Fallback without undo/redo
-            document.body.classList.add('performance-mode');
-            setAllEdgeStyles(jsPlumbInstance, true);
-            this.classList.add('active');
-            document.getElementById('straight-edges-btn').classList.remove('active');
-            setTimeout(() => {
-                document.body.classList.remove('performance-mode');
-            }, 100);
+            if (snapshotCommand) {
+                undoRedoManager.finishSnapshotCommand(snapshotCommand);
+            }
+
+            undoRedoManager.markOperationComplete(operationType);
         }
     });
 
     // Set initial active state for straight edges (default)
     document.getElementById('straight-edges-btn').classList.add('active');
 
-    // Enhanced canvas click event
+    // Canvas click event
     document.getElementById('fsa-canvas').addEventListener('click', function(e) {
         if (controlLockManager.isControlsLocked()) return;
 
@@ -684,8 +682,10 @@ export function setupEventListeners() {
             }
 
             // Close the inline editors if they're open and we click on the canvas
-            closeInlineStateEditor();
-            closeInlineEdgeEditor();
+            // This will also finalise any pending debounced commands
+            if (window.closeInlineEditorsSafely) {
+                window.closeInlineEditorsSafely();
+            }
         }
     });
 
@@ -830,7 +830,7 @@ function setupConnectionEvents() {
             });
         }
 
-        // Use centralized update function
+        // Use centralised update function
         updateFSADisplays(jsPlumbInstance);
     });
 }
@@ -844,6 +844,13 @@ function setupConnectionEvents() {
 function handleStateCreation(x, y, isAccepting) {
     if (controlLockManager.isControlsLocked()) return;
 
+    const operationType = `state_creation_${x}_${y}_${Date.now()}`;
+
+    // Prevent multiple state creations in rapid succession
+    if (undoRedoManager && undoRedoManager.isOperationInProgress(operationType)) {
+        return;
+    }
+
     const callbacks = {
         onStateClick: handleStateClick,
         onStateDrag: handleStateDrag
@@ -851,17 +858,17 @@ function handleStateCreation(x, y, isAccepting) {
 
     const stateElement = createState(jsPlumbInstance, x, y, isAccepting, callbacks);
 
-    // Record state creation for undo/redo
+    // Record state creation for undo/redo only if successful
     if (stateElement && undoRedoManager) {
         undoRedoManager.recordStateCreation(stateElement.id, x, y, isAccepting);
     }
 
-    // Use centralized update function
+    // Use centralised update function
     updateFSADisplays(jsPlumbInstance);
 }
 
 /**
- * Enhanced state click handler with edge creation visual feedback
+ * State click handler with edge creation visual feedback
  * @param {HTMLElement} stateElement - The clicked state
  * @param {Event} e - The click event
  */
@@ -869,21 +876,27 @@ function handleStateClick(stateElement, e) {
     if (controlLockManager.isControlsLocked()) return;
 
     const currentTool = getCurrentTool();
+    const operationType = `state_click_${stateElement.id}_${currentTool}`;
 
     if (currentTool === 'delete') {
         if (stateElement.classList.contains('state') || stateElement.classList.contains('accepting-state')) {
             // Create snapshot before deletion for undo/redo
-            if (undoRedoManager && !undoRedoManager.isProcessing()) {
+            if (undoRedoManager && !undoRedoManager.isOperationInProgress(operationType)) {
+                undoRedoManager.markOperationInProgress(operationType);
+
                 const snapshotCommand = undoRedoManager.createSnapshotCommand(`Delete state ${stateElement.id}`);
                 deleteState(jsPlumbInstance, stateElement, getEdgeSymbolMap());
-                undoRedoManager.finishSnapshotCommand(snapshotCommand);
-            } else {
-                deleteState(jsPlumbInstance, stateElement, getEdgeSymbolMap());
+
+                if (snapshotCommand) {
+                    undoRedoManager.finishSnapshotCommand(snapshotCommand);
+                }
+
+                undoRedoManager.markOperationComplete(operationType);
             }
         }
     }
     else if (currentTool === 'edge') {
-        // Use enhanced edge creation manager
+        // Use edge creation manager (no undo needed here - handled in edge creation)
         if (edgeCreationManager && edgeCreationManager.isActive()) {
             if (!edgeCreationManager.isCreatingEdge()) {
                 // Start edge creation from this state
@@ -895,66 +908,97 @@ function handleStateClick(stateElement, e) {
                 if (sourceState && sourceState !== stateElement) {
                     // Complete the edge creation to a different state
                     edgeCreationManager.completeEdgeCreation(stateElement, (sourceId, targetId) => {
-                        // Check if connection already exists
-                        const existingConnection = getConnectionBetween(jsPlumbInstance, sourceId, targetId);
-                        if (existingConnection) {
-                            openInlineEdgeEditor(existingConnection, jsPlumbInstance);
-                        } else {
-                            // Open edge symbol modal for new connection
-                            openEdgeSymbolModal(sourceId, targetId, (source, target, symbolsString, hasEpsilon, isCurved) => {
-                                // Create snapshot before edge creation for undo/redo
-                                if (undoRedoManager && !undoRedoManager.isProcessing()) {
-                                    const snapshotCommand = undoRedoManager.createSnapshotCommand(`Create edge ${source} → ${target}`);
-                                    createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
-                                        onEdgeClick: handleEdgeClick
-                                    });
-                                    undoRedoManager.finishSnapshotCommand(snapshotCommand);
-                                } else {
-                                    createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
-                                        onEdgeClick: handleEdgeClick
-                                    });
-                                }
-
-                                if (isCurved !== undefined) {
-                                    deselectEdgeStyleButtons();
-                                }
-                            });
-                        }
+                        handleEdgeCreationCompletion(sourceId, targetId);
                     });
                 } else if (sourceState === stateElement) {
-                    // Clicking on the same state – create OR edit self-loop
+                    // Self-loop creation/editing
                     edgeCreationManager.completeEdgeCreation(stateElement, (sourceId, targetId) => {
-                        // Check if a self-loop already exists
-                        const existingConnection = getConnectionBetween(jsPlumbInstance, sourceId, targetId);
-                        if (existingConnection) {
-                            // Self-loop exists → open inline editor instead of creating another
-                            openInlineEdgeEditor(existingConnection, jsPlumbInstance);
-                        } else {
-                            // No existing self-loop → create a new curved one
-                            openEdgeSymbolModal(sourceId, targetId, (source, target, symbolsString, hasEpsilon) => {
-                                // Create snapshot before edge creation for undo/redo
-                                if (undoRedoManager && !undoRedoManager.isProcessing()) {
-                                    const snapshotCommand = undoRedoManager.createSnapshotCommand(`Create self-loop on ${source}`);
-                                    createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, true, {  // Self-loops are always curved
-                                        onEdgeClick: handleEdgeClick
-                                    });
-                                    undoRedoManager.finishSnapshotCommand(snapshotCommand);
-                                } else {
-                                    createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, true, {  // Self-loops are always curved
-                                        onEdgeClick: handleEdgeClick
-                                    });
-                                }
-                            });
-                        }
+                        handleSelfLoopCreation(sourceId, targetId);
                     });
                 }
             }
         }
     } else {
         resetToolSelection();
-        // If not using any specific tool, open edit modal when clicking a state
+        // Close any open editors and finalise pending commands before opening new one
+        if (window.closeInlineEditorsSafely) {
+            window.closeInlineEditorsSafely();
+        }
         openInlineStateEditor(stateElement, jsPlumbInstance);
     }
+}
+
+/**
+ * Handle edge creation completion with undo tracking
+ */
+function handleEdgeCreationCompletion(sourceId, targetId) {
+    const operationType = `edge_creation_${sourceId}_${targetId}`;
+
+    // Check if connection already exists
+    const existingConnection = getConnectionBetween(jsPlumbInstance, sourceId, targetId);
+    if (existingConnection) {
+        openInlineEdgeEditor(existingConnection, jsPlumbInstance);
+        return;
+    }
+
+    // Open edge symbol modal for new connection
+    openEdgeSymbolModal(sourceId, targetId, (source, target, symbolsString, hasEpsilon, isCurved) => {
+        // Create snapshot before edge creation for undo/redo
+        if (undoRedoManager && !undoRedoManager.isOperationInProgress(operationType)) {
+            undoRedoManager.markOperationInProgress(operationType);
+
+            const snapshotCommand = undoRedoManager.createSnapshotCommand(`Create edge ${source} → ${target}`);
+
+            createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved, {
+                onEdgeClick: handleEdgeClick
+            });
+
+            if (isCurved !== undefined) {
+                deselectEdgeStyleButtons();
+            }
+
+            if (snapshotCommand) {
+                undoRedoManager.finishSnapshotCommand(snapshotCommand);
+            }
+
+            undoRedoManager.markOperationComplete(operationType);
+        }
+    });
+}
+
+/**
+ * Handle self-loop creation with proper undo tracking
+ */
+function handleSelfLoopCreation(sourceId, targetId) {
+    const operationType = `self_loop_${sourceId}`;
+
+    // Check if a self-loop already exists
+    const existingConnection = getConnectionBetween(jsPlumbInstance, sourceId, targetId);
+    if (existingConnection) {
+        // Self-loop exists -> open inline editor instead of creating another
+        openInlineEdgeEditor(existingConnection, jsPlumbInstance);
+        return;
+    }
+
+    // No existing self-loop -> create a new curved one
+    openEdgeSymbolModal(sourceId, targetId, (source, target, symbolsString, hasEpsilon) => {
+        // Create snapshot before edge creation for undo/redo
+        if (undoRedoManager && !undoRedoManager.isOperationInProgress(operationType)) {
+            undoRedoManager.markOperationInProgress(operationType);
+
+            const snapshotCommand = undoRedoManager.createSnapshotCommand(`Create self-loop on ${source}`);
+
+            createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, true, {  // Self-loops are always curved
+                onEdgeClick: handleEdgeClick
+            });
+
+            if (snapshotCommand) {
+                undoRedoManager.finishSnapshotCommand(snapshotCommand);
+            }
+
+            undoRedoManager.markOperationComplete(operationType);
+        }
+    });
 }
 
 /**
@@ -989,16 +1033,30 @@ function handleEdgeClick(connection, e) {
     if (controlLockManager.isControlsLocked()) return;
 
     const currentTool = getCurrentTool();
+    const operationType = `edge_click_${connection.sourceId}_${connection.targetId}_${currentTool}`;
+
     if (currentTool === 'delete') {
         // Create snapshot before edge deletion for undo/redo
-        if (undoRedoManager && !undoRedoManager.isProcessing()) {
-            const snapshotCommand = undoRedoManager.createSnapshotCommand(`Delete edge ${connection.sourceId} → ${connection.targetId}`);
+        if (undoRedoManager && !undoRedoManager.isOperationInProgress(operationType)) {
+            undoRedoManager.markOperationInProgress(operationType);
+
+            const snapshotCommand = undoRedoManager.createSnapshotCommand(
+                `Delete edge ${connection.sourceId} → ${connection.targetId}`
+            );
+
             deleteEdge(jsPlumbInstance, connection);
-            undoRedoManager.finishSnapshotCommand(snapshotCommand);
-        } else {
-            deleteEdge(jsPlumbInstance, connection);
+
+            if (snapshotCommand) {
+                undoRedoManager.finishSnapshotCommand(snapshotCommand);
+            }
+
+            undoRedoManager.markOperationComplete(operationType);
         }
     } else {
+        // Close any open editors and finalise pending commands before opening new one
+        if (window.closeInlineEditorsSafely) {
+            window.closeInlineEditorsSafely();
+        }
         openInlineEdgeEditor(connection, jsPlumbInstance);
     }
 }
@@ -1213,9 +1271,9 @@ function setupDraggableTools() {
 }
 
 /**
- * Cleanup function for enhanced managers
+ * Cleanup function for managers
  */
-function cleanupEnhancedManagers() {
+function cleanupManagers() {
     if (edgeCreationManager) {
         edgeCreationManager.destroy();
         console.log('Edge creation manager cleaned up');
@@ -1237,9 +1295,30 @@ function cleanupEnhancedManagers() {
     }
 }
 
+/**
+ * Cleanup function to handle pending operations
+ */
+function cleanupPendingOperations() {
+    if (undoRedoManager) {
+        // Finalise all pending debounced commands
+        undoRedoManager.finaliseAllDebouncedCommands();
+
+        // Clear any operations marked as in progress
+        undoRedoManager.commandInProgress.clear();
+
+        console.log('Cleaned up pending undo/redo operations');
+    }
+}
+
 // Add cleanup event listener
-window.addEventListener('beforeunload', cleanupEnhancedManagers);
+window.addEventListener('beforeunload', cleanupManagers);
 
 // Make functions available globally for the serialization system
 window.handleStateClick = handleStateClick;
 window.handleStateDrag = handleStateDrag;
+
+// Add cleanup on window unload
+window.addEventListener('beforeunload', cleanupPendingOperations);
+
+// Export functions for use in other modules
+export { cleanupPendingOperations, handleEdgeCreationCompletion, handleSelfLoopCreation };

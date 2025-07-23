@@ -15,15 +15,15 @@ class FSAFileUIManager {
     }
 
     /**
-     * Initialize with JSPlumb instance
+     * Initialise with JSPlumb instance
      * @param {Object} jsPlumbInstance - The JSPlumb instance
      */
-    initialize(jsPlumbInstance) {
+    initialise(jsPlumbInstance) {
         this.jsPlumbInstance = jsPlumbInstance;
 
-        // Initialize menu manager first (if not already done)
-        if (!menuManager.initialized) {
-            menuManager.initialize();
+        // Initialise menu manager first (if not already done)
+        if (!menuManager.initialised) {
+            menuManager.initialise();
         }
 
         // Register file menu with the universal menu manager
@@ -96,7 +96,7 @@ class FSAFileUIManager {
      */
     exportFSA(customFilename = null) {
         if (!this.jsPlumbInstance) {
-            notificationManager.showError('Export Error', 'FSA not initialized');
+            notificationManager.showError('Export Error', 'FSA not initialised');
             return;
         }
 
@@ -121,7 +121,7 @@ class FSAFileUIManager {
      */
     importFSA() {
         if (!this.jsPlumbInstance) {
-            notificationManager.showError('Import Error', 'FSA not initialized');
+            notificationManager.showError('Import Error', 'FSA not initialised');
             return;
         }
 
@@ -145,7 +145,7 @@ class FSAFileUIManager {
      */
     newFSA() {
         if (!this.jsPlumbInstance) {
-            notificationManager.showError('Error', 'FSA not initialized');
+            notificationManager.showError('Error', 'FSA not initialised');
             return;
         }
 
@@ -261,7 +261,7 @@ class FSAFileUIManager {
         if (filenameInput && filenamePreview) {
             filenameInput.addEventListener('input', () => {
                 const value = filenameInput.value.trim();
-                const cleanValue = this.sanitizeFilename(value);
+                const cleanValue = this.sanitiseFilename(value);
 
                 if (cleanValue !== value) {
                     filenameInput.value = cleanValue;
@@ -641,11 +641,11 @@ class FSAFileUIManager {
     }
 
     /**
-     * Sanitize filename to remove invalid characters
+     * Sanitise filename to remove invalid characters
      * @param {string} filename - Raw filename input
-     * @returns {string} - Sanitized filename
+     * @returns {string} - Sanitised filename
      */
-    sanitizeFilename(filename) {
+    sanitiseFilename(filename) {
         // Remove invalid characters for filenames
         return filename.replace(/[<>:"/\\|?*\x00-\x1f]/g, '')
                       .replace(/\.$/, '') // Remove trailing period

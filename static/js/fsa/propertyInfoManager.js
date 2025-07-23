@@ -40,13 +40,12 @@ class PropertyInfoManager {
     }
 
     /**
-     * Initialize the property info manager
+     * Initialise the property info manager
      */
-    initialize() {
+    initialise() {
         this.backdrop = document.getElementById('property-info-backdrop');
         this.popup = document.getElementById('property-info-popup');
         this.setupEventListeners();
-        console.log('Property Info Manager initialized');
     }
 
     /**

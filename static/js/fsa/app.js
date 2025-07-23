@@ -1,7 +1,7 @@
 import { initialiseSimulator, setupEventListeners } from './main.js';
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize the simulator components
+    // Initialise the simulator components
     initialiseSimulator();
 
     // Setup all event listeners

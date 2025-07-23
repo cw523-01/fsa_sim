@@ -44,13 +44,13 @@ class RegexConversionManager {
     }
 
     /**
-     * Initialize with JSPlumb instance
+     * Initialise with JSPlumb instance
      */
-    initialize(jsPlumbInstance) {
+    initialise(jsPlumbInstance) {
         this.jsPlumbInstance = jsPlumbInstance;
 
-        if (!menuManager.initialized) {
-            menuManager.initialize();
+        if (!menuManager.initialised) {
+            menuManager.initialise();
         }
 
         // Register REGEX menu with the universal menu manager
@@ -77,7 +77,7 @@ class RegexConversionManager {
      */
     async executeRegexConversion() {
         if (!this.jsPlumbInstance) {
-            notificationManager.showError(`${this.conversionConfig.name} Error`, 'FSA not initialized');
+            notificationManager.showError(`${this.conversionConfig.name} Error`, 'FSA not initialised');
             return;
         }
 
@@ -95,7 +95,7 @@ class RegexConversionManager {
      */
     async executeFSAToRegexConversion() {
         if (!this.jsPlumbInstance) {
-            notificationManager.showError(`${this.fsaToRegexConfig.name} Error`, 'FSA not initialized');
+            notificationManager.showError(`${this.fsaToRegexConfig.name} Error`, 'FSA not initialised');
             return;
         }
 

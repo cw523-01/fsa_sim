@@ -29,7 +29,7 @@ export function generateTransitionTable(jsPlumbInstance) {
     // Sort the alphabet for consistent display
     const sortedAlphabet = Array.from(alphabet).sort();
 
-    // Initialize the transition table
+    // Initialise the transition table
     const table = {
         states: [],
         alphabet: sortedAlphabet,
@@ -56,15 +56,15 @@ export function generateTransitionTable(jsPlumbInstance) {
             table.acceptingStates.push(stateId);
         }
 
-        // Initialize empty transitions for this state
+        // Initialise empty transitions for this state
         table.transitions[stateId] = {};
 
-        // Initialize for all symbols in alphabet
+        // Initialise for all symbols in alphabet
         sortedAlphabet.forEach(symbol => {
             table.transitions[stateId][symbol] = [];
         });
 
-        // Initialize for epsilon using empty string ''
+        // Initialise for epsilon using empty string ''
         if (table.hasEpsilon) {
             table.transitions[stateId][''] = []; // Use empty string for backend compatibility
         }

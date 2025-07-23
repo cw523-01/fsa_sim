@@ -117,14 +117,14 @@ class TutorialModalManager {
         });
 
         this.elements = {};
-        this.initialized = false;
+        this.initialised = false;
     }
 
     /**
-     * Initialize the tutorial modal
+     * Initialise the tutorial modal
      */
-    initialize() {
-        if (this.initialized) return;
+    initialise() {
+        if (this.initialised) return;
 
         // Get DOM elements
         this.elements = {
@@ -144,9 +144,8 @@ class TutorialModalManager {
 
         this.setupEventListeners();
         this.updateDisplay();
-        this.initialized = true;
+        this.initialised = true;
 
-        console.log('Tutorial Modal Manager initialized');
     }
 
     /**
@@ -413,9 +412,9 @@ class TutorialModalManager {
 // Create singleton instance
 const tutorialModalManager = new TutorialModalManager();
 
-// Initialize when DOM is ready
+// Initialise when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    tutorialModalManager.initialize();
+    tutorialModalManager.initialise();
 });
 
 // Make globally available

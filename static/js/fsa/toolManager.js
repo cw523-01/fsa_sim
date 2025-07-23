@@ -1,5 +1,4 @@
 /**
- * Enhanced Tool Manager
  * Provides unified visual feedback and instructions for all FSA tools
  */
 
@@ -51,12 +50,12 @@ class ToolManager {
     }
 
     /**
-     * Initialize the tool manager
+     * Initialise the tool manager
      * @param {HTMLElement} canvasElement - The FSA canvas element
      * @param {Object} edgeCreationManager - Reference to the edge creation manager
      * @param {Object} jsPlumbInstance - Reference to the JSPlumb instance
      */
-    initialize(canvasElement, edgeCreationManager = null, jsPlumbInstance = null) {
+    initialise(canvasElement, edgeCreationManager = null, jsPlumbInstance = null) {
         this.canvas = canvasElement;
         this.edgeCreationManager = edgeCreationManager;
         this.jsPlumbInstance = jsPlumbInstance;
@@ -196,8 +195,6 @@ class ToolManager {
                 conn.setHoverPaintStyle({ stroke: "#f44336", strokeWidth: 4 });
             });
         }
-
-        console.log('Delete mode activated with enhanced edge highlighting');
     }
 
     /**
