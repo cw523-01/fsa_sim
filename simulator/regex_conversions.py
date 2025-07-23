@@ -372,81 +372,92 @@ def simplify_regex(regex: str) -> str:
         # Apply simplifications in order
         simplifications = [
             # Basic cleanup
-            (r'\(\)\*', ''),  # ()* → delete
-            (r'\(\)\+', ''),  # ()+ → delete
-            (r'\(\)\?', ''),  # ()? → delete
+            (r'\(\)\*', ''),  # ()* -> delete
+            (r'\(\)\+', ''),  # ()+ -> delete
+            (r'\(\)\?', ''),  # ()? -> delete
             (r'\(\)', ''),  # () → delete
 
             # Epsilon handling
-            (r'ε\*', 'ε'),  # ε* → ε
-            (r'ε\+', 'ε'),  # ε+ → ε
-            (r'ε\?', 'ε'),  # ε? → ε
-            (r'ε(?![*+?])', ''),  # ε → delete
+            (r'ε\*', 'ε'),  # ε* -> ε
+            (r'ε\+', 'ε'),  # ε+ -> ε
+            (r'ε\?', 'ε'),  # ε? -> ε
+            #(r'ε(?![*+?])', ''),  # ε -> delete
 
             # Multiple operators
             (r'\*\*+', '*'),  # collapse multiple stars
             (r'\+\++', '+'),  # collapse multiple pluses
             (r'\?\?+', '?'),  # collapse multiple question marks
-            (r'\*\+', '*'),  # *+ → * (star dominates plus)
-            (r'\+\*', '*'),  # +* → * (star dominates plus)
-            (r'\*\?', '*'),  # *? → * (star dominates optional)
-            (r'\?\*', '*'),  # ?* → * (star dominates optional)
-            (r'\+\?', '*'),  # +? → * (plus optional becomes star)
-            (r'\?\+', '*'),  # ?+ → * (optional plus becomes star)
+            (r'\*\+', '*'),  # *+ -> * (star dominates plus)
+            (r'\+\*', '*'),  # +* -> * (star dominates plus)
+            (r'\*\?', '*'),  # *? -> * (star dominates optional)
+            (r'\?\*', '*'),  # ?* -> * (star dominates optional)
+            (r'\+\?', '*'),  # +? -> * (plus optional becomes star)
+            (r'\?\+', '*'),  # ?+ -> * (optional plus becomes star)
 
             # Union flattening
-            (r'\(\(([^|()]+)\|([^|()]+)\)\|([^|()]+)\)', r'(\1|\2|\3)'),  # ((A|B)|C) → (A|B|C)
-            (r'\(([^|()]+)\|\(([^|()]+)\|([^|()]+)\)\)', r'(\1|\2|\3)'),  # (A|(B|C)) → (A|B|C)
+            (r'\(\(([^|()]+)\|([^|()]+)\)\|([^|()]+)\)', r'(\1|\2|\3)'),  # ((A|B)|C) -> (A|B|C)
+            (r'\(([^|()]+)\|\(([^|()]+)\|([^|()]+)\)\)', r'(\1|\2|\3)'),  # (A|(B|C)) -> (A|B|C)
 
             # Empty alternative simplifications
-            (r'\(\|([a-zA-Z0-9ε])\)', r'\1?'),  # (|R) → R?
+            (r'\(\|([a-zA-Z0-9ε])\)', r'\1?'),  # (|R) -> R?
+            (r'\(\|([^|)]{2,})\)', r'(\1)?'),  # (|R) -> (R)? for multi-character R like (|ab) -> (ab)?
 
             # Optional union simplifications
-            (r'([a-zA-Z0-9ε])\?\|\1(?![*+?])', r'\1?'),  # R?|R → R?
-            (r'([a-zA-Z0-9ε])\|\1\?(?![*+?])', r'\1?'),  # R|R? → R?
+            (r'([a-zA-Z0-9ε])\?\|\1(?![*+?])', r'\1?'),  # R?|R -> R?
+            (r'([a-zA-Z0-9ε])\|\1\?(?![*+?])', r'\1?'),  # R|R? -> R?
 
             # Empty alternative patterns (existing)
-            (r'\(\|([^|)]+)\+\)', r'(\1)*'),  # (|R+) → R*
-            (r'\(ε\|([^|)]+)\+\)', r'(\1)*'),  # (ε|R+) → R*
-            (r'\(([^|)]+)\+\|ε\)', r'(\1)*'),  # (R+|ε) → R*
-            (r'\(\|([^|)]+)\?\)', r'(\1)?'),  # (|R?) → R?
-            (r'\(ε\|([^|)]+)\?\)', r'(\1)?'),  # (ε|R?) → R?
-            (r'\(([^|)]+)\?\|ε\)', r'(\1)?'),  # (R?|ε) → R?
+            (r'\(\|(.+?)\+\)',  r'(\1)*'),  # (|R+) -> R*
+            (r'\(ε\|(.+?)\+\)', r'(\1)*'),  # (ε|R+) -> R*
+            (r'\((.+?)\+\|ε\)', r'(\1)*'),  # (R+|ε) -> R*
+            (r'\(\|([^|)]+)\?\)', r'(\1)?'),  # (|R?) -> R?
+            (r'\(ε\|([^|)]+)\?\)', r'(\1)?'),  # (ε|R?) -> R?
+            (r'\(([^|)]+)\?\|ε\)', r'(\1)?'),  # (R?|ε) -> R?
+
+            # (ε|R) -> R?
+            (r'\(ε\|(.+?)\)', r'(\1)?'),  # ε first
+            (r'\((.+?)\|ε\)', r'(\1)?'),  # ε last
+            (r'\(\|(.+?)\)', r'(\1)?'),  # shorthand (|R)
 
             # Multi-character empty alternative
-            (r'\(\|\(([^)]+)\)\+\)', r'(\1)*'),  # (|(R)+) → R*
+            (r'\(\|\(([^)]+)\)\+\)', r'(\1)*'),  # (|(R)+) -> R*
 
             # Union simplifications where * already includes empty string
-            (r'\(([^|)]+)\)\*\|\(([^|)]+)\)\+', r'(\1)*|(\2)*'),  # (R)*|(S)+ → (R)*|(S)*
-            (r'\(([^|)]+)\)\+\|\(([^|)]+)\)\*', r'(\1)*|(\2)*'),  # (R)+|(S)* → (R)*|(S)*
-            (r'\(([a-zA-Z0-9]+)\?\|([a-zA-Z0-9]+)\+\1\?\)', r'\2*\1?'),  # (a?|b+a?) → b*a?
+            (r'\(([^|)]+)\)\*\|\(([^|)]+)\)\+', r'(\1)*|(\2)*'),  # (R)*|(S)+ -> (R)*|(S)*
+            (r'\(([^|)]+)\)\+\|\(([^|)]+)\)\*', r'(\1)*|(\2)*'),  # (R)+|(S)* -> (R)*|(S)*
+            (r'\(([a-zA-Z0-9]+)\?\|([a-zA-Z0-9]+)\+\1\?\)', r'\2*\1?'),  # (a?|b+a?) -> b*a?
 
             # Pattern recognition for S*R pattern in unions
-            (r'\(([a-zA-Z0-9])\|([a-zA-Z0-9])\1\|([a-zA-Z0-9]+)\2\1\|\3\+\1\)', r'\2*\1'),  # (a|ba|bba|bbb+a) → b*a
+            (r'\(([a-zA-Z0-9])\|([a-zA-Z0-9])\1\|([a-zA-Z0-9]+)\2\1\|\3\+\1\)', r'\2*\1'),  # (a|ba|bba|bbb+a) -> b*a
+
+            # Union pattern simplifications - (X|YX) → Y?X and (YX|X) -> Y?X
+            (r'\(([^|()]+)\|([^|()]+)\1\)', r'\2?\1'),  # (X|YX) -> Y?X where Y is non-empty
+            (r'\(([^|()]+)([^|()]+)\|\2\)', r'\1?\2'),  # (YX|X) -> Y?X where Y is non-empty
 
             # Parentheses removal for single characters
-            (r'\(([^|*+?()∅ε])\)\*', r'\1*'),  # (a)* → a*
-            (r'\(([^|*+?()∅ε])\)\+', r'\1+'),  # (a)+ → a+
-            (r'\(([^|*+?()∅ε])\)\?', r'\1?'),  # (a)? → a?
-            (r'\(([^|*+?()∅ε])\)', r'\1'),  # (a) → a
+            (r'\(([^|*+?()∅ε])\)\*', r'\1*'),  # (a)* -> a*
+            (r'\(([^|*+?()∅ε])\)\+', r'\1+'),  # (a)+ -> a+
+            (r'\(([^|*+?()∅ε])\)\?', r'\1?'),  # (a)? -> a?
+            (r'\(([^|*+?()∅ε])\)', r'\1'),  # (a) -> a
 
             # Nested parentheses
-            (r'\(\(([^()]+)\)\)', r'(\1)'),  # ((R)) → (R)
+            (r'\(\(([^()]+)\)\)', r'(\1)'),  # ((R)) -> (R)
 
             # Safe concatenation patterns
-            (r'([a-zA-Z0-9])\1\*', r'\1+'),  # aa* → a+
-            (r'([a-zA-Z0-9]+)\(\1\)\*', r'(\1)+'),  # ba(ba)* → (ba)+
-            (r'([a-zA-Z0-9]+)\(([a-zA-Z0-9]+)\1\)\*\2', r'(\1\2)+'),  # a(ba)*b → (ab)+
+            (r'([a-zA-Z0-9])\1\*', r'\1+'),  # aa* -> a+
+            (r'([a-zA-Z0-9]+)\(\1\)\*', r'(\1)+'),  # ba(ba)* -> (ba)+
+            (r'([a-zA-Z0-9]+)\(([a-zA-Z0-9]+)\1\)\*\2', r'(\1\2)+'),  # a(ba)*b -> (ab)+
+            (r'\(([^()]+?)\)\(\1\)\*', r'(\1)+'), # (R)(R)* -> (R)+
 
             # Duplicate alternatives
-            (r'([^|()]+)\|\1(?![*+?])', r'\1'),  # a|a → a (but not a|a*)
+            (r'(^|\(|\|)([a-zA-Z0-9ε]+)\|\2(?=\)|\||$)', r'\1\2'),  # whole‑alternative duplicate, keep surrounding delimiter
 
             # Basic repetition cleanup
-            (r'([a-zA-Z0-9])\*\*', r'\1*'),  # a** → a*
+            (r'([a-zA-Z0-9])\*\*', r'\1*'),  # a** -> a*
 
             # Epsilon concatenation cleanup
-            (r'ε([^|*+?])', r'\1'),  # εa → a
-            (r'([^|*+?])ε', r'\1'),  # aε → a
+            (r'ε(?=[a-zA-Z0-9(])', ''),  # εa -> a  (only when ‘a’ starts a concat, not a union)
+            (r'(?<=[a-zA-Z0-9)])ε', ''),  # aε -> a  (only when ‘a’ ends a concat, not a union)
         ]
 
         # Apply all simplifications
@@ -541,7 +552,6 @@ def fsa_to_regex(fsa: Dict) -> Dict:
 
         # Handle FSA that became empty after minimisation
         if not minimised_fsa.get('states'):
-            print("minimisation failed!!!")
             result['regex'] = '∅'
             result['valid'] = True
             result['verification'] = {'equivalent': True, 'empty_language': True}
