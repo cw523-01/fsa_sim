@@ -69,7 +69,7 @@ class RegexParser:
             return start, accept
 
         # Check for invalid start patterns
-        if self.regex[0] in ['*', '+']:
+        if self.regex[0] in ['*', '+', '?']:
             raise ValueError(
                 f"Regex cannot start with '{self.regex[0]}' - postfix operators require a preceding element")
 
@@ -86,7 +86,7 @@ class RegexParser:
             self.consume()  # consume '|'
 
             # Check for invalid patterns like "|+" (union followed by postfix operator)
-            if self.peek() in ['*', '+']:
+            if self.peek() in ['*', '+', '?']:
                 raise ValueError(f"Unexpected '{self.peek()}' after '|' at position {self.pos}")
 
             right_start, right_accept = self.parse_union()
@@ -122,11 +122,11 @@ class RegexParser:
         return first_start, first_accept
 
     def parse_postfix(self) -> Tuple[str, str]:
-        """Parse postfix operators (* and +) - highest precedence."""
+        """Parse postfix operators (*, +, ?) - highest precedence."""
         inner_start, inner_accept = self.parse_atom()
 
         # Handle postfix operators
-        while self.peek() in ['*', '+']:
+        while self.peek() in ['*', '+', '?']:
             operator = self.consume()
 
             if operator == '*':
@@ -152,6 +152,17 @@ class RegexParser:
 
                 inner_start, inner_accept = new_start, new_accept
 
+            elif operator == '?':
+                # Thompson construction for optional (zero or one)
+                new_start = self.nfa.new_state()
+                new_accept = self.nfa.new_state()
+
+                self.nfa.add_transition(new_start, '', new_accept)  # bypass (zero occurrences)
+                self.nfa.add_transition(new_start, '', inner_start)  # enter (one occurrence)
+                self.nfa.add_transition(inner_accept, '', new_accept)  # exit
+
+                inner_start, inner_accept = new_start, new_accept
+
         return inner_start, inner_accept
 
     def parse_atom(self) -> Tuple[str, str]:
@@ -174,7 +185,7 @@ class RegexParser:
             self.nfa.add_transition(start, '', accept)
             return start, accept
 
-        elif char and char not in ['|', ')', '*', '+']:
+        elif char and char not in ['|', ')', '*', '+', '?']:
             self.consume()
             # Single character
             start = self.nfa.new_state()
@@ -182,7 +193,7 @@ class RegexParser:
             self.nfa.add_transition(start, char, accept)
             return start, accept
 
-        elif char in ['*', '+']:
+        elif char in ['*', '+', '?']:
             # Invalid: postfix operators at start or with no preceding element
             raise ValueError(
                 f"Unexpected '{char}' at position {self.pos} - postfix operators require a preceding element")
@@ -332,10 +343,15 @@ def simplify_regex(regex: str) -> str:
     """
     Simplify a regular expression by removing redundant patterns and applying optimizations.
 
-    Handles advanced cases like:
+    Handles some advanced cases like:
     - (|ba+) → (ba)*  (empty alternative with R+ becomes R*)
     - a(ba)*b → (ab)+  (alternating sequence pattern)
     - R*|R+ → R*      (star subsumes plus in unions)
+    - R?? → R?        (double optional becomes single optional)
+    - (|a) → a?       (empty alternative becomes optional)
+    - a?|a → a?       (optional union with itself)
+    - ba(ba)* → (ba)+ (multi-character repetition)
+    - (R)*|(S)+ → (R)*|(S)* (union with star and plus)
     """
     if not regex:
         return "ε"
@@ -358,44 +374,79 @@ def simplify_regex(regex: str) -> str:
             # Basic cleanup
             (r'\(\)\*', ''),  # ()* → delete
             (r'\(\)\+', ''),  # ()+ → delete
+            (r'\(\)\?', ''),  # ()? → delete
             (r'\(\)', ''),  # () → delete
 
             # Epsilon handling
             (r'ε\*', 'ε'),  # ε* → ε
             (r'ε\+', 'ε'),  # ε+ → ε
-            (r'ε(?![*+])', ''),  # ε → delete
+            (r'ε\?', 'ε'),  # ε? → ε
+            (r'ε(?![*+?])', ''),  # ε → delete
 
             # Multiple operators
             (r'\*\*+', '*'),  # collapse multiple stars
             (r'\+\++', '+'),  # collapse multiple pluses
+            (r'\?\?+', '?'),  # collapse multiple question marks
             (r'\*\+', '*'),  # *+ → * (star dominates plus)
             (r'\+\*', '*'),  # +* → * (star dominates plus)
+            (r'\*\?', '*'),  # *? → * (star dominates optional)
+            (r'\?\*', '*'),  # ?* → * (star dominates optional)
+            (r'\+\?', '*'),  # +? → * (plus optional becomes star)
+            (r'\?\+', '*'),  # ?+ → * (optional plus becomes star)
 
-            # Empty alternative patterns
+            # Union flattening
+            (r'\(\(([^|()]+)\|([^|()]+)\)\|([^|()]+)\)', r'(\1|\2|\3)'),  # ((A|B)|C) → (A|B|C)
+            (r'\(([^|()]+)\|\(([^|()]+)\|([^|()]+)\)\)', r'(\1|\2|\3)'),  # (A|(B|C)) → (A|B|C)
+
+            # Empty alternative simplifications
+            (r'\(\|([a-zA-Z0-9ε])\)', r'\1?'),  # (|R) → R?
+
+            # Optional union simplifications
+            (r'([a-zA-Z0-9ε])\?\|\1(?![*+?])', r'\1?'),  # R?|R → R?
+            (r'([a-zA-Z0-9ε])\|\1\?(?![*+?])', r'\1?'),  # R|R? → R?
+
+            # Empty alternative patterns (existing)
             (r'\(\|([^|)]+)\+\)', r'(\1)*'),  # (|R+) → R*
             (r'\(ε\|([^|)]+)\+\)', r'(\1)*'),  # (ε|R+) → R*
             (r'\(([^|)]+)\+\|ε\)', r'(\1)*'),  # (R+|ε) → R*
+            (r'\(\|([^|)]+)\?\)', r'(\1)?'),  # (|R?) → R?
+            (r'\(ε\|([^|)]+)\?\)', r'(\1)?'),  # (ε|R?) → R?
+            (r'\(([^|)]+)\?\|ε\)', r'(\1)?'),  # (R?|ε) → R?
+
+            # Multi-character empty alternative
+            (r'\(\|\(([^)]+)\)\+\)', r'(\1)*'),  # (|(R)+) → R*
+
+            # Union simplifications where * already includes empty string
+            (r'\(([^|)]+)\)\*\|\(([^|)]+)\)\+', r'(\1)*|(\2)*'),  # (R)*|(S)+ → (R)*|(S)*
+            (r'\(([^|)]+)\)\+\|\(([^|)]+)\)\*', r'(\1)*|(\2)*'),  # (R)+|(S)* → (R)*|(S)*
+            (r'\(([a-zA-Z0-9]+)\?\|([a-zA-Z0-9]+)\+\1\?\)', r'\2*\1?'),  # (a?|b+a?) → b*a?
+
+            # Pattern recognition for S*R pattern in unions
+            (r'\(([a-zA-Z0-9])\|([a-zA-Z0-9])\1\|([a-zA-Z0-9]+)\2\1\|\3\+\1\)', r'\2*\1'),  # (a|ba|bba|bbb+a) → b*a
 
             # Parentheses removal for single characters
-            (r'\(([^|*+()∅ε])\)\*', r'\1*'),  # (a)* → a*
-            (r'\(([^|*+()∅ε])\)\+', r'\1+'),  # (a)+ → a+
-            (r'\(([^|*+()∅ε])\)', r'\1'),  # (a) → a
+            (r'\(([^|*+?()∅ε])\)\*', r'\1*'),  # (a)* → a*
+            (r'\(([^|*+?()∅ε])\)\+', r'\1+'),  # (a)+ → a+
+            (r'\(([^|*+?()∅ε])\)\?', r'\1?'),  # (a)? → a?
+            (r'\(([^|*+?()∅ε])\)', r'\1'),  # (a) → a
 
             # Nested parentheses
             (r'\(\(([^()]+)\)\)', r'(\1)'),  # ((R)) → (R)
 
             # Safe concatenation patterns
             (r'([a-zA-Z0-9])\1\*', r'\1+'),  # aa* → a+
+            (r'([a-zA-Z0-9]+)\(\1\)\*', r'(\1)+'),  # ba(ba)* → (ba)+
+            (r'([a-zA-Z0-9]+)\(([a-zA-Z0-9]+)\1\)\*\2', r'(\1\2)+'),  # a(ba)*b → (ab)+
 
             # Duplicate alternatives
-            (r'([^|()]+)\|\1(?![*+])', r'\1'),  # a|a → a (but not a|a*)
+            (r'([^|()]+)\|\1(?![*+?])', r'\1'),  # a|a → a (but not a|a*)
 
             # Basic repetition cleanup
             (r'([a-zA-Z0-9])\*\*', r'\1*'),  # a** → a*
 
             # Epsilon concatenation cleanup
-            (r'ε([^|*+])', r'\1'),  # εa → a
-            (r'([^|*+])ε', r'\1'),  # aε → a
+            (r'ε([^|*+?])', r'\1'),  # εa → a
+            (r'([^|*+?])ε', r'\1'),  # aε → a
         ]
 
         # Apply all simplifications
@@ -586,19 +637,20 @@ def regex_to_epsilon_nfa(regex: str) -> Dict:
             - Concatenation: implicit (e.g., "ab")
             - Kleene star: * (e.g., "a*")
             - Plus: + (e.g., "a+") - one or more
+            - Optional: ? (e.g., "a?") - zero or one
             - Parentheses: () for grouping
-            - Consecutive postfix operators: *, + (e.g., "a*+", "a+*")
+            - Consecutive postfix operators: *, +, ? (e.g., "a*+", "a+*", "a??")
               Note: Consecutive operators are mathematically valid but may be redundant
 
     Returns:
         Dict: An ε-NFA in the standard FSA format
 
     Examples:
-        regex_to_epsilon_nfa("a+")     # One or more 'a's
-        regex_to_epsilon_nfa("(ab)+")  # One or more "ab" sequences
-        regex_to_epsilon_nfa("a+b*")   # One or more 'a's followed by zero or more 'b's
-        regex_to_epsilon_nfa("a*+")    # Zero or more 'a's (redundant but valid)
-        regex_to_epsilon_nfa("a+*")    # Zero or more 'a's (semantically equivalent to a*)
+        regex_to_epsilon_nfa("a?")     # Zero or one 'a'
+        regex_to_epsilon_nfa("(ab)?")  # Optional "ab" sequence
+        regex_to_epsilon_nfa("a?b*")   # Optional 'a' followed by zero or more 'b's
+        regex_to_epsilon_nfa("a+?")    # One or more 'a's, optionally (equivalent to a*)
+        regex_to_epsilon_nfa("a??")    # Zero or one 'a' (redundant but valid)
     """
     nfa_builder = NFABuilder()
     parser = RegexParser(regex, nfa_builder)

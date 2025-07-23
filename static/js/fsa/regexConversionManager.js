@@ -323,7 +323,7 @@ class RegexConversionManager {
                     <label for="regex-input-field">Regular Expression:</label>
                     <input type="text" id="regex-input-field" placeholder="e.g., (a|b)*abb" maxlength="200">
                     <div class="input-help">
-                        Supported operators: | (union), * (Kleene star), + (one or more), () (grouping), ε (epsilon)
+                        Supported operators: | (union), * (Kleene star), + (one or more), ? (optional/zero or one), () (grouping), ε (epsilon)
                     </div>
                     <div class="input-error" id="regex-input-error">Please enter a valid regular expression</div>
                 </div>
@@ -335,10 +335,12 @@ class RegexConversionManager {
                             <option value="">Choose an example...</option>
                             <option value="a*">a* - Zero or more 'a's</option>
                             <option value="(a|b)+">&#40;a|b&#41;+ - One or more 'a' or 'b'</option>
+                            <option value="a?b">a?b - Optional 'a' followed by 'b'</option>
+                            <option value="(ab)?">&#40;ab&#41;? - Optional "ab" sequence</option>
                             <option value="a*b+">a*b+ - Zero or more 'a's, then one or more 'b's</option>
                             <option value="(ab)*|(ba)*">&#40;ab&#41;*|&#40;ba&#41;* - Zero or more "ab" or zero or more "ba"</option>
                             <option value="(a|b)*abb">&#40;a|b&#41;*abb - Strings ending in "abb"</option>
-                            <option value="a+b*">a+b* - One or more 'a's, then zero or more 'b's</option>
+                            <option value="a+b*c?">a+b*c? - One or more 'a's, zero or more 'b's, optional 'c'</option>
                         </select>
                     </div>
                 </div>

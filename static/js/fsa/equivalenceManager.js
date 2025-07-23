@@ -276,7 +276,7 @@ class EquivalenceManager {
                             <label for="regex-input">Regular Expression:</label>
                             <input type="text" id="regex-input" placeholder="e.g., (a|b)*abb" maxlength="200" class="regex-input-field">
                             <div class="input-help">
-                                Supported operators: | (union), * (Kleene star), + (one or more), () (grouping), ε (epsilon)
+                                Supported operators: | (union), * (Kleene star), + (one or more), ? (optional/zero or one), () (grouping), ε (epsilon)
                             </div>
                             <div class="input-error" id="regex-input-error">Please enter a regular expression</div>
                         </div>
@@ -313,11 +313,17 @@ class EquivalenceManager {
                     <div class="form-group">
                         <label for="regex1-input">First Regular Expression:</label>
                         <input type="text" id="regex1-input" placeholder="e.g., (a|b)*" maxlength="200" class="regex-input-field">
+                        <div class="input-help">
+                            Supported operators: | (union), * (Kleene star), + (one or more), ? (optional/zero or one), () (grouping), ε (epsilon)
+                        </div>
                         <div class="input-error" id="regex1-input-error">Please enter the first regular expression</div>
                     </div>
                     <div class="form-group">
                         <label for="regex2-input">Second Regular Expression:</label>
                         <input type="text" id="regex2-input" placeholder="e.g., (a+b+)*" maxlength="200" class="regex-input-field">
+                        <div class="input-help">
+                            Supported operators: | (union), * (Kleene star), + (one or more), ? (optional/zero or one), () (grouping), ε (epsilon)
+                        </div>
                         <div class="input-error" id="regex2-input-error">Please enter the second regular expression</div>
                     </div>
                 `,
