@@ -382,7 +382,6 @@ def simplify_regex(regex: str) -> str:
             (r'ε\*', 'ε'),  # ε* -> ε
             (r'ε\+', 'ε'),  # ε+ -> ε
             (r'ε\?', 'ε'),  # ε? -> ε
-            #(r'ε(?![*+?])', ''),  # ε -> delete
 
             # Multiple operators
             (r'\*\*+', '*'),  # collapse multiple stars
@@ -467,6 +466,19 @@ def simplify_regex(regex: str) -> str:
             try:
                 new_regex = re.sub(pattern, replacement, regex)
                 regex = new_regex
+            except re.error:
+                continue
+
+        # Final step: Add epsilon symbols back to empty alternatives
+        # This makes the regex more explicit by showing epsilon transitions
+        final_epsilon_additions = [
+            (r'\(\|([^|)]+)\)', r'(ε|\1)'),  # (|R) -> (ε|R)
+            (r'\(([^|()]+)\|\)', r'(\1|ε)'),  # (R|) -> (R|ε)
+        ]
+
+        for pattern, replacement in final_epsilon_additions:
+            try:
+                regex = re.sub(pattern, replacement, regex)
             except re.error:
                 continue
 

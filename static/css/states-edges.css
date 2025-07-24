@@ -141,7 +141,6 @@
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-color);
     font-size: var(--font-size-sm);
-    margin-top: -20px;
 }
 
 /* JSPlumb Connection Styles */
