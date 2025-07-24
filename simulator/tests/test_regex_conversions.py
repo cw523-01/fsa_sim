@@ -844,7 +844,11 @@ class TestRegexConversions(TestCase):
             'ab',
             '(a|b)*',
             'a*b*',
-            'a+b+'
+            'a+b+',
+            'a?b',
+            '(ab)?',
+            '(ab)*|(ba)*',
+            'a+b*c?'
         ]
 
         for original_regex in original_regexes:

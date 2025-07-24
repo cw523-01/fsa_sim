@@ -169,31 +169,40 @@ class RegexConversionManager {
             
             <div class="file-operation-content">
                 <div class="scrollable-content">
+                    ${verification.equivalent === true ? `
                     <div class="regex-result-section">
                         <h4>Generated Regular Expression</h4>
-                        <div class="regex-display">
+                        <div class="regex-display scrollable-regex">
                             <code class="regex-code">${this.escapeHtml(regex)}</code>
                             <button class="copy-regex-btn" onclick="regexConversionManager.copyRegexToClipboard('${this.escapeHtml(regex)}')">
                                 Copy
                             </button>
                         </div>
+                        <div class="verification-status verified">
+                            ✅ The generated REGEX has been verified to be equivalent to the original FSA
+                        </div>
                     </div>
-    
-                    ${verification.equivalent !== undefined ? `
-                    <div class="verification-section">
-                        <h4>Verification</h4>
-                        <div class="verification-status ${verification.equivalent ? 'verified' : 'unverified'}">
-                            ${verification.equivalent ? 
-                                '✅ The generated REGEX has been verified to be equivalent to the original FSA' : 
-                                '⚠️ Verification could not be completed'}
+                    ` : `
+                    <div class="conversion-failed-section">
+                        <h4>Conversion Result</h4>
+                        <div class="verification-status unverified">
+                            ⚠️ The system could not generate a verified regular expression for your FSA
                         </div>
                         ${verification.error ? `
                         <div class="verification-error">
-                            <small>Verification error: ${verification.error}</small>
+                            <small>Technical details: ${verification.error}</small>
                         </div>
                         ` : ''}
+                        <div class="conversion-failed-explanation">
+                            <p>This may happen with very complex FSAs or due to limitations in the conversion algorithm. You may want to try:</p>
+                            <ul>
+                                <li>Simplifying your FSA structure</li>
+                                <li>Checking for unreachable states</li>
+                                <li>Using manual conversion techniques</li>
+                            </ul>
+                        </div>
                     </div>
-                    ` : ''}
+                    `}
     
                     <div class="important-notice">
                         <div class="notice-header">
@@ -217,10 +226,12 @@ class RegexConversionManager {
                 <button class="file-action-btn cancel" onclick="regexConversionManager.hideFSAToRegexResultModal()">
                     Close
                 </button>
+                ${verification.equivalent === true ? `
                 <button class="file-action-btn primary" onclick="regexConversionManager.copyRegexToClipboard('${this.escapeHtml(regex)}')"
                         style="background: ${config.buttonColor};">
                     Copy REGEX
                 </button>
+                ` : ''}
             </div>
         `;
 

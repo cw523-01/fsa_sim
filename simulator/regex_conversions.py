@@ -366,6 +366,7 @@ def simplify_regex(regex: str) -> str:
     max_iterations = 100  # Prevent infinite loops
 
     while prev_regex != regex and iterations < max_iterations:
+        print(regex)
         prev_regex = regex
         iterations += 1
 
@@ -415,9 +416,9 @@ def simplify_regex(regex: str) -> str:
             (r'\(([^|)]+)\?\|ε\)', r'(\1)?'),  # (R?|ε) -> R?
 
             # (ε|R) -> R?
-            (r'\(ε\|(.+?)\)', r'(\1)?'),  # ε first
-            (r'\((.+?)\|ε\)', r'(\1)?'),  # ε last
-            (r'\(\|(.+?)\)', r'(\1)?'),  # shorthand (|R)
+            (r'\(ε\|((?:[^|()]|\([^)]*\))*)\)', r'(\1)?'),    # (ε|R) -> (R)? - handles nested parens
+            (r'\(((?:[^|()]|\([^)]*\))*)\|ε\)', r'(\1)?'),    # (R|ε) -> (R)? - handles nested parens
+            (r'\(\|([^|]+)\)', r'(\1)?'),  # shorthand (|R)
 
             # Multi-character empty alternative
             (r'\(\|\(([^)]+)\)\+\)', r'(\1)*'),  # (|(R)+) -> R*
@@ -426,12 +427,13 @@ def simplify_regex(regex: str) -> str:
             (r'\(([^|)]+)\)\*\|\(([^|)]+)\)\+', r'(\1)*|(\2)*'),  # (R)*|(S)+ -> (R)*|(S)*
             (r'\(([^|)]+)\)\+\|\(([^|)]+)\)\*', r'(\1)*|(\2)*'),  # (R)+|(S)* -> (R)*|(S)*
             (r'\(([a-zA-Z0-9]+)\?\|([a-zA-Z0-9]+)\+\1\?\)', r'\2*\1?'),  # (a?|b+a?) -> b*a?
+            (r'\(\(([^|()]+)\)\+\)\?\|\(([^|()]+)\)\+', r'(\1)*|(\2)*'), # ((X)+)?|(Y)+ -> (X)*|(Y)*
 
             # Pattern recognition for S*R pattern in unions
             (r'\(([a-zA-Z0-9])\|([a-zA-Z0-9])\1\|([a-zA-Z0-9]+)\2\1\|\3\+\1\)', r'\2*\1'),  # (a|ba|bba|bbb+a) -> b*a
 
             # Union pattern simplifications - (X|YX) → Y?X and (YX|X) -> Y?X
-            (r'\(([^|()]+)\|([^|()]+)\1\)', r'\2?\1'),  # (X|YX) -> Y?X where Y is non-empty
+            (r'\(([^|()?\ε*+]+)\|([^|()]+)\1\)', r'\2?\1'),  # (X|YX) -> Y?X where X doesn't contain * ? or ε
             (r'\(([^|()]+)([^|()]+)\|\2\)', r'\1?\2'),  # (YX|X) -> Y?X where Y is non-empty
 
             # Parentheses removal for single characters
@@ -456,8 +458,8 @@ def simplify_regex(regex: str) -> str:
             (r'([a-zA-Z0-9])\*\*', r'\1*'),  # a** -> a*
 
             # Epsilon concatenation cleanup
-            (r'ε(?=[a-zA-Z0-9(])', ''),  # εa -> a  (only when ‘a’ starts a concat, not a union)
-            (r'(?<=[a-zA-Z0-9)])ε', ''),  # aε -> a  (only when ‘a’ ends a concat, not a union)
+            (r'(?<![|(])ε(?=[a-zA-Z0-9(])', ''),  # εa -> a (but NOT when ε follows | or ()
+            (r'(?<=[a-zA-Z0-9)])ε(?![|)])', ''),  # aε -> a (but NOT when ε precedes | or ))
         ]
 
         # Apply all simplifications
@@ -515,6 +517,7 @@ def eliminate_states(gnfa: GNFA) -> str:
 def fsa_to_regex(fsa: Dict) -> Dict:
     """
     Convert a finite state automaton to a regular expression.
+    Now with improved verification that falls back to original regex if simplification fails.
     """
     result = {
         'regex': '',
@@ -562,6 +565,7 @@ def fsa_to_regex(fsa: Dict) -> Dict:
             state = minimised_fsa['states'][0]
             result['minimized_states'] = 1
 
+            # Build original regex
             if state in minimised_fsa.get('acceptingStates', []):
                 # Check for self-loops
                 self_loop_symbols = []
@@ -572,67 +576,161 @@ def fsa_to_regex(fsa: Dict) -> Dict:
 
                 if self_loop_symbols:
                     if len(self_loop_symbols) == 1:
-                        result['regex'] = f"({self_loop_symbols[0]})*"
+                        original_regex = f"({self_loop_symbols[0]})*"
                     else:
                         union = '|'.join(self_loop_symbols)
-                        result['regex'] = f"({union})*"
+                        original_regex = f"({union})*"
                 else:
-                    result['regex'] = 'ε'
+                    original_regex = 'ε'
             else:
-                result['regex'] = '∅'
+                original_regex = '∅'
 
+            # Create simplified version
+            simplified_regex = simplify_regex(original_regex)
+
+            # Verify with fallback strategy
+            final_regex, verification_result = verify(
+                fsa, original_regex, simplified_regex
+            )
+
+            result['regex'] = final_regex
             result['valid'] = True
-
-            # Verify the result
-            try:
-                converted_back = regex_to_epsilon_nfa(result['regex'])
-                is_equivalent, equiv_details = are_automata_equivalent(fsa, converted_back)
-                result['verification'] = {
-                    'equivalent': is_equivalent,
-                    'details': equiv_details
-                }
-            except Exception as e:
-                result['verification'] = {
-                    'equivalent': False,
-                    'error': str(e)
-                }
-
-            # Simplify the REGEX before returning
-            result['regex'] = simplify_regex(result['regex'])
+            result['verification'] = verification_result
 
             return result
 
         # Step 4: Convert to GNFA
         gnfa = fsa_to_gnfa(minimised_fsa)
 
-        # Step 5: Eliminate states to get regex
-        regex = eliminate_states(gnfa)
+        # Step 5: Eliminate states to get original regex
+        original_regex = eliminate_states(gnfa)
 
-        # Step 6: Final simplification
-        regex = simplify_regex(regex)
+        # Step 6: Create simplified version
+        simplified_regex = simplify_regex(original_regex)
 
-        result['regex'] = regex
+        # Step 7: Verify with fallback strategy
+        final_regex, verification_result = verify(
+            fsa, original_regex, simplified_regex
+        )
+
+        result['regex'] = final_regex
         result['valid'] = True
-
-        # Step 7: Verify by converting back to NFA and checking equivalence
-        try:
-            converted_back = regex_to_epsilon_nfa(result['regex'])
-            is_equivalent, equiv_details = are_automata_equivalent(fsa, converted_back)
-            result['verification'] = {
-                'equivalent': is_equivalent,
-                'details': equiv_details
-            }
-        except Exception as e:
-            result['verification'] = {
-                'equivalent': False,
-                'error': f"Failed to verify: {str(e)}"
-            }
+        result['verification'] = verification_result
 
         return result
 
     except Exception as e:
         result['error'] = str(e)
         return result
+
+
+def verify(fsa: Dict, original_regex: str, simplified_regex: str) -> tuple:
+    """
+    Verify regex conversion with fallback strategy.
+
+    Args:
+        fsa: Original FSA
+        original_regex: Regex before simplification
+        simplified_regex: Regex after simplification
+
+    Returns:
+        tuple: (final_regex, verification_dict)
+    """
+
+    # Try to verify simplified regex first
+    try:
+        converted_back_simplified = regex_to_epsilon_nfa(simplified_regex)
+        is_equivalent_simplified, equiv_details_simplified = are_automata_equivalent(
+            fsa, converted_back_simplified
+        )
+
+        if is_equivalent_simplified:
+            # Simplified version is correct, use it
+            return simplified_regex, {
+                'equivalent': True,
+                'details': equiv_details_simplified,
+                'used_simplified': True,
+                'strategy': 'simplified_passed'
+            }
+
+    except Exception as e_simplified:
+        # Simplified regex failed to convert to NFA
+        pass
+
+    # Simplified failed, try original regex
+    try:
+        converted_back_original = regex_to_epsilon_nfa(original_regex)
+        is_equivalent_original, equiv_details_original = are_automata_equivalent(
+            fsa, converted_back_original
+        )
+
+        if is_equivalent_original:
+            # Original passes verification, use it instead of simplified
+            verification_result = {
+                'equivalent': True,
+                'details': equiv_details_original,
+                'used_simplified': False,
+                'strategy': 'fallback_to_original',
+                'simplification_issue': True
+            }
+
+            # Add details about why we fell back
+            try:
+                converted_back_simplified = regex_to_epsilon_nfa(simplified_regex)
+                is_equivalent_simplified, equiv_details_simplified = are_automata_equivalent(
+                    fsa, converted_back_simplified
+                )
+                verification_result['simplified_verification'] = {
+                    'equivalent': is_equivalent_simplified,
+                    'details': equiv_details_simplified
+                }
+            except Exception as e_simplified:
+                verification_result['simplified_conversion_error'] = str(e_simplified)
+
+            return original_regex, verification_result
+        else:
+            # Both failed equivalence check
+            verification_result = {
+                'equivalent': False,
+                'strategy': 'both_failed_equivalence',
+                'used_simplified': False,
+                'original_details': equiv_details_original
+            }
+
+            # Try to add simplified details if possible
+            try:
+                converted_back_simplified = regex_to_epsilon_nfa(simplified_regex)
+                is_equivalent_simplified, equiv_details_simplified = are_automata_equivalent(
+                    fsa, converted_back_simplified
+                )
+                verification_result['simplified_details'] = equiv_details_simplified
+            except Exception as e_simplified:
+                verification_result['simplified_conversion_error'] = str(e_simplified)
+
+            # Return simplified since both failed (keep existing behavior)
+            return simplified_regex, verification_result
+
+    except Exception as e_original:
+        # Original regex also failed to convert
+        verification_result = {
+            'equivalent': False,
+            'strategy': 'both_failed_conversion',
+            'used_simplified': False,
+            'original_conversion_error': str(e_original)
+        }
+
+        # Try to add simplified error details
+        try:
+            converted_back_simplified = regex_to_epsilon_nfa(simplified_regex)
+            is_equivalent_simplified, equiv_details_simplified = are_automata_equivalent(
+                fsa, converted_back_simplified
+            )
+            verification_result['simplified_details'] = equiv_details_simplified
+        except Exception as e_simplified:
+            verification_result['simplified_conversion_error'] = str(e_simplified)
+
+        # Return simplified since both failed
+        return simplified_regex, verification_result
 
 
 def regex_to_epsilon_nfa(regex: str) -> Dict:
