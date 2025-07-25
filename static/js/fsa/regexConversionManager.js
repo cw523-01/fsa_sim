@@ -111,6 +111,9 @@ class RegexConversionManager {
             return;
         }
 
+        // Show loading modal immediately
+        this.showFSAToRegexLoadingModal();
+
         // Convert FSA and call backend
         try {
             const fsa = convertFSAToBackendFormat(this.jsPlumbInstance);
@@ -129,14 +132,265 @@ class RegexConversionManager {
 
             const result = await response.json();
 
-            // Show result in modal
-            this.showFSAToRegexResultModal(result);
+            // Update modal with results
+            this.updateFSAToRegexResultModal(result);
 
         } catch (error) {
             console.error('FSA to REGEX conversion error:', error);
-            notificationManager.showError(`${this.fsaToRegexConfig.name} Failed`, error.message);
+
+            // Update modal with error state
+            this.updateFSAToRegexErrorModal(error.message);
         }
     }
+
+    /**
+         * Show FSA to REGEX loading modal
+         */
+        showFSAToRegexLoadingModal() {
+            const config = this.fsaToRegexConfig;
+
+            // Remove any existing popup
+            const existingPopup = document.getElementById('fsa-to-regex-result-popup');
+            if (existingPopup) existingPopup.remove();
+
+            const popup = document.createElement('div');
+            popup.id = 'fsa-to-regex-result-popup';
+            popup.className = `file-operation-popup ${config.popupClass}`;
+
+            popup.innerHTML = `
+                <div class="popup-header" style="background: linear-gradient(135deg, ${config.headerGradient});">
+                    <div class="popup-title">
+                        <div class="popup-icon">
+                            <img src="static/img/alert.png" alt="Processing" style="width: 20px; height: 20px;">
+                        </div>
+                        <span>FSA to REGEX Conversion</span>
+                    </div>
+                    <button class="popup-close" onclick="regexConversionManager.hideFSAToRegexResultModal()">×</button>
+                </div>
+                
+                <div class="file-operation-content">
+                    <div class="scrollable-content">
+                        <div class="conversion-loading-section">
+                            <div class="loading-header">
+                                <div class="loading-spinner"></div>
+                                <h4>Converting FSA to Regular Expression...</h4>
+                            </div>
+                            <div class="loading-description">
+                                <p>Please wait while we generate the regular expression from your FSA. This process may take a moment for complex automata.</p>
+                            </div>
+                            <div class="loading-progress">
+                                <div class="progress-steps">
+                                    <div class="progress-step active">
+                                        <div class="step-icon">1</div>
+                                        <div class="step-text">Analyzing FSA structure</div>
+                                    </div>
+                                    <div class="progress-step active">
+                                        <div class="step-icon">2</div>
+                                        <div class="step-text">Applying conversion algorithm</div>
+                                    </div>
+                                    <div class="progress-step processing">
+                                        <div class="step-icon">
+                                            <div class="step-spinner"></div>
+                                        </div>
+                                        <div class="step-text">Generating regular expression</div>
+                                    </div>
+                                    <div class="progress-step">
+                                        <div class="step-icon">4</div>
+                                        <div class="step-text">Verifying result</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="file-operation-actions">
+                    <button class="file-action-btn cancel" onclick="regexConversionManager.hideFSAToRegexResultModal()">
+                        Cancel
+                    </button>
+                </div>
+            `;
+
+            const canvas = document.getElementById('fsa-canvas');
+            if (canvas) {
+                canvas.appendChild(popup);
+
+                // Trigger show animation
+                setTimeout(() => {
+                    popup.classList.add('show');
+                }, 100);
+            }
+        }
+
+        /**
+         * Update modal with conversion results
+         */
+        updateFSAToRegexResultModal(result) {
+            const popup = document.getElementById('fsa-to-regex-result-popup');
+            if (!popup) return;
+
+            const config = this.fsaToRegexConfig;
+            const regex = result.regex || '∅';
+            const stats = result.statistics || {};
+            const verification = result.verification || {};
+
+            // Update the content
+            const contentDiv = popup.querySelector('.scrollable-content');
+            if (contentDiv) {
+                contentDiv.innerHTML = `
+                    ${verification.equivalent === true ? `
+                    <div class="regex-result-section">
+                        <h4>Generated Regular Expression</h4>
+                        <div class="regex-display scrollable-regex">
+                            <code class="regex-code">${this.escapeHtml(regex)}</code>
+                            <button class="copy-regex-btn" onclick="regexConversionManager.copyRegexToClipboard('${this.escapeHtml(regex)}')">
+                                Copy
+                            </button>
+                        </div>
+                        <div class="verification-status verified">
+                            ✅ The generated REGEX has been verified to be equivalent to the original FSA
+                        </div>
+                    </div>
+                    ` : `
+                    <div class="conversion-failed-section">
+                        <h4>Conversion Result</h4>
+                        <div class="verification-status unverified">
+                            ⚠️ The system could not generate a verified regular expression for your FSA
+                        </div>
+                        ${verification.error ? `
+                        <div class="verification-error">
+                            <small>Technical details: ${verification.error}</small>
+                        </div>
+                        ` : ''}
+                        <div class="conversion-failed-explanation">
+                            <p>This may happen with very complex FSAs or due to limitations in the conversion algorithm. You may want to try:</p>
+                            <ul>
+                                <li>Simplifying your FSA structure</li>
+                                <li>Checking for unreachable states</li>
+                                <li>Using manual conversion techniques</li>
+                            </ul>
+                        </div>
+                    </div>
+                    `}
+        
+                    <div class="important-notice">
+                        <div class="notice-header">
+                            <span class="notice-icon">ℹ️</span>
+                            <span class="notice-title">Important Notice</span>
+                        </div>
+                        <div class="notice-content">
+                            <p><strong>The generated regular expression may not be the smallest or most optimal possible.</strong></p>
+                            <p>Regular expression minimisation is a complex problem, and the conversion algorithm prioritises correctness over brevity. The resulting expression is guaranteed to be equivalent to your FSA, but there may exist shorter equivalent expressions.</p>
+                            <ul class="notice-points">
+                                <li>The REGEX is functionally correct and equivalent to your FSA</li>
+                                <li>Manual optimisation may be possible for shorter expressions</li>
+                                <li>Complex FSAs may produce verbose regular expressions</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Update the actions
+            const actionsDiv = popup.querySelector('.file-operation-actions');
+            if (actionsDiv) {
+                actionsDiv.innerHTML = `
+                    <button class="file-action-btn cancel" onclick="regexConversionManager.hideFSAToRegexResultModal()">
+                        Close
+                    </button>
+                    ${verification.equivalent === true ? `
+                    <button class="file-action-btn primary" onclick="regexConversionManager.copyRegexToClipboard('${this.escapeHtml(regex)}')"
+                            style="background: ${config.buttonColor};">
+                        Copy REGEX
+                    </button>
+                    ` : ''}
+                `;
+            }
+
+            // Add success animation to the progress steps
+            this.animateProgressStepsComplete();
+        }
+
+        /**
+         * Update modal with error state
+         */
+        updateFSAToRegexErrorModal(errorMessage) {
+            const popup = document.getElementById('fsa-to-regex-result-popup');
+            if (!popup) return;
+
+            // Update the content with error
+            const contentDiv = popup.querySelector('.scrollable-content');
+            if (contentDiv) {
+                contentDiv.innerHTML = `
+                    <div class="conversion-error-section">
+                        <div class="error-header">
+                            <div class="error-icon">❌</div>
+                            <h4>Conversion Failed</h4>
+                        </div>
+                        <div class="error-description">
+                            <p>An error occurred while converting your FSA to a regular expression:</p>
+                            <div class="error-message">
+                                ${this.escapeHtml(errorMessage)}
+                            </div>
+                        </div>
+                        <div class="error-suggestions">
+                            <h5>Suggestions:</h5>
+                            <ul>
+                                <li>Check that your FSA has a valid starting state</li>
+                                <li>Ensure all states are reachable from the starting state</li>
+                                <li>Verify that transitions are properly defined</li>
+                                <li>Try simplifying your FSA structure</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Update the actions to only show close
+            const actionsDiv = popup.querySelector('.file-operation-actions');
+            if (actionsDiv) {
+                actionsDiv.innerHTML = `
+                    <button class="file-action-btn cancel" onclick="regexConversionManager.hideFSAToRegexResultModal()">
+                        Close
+                    </button>
+                `;
+            }
+
+            // Add error animation to the progress steps
+            this.animateProgressStepsError();
+        }
+
+        /**
+         * Animate progress steps to completion
+         */
+        animateProgressStepsComplete() {
+            const steps = document.querySelectorAll('.progress-step');
+            if (steps.length >= 4) {
+                // Complete step 3
+                setTimeout(() => {
+                    steps[2].classList.remove('processing');
+                    steps[2].classList.add('completed');
+                }, 500);
+
+                // Complete step 4
+                setTimeout(() => {
+                    steps[3].classList.add('active', 'completed');
+                }, 1000);
+            }
+        }
+
+        /**
+         * Animate progress steps to error state
+         */
+        animateProgressStepsError() {
+            const steps = document.querySelectorAll('.progress-step');
+            if (steps.length >= 3) {
+                setTimeout(() => {
+                    steps[2].classList.remove('processing');
+                    steps[2].classList.add('error');
+                }, 500);
+            }
+        }
 
     /**
      * Show FSA to REGEX result modal with proper scrollable container

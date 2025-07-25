@@ -195,7 +195,7 @@ function splitOversizedLayers(layers, maxNodesPerLayer) {
 }
 
 /**
- * Position states within their assigned layers
+ * Position states within their assigned layers with even vertical distribution
  * @param {Array} layers - Array of layers with state IDs
  * @param {Object} config - Configuration object
  * @returns {Object} - Positions map
@@ -206,17 +206,26 @@ function positionStatesInLayers(layers, config) {
     layers.forEach((layer, layerIndex) => {
         const x = config.startX + (layerIndex * config.layerSpacingX);
 
-        // Calculate vertical positions for this layer
-        const totalHeight = (layer.length - 1) * config.nodeSpacingY;
-        const startY = config.startY + Math.max(0, (config.canvasHeight - totalHeight - 160) / 2);
+        if (layer.length === 1) {
+            // Single state - center it vertically
+            const y = config.canvasHeight / 2;
+            positions[layer[0]] = { x, y };
+        } else {
+            // Multiple states - distribute evenly across canvas height
+            const topMargin = 80; // Keep states away from top edge
+            const bottomMargin = 80; // Keep states away from bottom edge
+            const availableHeight = config.canvasHeight - topMargin - bottomMargin;
 
-        layer.forEach((stateId, stateIndex) => {
-            const y = startY + (stateIndex * config.nodeSpacingY);
+            layer.forEach((stateId, stateIndex) => {
+                // Calculate Y position: distribute evenly across available height
+                // Formula: y = topMargin + (stateIndex / (totalStates - 1)) * availableHeight
+                const y = topMargin + (stateIndex / (layer.length - 1)) * availableHeight;
 
-            positions[stateId] = { x, y };
+                positions[stateId] = { x, y };
 
-            console.log(`Positioned state ${stateId} at layer ${layerIndex}, position (${x}, ${y})`);
-        });
+                console.log(`Positioned state ${stateId} at layer ${layerIndex}, position (${x}, ${y}) - state ${stateIndex + 1} of ${layer.length}`);
+            });
+        }
     });
 
     return positions;

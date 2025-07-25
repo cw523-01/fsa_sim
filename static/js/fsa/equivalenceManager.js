@@ -733,6 +733,50 @@ class EquivalenceManager {
             `;
         }
 
+        // Suggested REGEXes for non-equivalent cases
+        let suggestedRegexes = '';
+        if (!equivalent) {
+            if (type === 'regexFsa' && result.suggestedFsaRegex) {
+                suggestedRegexes = `
+                    <div class="suggested-regexes">
+                        <h5>Equivalent REGEX for FSA:</h5>
+                        <div class="suggested-regex-item">
+                            <span class="regex-label">${result.fsaName}:</span>
+                            <code class="regex-code">${result.suggestedFsaRegex}</code>
+                        </div>
+                        <p class="suggestion-note">The FSA above is equivalent to this regular expression.</p>
+                    </div>
+                `;
+            } else if (type === 'fsaFsa') {
+                let regexItems = '';
+                if (result.suggestedFsa1Regex) {
+                    regexItems += `
+                        <div class="suggested-regex-item">
+                            <span class="regex-label">${result.fsa1Name}:</span>
+                            <code class="regex-code">${result.suggestedFsa1Regex}</code>
+                        </div>
+                    `;
+                }
+                if (result.suggestedFsa2Regex) {
+                    regexItems += `
+                        <div class="suggested-regex-item">
+                            <span class="regex-label">${result.fsa2Name}:</span>
+                            <code class="regex-code">${result.suggestedFsa2Regex}</code>
+                        </div>
+                    `;
+                }
+                if (regexItems) {
+                    suggestedRegexes = `
+                        <div class="suggested-regexes">
+                            <h5>Equivalent REGEXes for FSAs:</h5>
+                            ${regexItems}
+                            <p class="suggestion-note">These regular expressions are equivalent to their respective FSAs.</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+
         resultsTitle.textContent = 'Equivalence Check Result';
         resultsContent.innerHTML = `
             <div class="result-status ${statusClass}">
@@ -744,6 +788,7 @@ class EquivalenceManager {
                 </div>
             </div>
             ${technicalDetails}
+            ${suggestedRegexes}
         `;
 
         resultsSection.style.display = 'block';
@@ -793,6 +838,46 @@ class EquivalenceManager {
         result.operationType = 'fsaFsa';
         result.fsa1Name = fsa1Name;
         result.fsa2Name = fsa2Name;
+
+        // If not equivalent, try to generate equivalent REGEXes for both FSAs
+        if (!result.equivalent) {
+            // Try to generate REGEX for FSA1
+            try {
+                const fsa1ToRegexResponse = await fetch('/api/fsa-to-regex/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fsa: fsa1 })
+                });
+
+                if (fsa1ToRegexResponse.ok) {
+                    const fsa1ToRegexResult = await fsa1ToRegexResponse.json();
+                    if (fsa1ToRegexResult.success && fsa1ToRegexResult.verification && fsa1ToRegexResult.verification.equivalent) {
+                        result.suggestedFsa1Regex = fsa1ToRegexResult.regex;
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to generate equivalent REGEX for FSA1:', error);
+            }
+
+            // Try to generate REGEX for FSA2
+            try {
+                const fsa2ToRegexResponse = await fetch('/api/fsa-to-regex/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fsa: fsa2 })
+                });
+
+                if (fsa2ToRegexResponse.ok) {
+                    const fsa2ToRegexResult = await fsa2ToRegexResponse.json();
+                    if (fsa2ToRegexResult.success && fsa2ToRegexResult.verification && fsa2ToRegexResult.verification.equivalent) {
+                        result.suggestedFsa2Regex = fsa2ToRegexResult.regex;
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to generate equivalent REGEX for FSA2:', error);
+            }
+        }
+
         return result;
     }
 
@@ -832,6 +917,27 @@ class EquivalenceManager {
         result.operationType = 'regexFsa';
         result.regex = regex;
         result.fsaName = fsaName;
+
+        // If not equivalent, try to generate equivalent REGEX for the FSA
+        if (!result.equivalent) {
+            try {
+                const fsaToRegexResponse = await fetch('/api/fsa-to-regex/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fsa: fsa })
+                });
+
+                if (fsaToRegexResponse.ok) {
+                    const fsaToRegexResult = await fsaToRegexResponse.json();
+                    if (fsaToRegexResult.success && fsaToRegexResult.verification && fsaToRegexResult.verification.equivalent) {
+                        result.suggestedFsaRegex = fsaToRegexResult.regex;
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to generate equivalent REGEX for FSA:', error);
+            }
+        }
+
         return result;
     }
 

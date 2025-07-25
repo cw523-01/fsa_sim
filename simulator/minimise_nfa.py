@@ -711,6 +711,19 @@ def verify_candidate_equivalence(original_nfa: Dict, candidate_nfa: Dict, method
         return False, verification_details
 
 
+# Pick the best candidate (minimum states, with priority for DFA method on ties)
+def candidate_priority(candidate):
+    # Primary key: number of states (lower is better)
+    # Secondary key: method priority (0 = highest priority)
+    method_priorities = {
+        'Determinise + Minimise DFA': 0,  # Highest priority
+        'Kameda-Weiner on Minimised DFA': 1,
+        'Kameda-Weiner on Original NFA': 2,
+    }
+
+    method_priority = method_priorities.get(candidate['method'], 999)  # Default low priority
+    return (candidate['states'], method_priority)
+
 def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationResult:
     """
     Minimise an NFA using a multi-stage pipeline approach with threshold-based Kameda-Weiner usage.
@@ -811,9 +824,33 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
         )
 
     preprocessed_states = len(current_nfa['states'])
+    preprocessed_transitions = sum(len(targets) for state in nfa['transitions'].values() for targets in state.values())
+    kw_complexity_score = preprocessed_states + preprocessed_transitions
+
+    # BASELINE CANDIDATE: Add preprocessed NFA as a baseline candidate
+    # This ensures we never return something worse than what we started with
+    all_stages.append("Add preprocessed NFA as baseline candidate")
+    baseline_candidate = {
+        'nfa': current_nfa,
+        'method': 'Preprocessed NFA (baseline)',
+        'states': preprocessed_states,
+        'equivalence_verified': True,  # Preprocessing preserves equivalence
+        'verification_details': {
+            'method': 'Preprocessed NFA (baseline)',
+            'equivalent': True,
+            'original_states': original_states,
+            'candidate_states': preprocessed_states,
+            'preprocessing_only': True
+        }
+    }
+    candidate_results.append(baseline_candidate)
+    verification_results.append(baseline_candidate['verification_details'])
+
+    print(kw_complexity_score)
 
     # PIPELINE STAGE 1: Apply Kameda-Weiner to original NFA (only if below threshold)
-    if preprocessed_states <= kameda_weiner_threshold:
+    if kw_complexity_score <= kameda_weiner_threshold:
+        print("applying Kw")
         all_stages.append(
             f"Kameda-Weiner on Original NFA (states: {preprocessed_states} <= threshold: {kameda_weiner_threshold})")
         kw_original_nfa, kw_original_stages = apply_kameda_weiner(current_nfa, "Original NFA")
@@ -839,6 +876,7 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
 
     # PIPELINE STAGE 2: Determinise original NFA and minimise DFA (always run)
     try:
+        print("applying minimise via dfa")
         all_stages.append("Determinise original NFA")
         dfa = nfa_to_dfa(current_nfa)
 
@@ -864,6 +902,8 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
         # Store the minimised DFA for potential use in stage 3
         stage2_result = minimised_dfa
         stage2_states = len(minimised_dfa['states']) if minimised_dfa['states'] else 0
+        stage2_transitions = sum(len(targets) for state in current_nfa['transitions'].values() for targets in state.values())
+        stage2_complexity_score = stage2_states + stage2_transitions
 
     except Exception as e:
         # Add a fallback candidate
@@ -880,9 +920,11 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
         # Use current NFA as fallback for stage 3
         stage2_result = current_nfa
         stage2_states = len(current_nfa['states']) if current_nfa['states'] else 0
+        stage2_transitions = sum(len(targets) for state in current_nfa['transitions'].values() for targets in state.values())
+        stage2_complexity_score = stage2_states + stage2_transitions
 
     # PIPELINE STAGE 3: Apply Kameda-Weiner to minimised DFA (only if result from stage 2 is below threshold)
-    if stage2_states <= kameda_weiner_threshold and stage2_result['states']:
+    if stage2_complexity_score <= kameda_weiner_threshold and stage2_result['states']:
         try:
             all_stages.append(
                 f"Kameda-Weiner on Minimised DFA (states: {stage2_states} <= threshold: {kameda_weiner_threshold})")
@@ -939,8 +981,8 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
             'valid_candidates': 0
         }
     else:
-        # Pick the best candidate (minimum states)
-        best_candidate = min(valid_candidates, key=lambda x: x['states'])
+        # Pick the best candidate (minimum states with DFA method as priority in the result of a tie)
+        best_candidate = min(valid_candidates, key=candidate_priority)
         verification_summary = {
             'total_candidates': len(candidate_results),
             'valid_candidates': len(valid_candidates),

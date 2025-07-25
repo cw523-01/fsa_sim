@@ -1056,3 +1056,111 @@
         border-width: 2px;
     }
 }
+
+/* Suggested REGEXes styling */
+.suggested-regexes {
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: rgba(33, 150, 243, 0.05);
+    border: 1px solid rgba(33, 150, 243, 0.2);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--secondary-colour);
+}
+
+.suggested-regexes h5 {
+    margin: 0 0 var(--spacing-md) 0;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    color: var(--secondary-colour);
+}
+
+.suggested-regex-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-sm);
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(33, 150, 243, 0.1);
+}
+
+.suggested-regex-item:last-of-type {
+    margin-bottom: var(--spacing-sm);
+}
+
+.regex-label {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--secondary-colour);
+}
+
+.regex-code {
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-color);
+    background: rgba(33, 150, 243, 0.1);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(33, 150, 243, 0.2);
+    word-break: break-all;
+    display: block;
+    line-height: var(--line-height);
+    position: relative;
+    cursor: text;
+    user-select: all;
+}
+
+.regex-code:hover {
+    background: rgba(33, 150, 243, 0.15);
+    border-color: rgba(33, 150, 243, 0.4);
+}
+
+.suggestion-note {
+    margin: 0;
+    font-size: var(--font-size-xs);
+    color: var(--text-gray);
+    font-style: italic;
+    line-height: var(--line-height);
+}
+
+/* Enhanced visual feedback for suggested REGEXes */
+.suggested-regex-item:hover {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(33, 150, 243, 0.3);
+    transition: var(--transition-fast);
+}
+
+/* Animation for suggested REGEXes appearance */
+@keyframes suggest-appear {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.suggested-regexes {
+    animation: suggest-appear 0.4s ease-out;
+}
+
+/* Responsive adjustments for suggested REGEXes */
+@media (max-width: 768px) {
+    .suggested-regex-item {
+        padding: var(--spacing-xs);
+    }
+
+    .regex-code {
+        font-size: var(--font-size-sm);
+        padding: var(--spacing-xs);
+        word-break: break-word;
+    }
+
+    .suggested-regexes {
+        padding: var(--spacing-sm);
+    }
+}

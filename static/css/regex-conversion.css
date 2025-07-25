@@ -1006,3 +1006,517 @@
 .scrollable-regex::-webkit-scrollbar-thumb:hover {
     background: var(--text-gray);
 }
+
+/* Loading section styles */
+.conversion-loading-section {
+    text-align: center;
+    padding: var(--spacing-xl) var(--spacing-lg);
+}
+
+.loading-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(76, 175, 80, 0.2);
+    border-top: 4px solid var(--primary-colour);
+    border-radius: var(--radius-circle);
+    animation: loading-spin var(--animation-normal) linear infinite;
+    margin-bottom: var(--spacing-lg);
+}
+
+.loading-header h4 {
+    margin: 0;
+    color: var(--primary-colour);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    font-family: var(--font-family-ui);
+}
+
+.loading-description {
+    background: var(--sim-final-bg);
+    border: 1px solid rgba(76, 175, 80, 0.2);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    border-left: 4px solid var(--primary-colour);
+}
+
+.loading-description p {
+    margin: 0;
+    color: var(--text-color);
+    font-size: var(--font-size-md);
+    line-height: var(--line-height);
+    font-family: var(--font-family-ui);
+}
+
+/* Progress steps */
+.loading-progress {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.progress-steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    text-align: left;
+}
+
+.progress-step {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    transition: var(--transition-fast);
+    opacity: 0.4;
+}
+
+.progress-step.active {
+    opacity: 1;
+    background: var(--sim-final-bg);
+}
+
+.progress-step.processing {
+    opacity: 1;
+    background: rgba(255, 152, 0, 0.1);
+}
+
+.progress-step.completed {
+    opacity: 1;
+    background: var(--sim-final-bg);
+}
+
+.progress-step.error {
+    opacity: 1;
+    background: var(--sim-rejected-bg);
+}
+
+.step-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    background: var(--medium-gray);
+    color: var(--text-gray);
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.progress-step.active .step-icon {
+    background: var(--primary-colour);
+    color: var(--white);
+}
+
+.progress-step.processing .step-icon {
+    background: var(--warning-colour);
+    color: var(--white);
+}
+
+.progress-step.completed .step-icon {
+    background: var(--success-colour);
+    color: var(--white);
+}
+
+.progress-step.completed .step-icon::after {
+    content: '✓';
+    font-size: var(--font-size-sm);
+}
+
+.progress-step.error .step-icon {
+    background: var(--error-colour);
+    color: var(--white);
+}
+
+.progress-step.error .step-icon::after {
+    content: '✗';
+    font-size: var(--font-size-sm);
+}
+
+.step-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid var(--white);
+    border-radius: var(--radius-circle);
+    animation: step-spin 0.8s linear infinite;
+}
+
+.step-text {
+    color: var(--text-color);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    font-family: var(--font-family-ui);
+}
+
+.progress-step.active .step-text {
+    color: var(--primary-colour);
+}
+
+.progress-step.processing .step-text {
+    color: var(--warning-colour);
+}
+
+.progress-step.completed .step-text {
+    color: var(--success-colour);
+}
+
+.progress-step.error .step-text {
+    color: var(--error-colour);
+}
+
+/* Error section styles */
+.conversion-error-section {
+    text-align: center;
+    padding: var(--spacing-xl) var(--spacing-lg);
+}
+
+.error-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.error-icon {
+    font-size: 40px;
+    margin-bottom: var(--spacing-lg);
+    animation: error-shake 0.5s ease-in-out;
+}
+
+.error-header h4 {
+    margin: 0;
+    color: var(--error-colour);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    font-family: var(--font-family-ui);
+}
+
+.error-description {
+    background: var(--sim-rejected-bg);
+    border: 1px solid rgba(244, 67, 54, 0.2);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    border-left: 4px solid var(--error-colour);
+    text-align: left;
+}
+
+.error-description p {
+    margin: 0 0 var(--spacing-lg) 0;
+    color: var(--text-color);
+    font-size: var(--font-size-md);
+    line-height: var(--line-height);
+    font-family: var(--font-family-ui);
+}
+
+.error-message {
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-lg);
+    color: var(--error-colour);
+    font-family: var(--font-family-mono);
+    font-size: var(--font-size-sm);
+    word-break: break-word;
+}
+
+.error-suggestions {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    text-align: left;
+}
+
+.error-suggestions h5 {
+    margin: 0 0 var(--spacing-lg) 0;
+    color: var(--text-color);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    font-family: var(--font-family-ui);
+}
+
+.error-suggestions ul {
+    margin: 0;
+    padding-left: var(--spacing-xl);
+    list-style-type: disc;
+}
+
+.error-suggestions li {
+    margin-bottom: var(--spacing-xs);
+    color: var(--text-color);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height);
+    font-family: var(--font-family-ui);
+}
+
+/* Animations */
+@keyframes loading-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes step-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes error-shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Progress step completion animation */
+@keyframes step-complete {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.progress-step.completed .step-icon {
+    animation: step-complete var(--transition-normal) ease-in-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .conversion-loading-section,
+    .conversion-error-section {
+        padding: var(--spacing-lg) var(--spacing-sm);
+    }
+
+    .loading-spinner {
+        width: 32px;
+        height: 32px;
+        border-width: 3px;
+    }
+
+    .progress-steps {
+        gap: var(--spacing-sm);
+    }
+
+    .step-icon {
+        width: 20px;
+        height: 20px;
+        font-size: var(--font-size-xs);
+    }
+
+    .step-spinner {
+        width: 12px;
+        height: 12px;
+        border-width: 1px;
+    }
+
+    .error-icon {
+        font-size: 32px;
+    }
+}
+
+/* Loading state for the cancel button during conversion */
+.file-operation-popup .file-action-btn.cancel.converting {
+    background: var(--text-gray);
+    opacity: 0.7;
+}
+
+.file-operation-popup .file-action-btn.cancel.converting:hover {
+    background: var(--text-gray);
+    transform: none;
+}
+
+/* Pulse animation for active processing */
+@keyframes conversion-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.progress-step.processing {
+    animation: conversion-pulse var(--animation-slow) ease-in-out infinite;
+}
+
+/* Success completion glow */
+@keyframes success-glow {
+    0% { box-shadow: 0 0 5px var(--sim-final-shadow); }
+    50% { box-shadow: 0 0 20px var(--sim-final-shadow); }
+    100% { box-shadow: 0 0 5px var(--sim-final-shadow); }
+}
+
+.progress-step.completed {
+    animation: success-glow var(--animation-normal) ease-in-out;
+}
+
+/* Error state glow */
+@keyframes error-glow {
+    0% { box-shadow: 0 0 5px var(--sim-rejected-shadow); }
+    50% { box-shadow: 0 0 20px var(--sim-rejected-shadow); }
+    100% { box-shadow: 0 0 5px var(--sim-rejected-shadow); }
+}
+
+.progress-step.error {
+    animation: error-glow var(--animation-normal) ease-in-out;
+}
+
+/* Enhanced loading states with better visual hierarchy */
+.loading-progress {
+    box-shadow: var(--shadow-sm);
+}
+
+.conversion-loading-section {
+    background: var(--background-colour);
+}
+
+.conversion-error-section {
+    background: var(--background-colour);
+}
+
+/* Better visual feedback for different states */
+.progress-step.active {
+    border-left: 3px solid var(--primary-colour);
+}
+
+.progress-step.processing {
+    border-left: 3px solid var(--warning-colour);
+}
+
+.progress-step.completed {
+    border-left: 3px solid var(--success-colour);
+}
+
+.progress-step.error {
+    border-left: 3px solid var(--error-colour);
+}
+
+/* Improved typography consistency */
+.loading-header h4,
+.error-header h4 {
+    font-family: var(--font-family-ui);
+}
+
+.loading-description p,
+.error-description p,
+.error-suggestions li {
+    font-family: var(--font-family-ui);
+}
+
+/* Enhanced focus states for accessibility */
+.file-operation-popup .file-action-btn:focus {
+    outline: 2px solid var(--primary-colour);
+    outline-offset: 2px;
+    box-shadow: var(--shadow-focus);
+}
+
+/* Consistent border styling */
+.loading-progress,
+.error-suggestions,
+.loading-description,
+.error-description {
+    border-color: var(--border-color);
+}
+
+/* Better spacing consistency */
+.progress-step {
+    gap: var(--spacing-md);
+}
+
+.loading-header {
+    margin-bottom: var(--spacing-xxl);
+}
+
+.error-header {
+    margin-bottom: var(--spacing-xxl);
+}
+
+/* Improved transition consistency */
+.step-icon,
+.progress-step {
+    transition: var(--transition-fast);
+}
+
+/* Enhanced visual feedback for processing state */
+.progress-step.processing .step-icon {
+    box-shadow: 0 0 10px rgba(255, 152, 0, 0.3);
+}
+
+.progress-step.completed .step-icon {
+    box-shadow: 0 0 10px var(--sim-final-shadow);
+}
+
+.progress-step.error .step-icon {
+    box-shadow: 0 0 10px var(--sim-rejected-shadow);
+}
+
+/* Better mobile responsiveness using existing breakpoints */
+@media (max-width: 768px) {
+    .loading-header h4,
+    .error-header h4 {
+        font-size: var(--font-size-md);
+    }
+
+    .step-text {
+        font-size: var(--font-size-xs);
+    }
+
+    .loading-description p,
+    .error-description p {
+        font-size: var(--font-size-sm);
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .step-icon {
+        border: 2px solid var(--border-color);
+    }
+
+    .progress-step.active .step-icon {
+        border-color: var(--primary-colour);
+    }
+
+    .progress-step.processing .step-icon {
+        border-color: var(--warning-colour);
+    }
+
+    .progress-step.completed .step-icon {
+        border-color: var(--success-colour);
+    }
+
+    .progress-step.error .step-icon {
+        border-color: var(--error-colour);
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .loading-spinner,
+    .step-spinner {
+        animation: none;
+    }
+
+    .progress-step.processing,
+    .progress-step.completed,
+    .progress-step.error {
+        animation: none;
+    }
+
+    .error-icon {
+        animation: none;
+    }
+
+    .progress-step.completed .step-icon {
+        animation: none;
+    }
+}
