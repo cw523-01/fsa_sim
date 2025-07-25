@@ -168,9 +168,19 @@ def remove_dead_states(nfa: Dict) -> Dict:
                 if targets:
                     new_transitions[state][symbol] = targets
 
+    used_symbols = set()
+
+    # Removing a dead state may have removed a character from the alphabet
+    # In result, only use characters found in resulting transition for new alphabet
+    for state in new_states:
+        if state in new_transitions:
+            for symbol in new_transitions[state]:
+                if symbol != '':  # Don't include epsilon in alphabet
+                    used_symbols.add(symbol)
+
     result = {
         'states': new_states,
-        'alphabet': nfa['alphabet'][:],
+        'alphabet': sorted(list(used_symbols)),
         'transitions': new_transitions,
         'startingState': nfa['startingState'] if nfa['startingState'] in alive_states else '',
         'acceptingStates': new_accepting
@@ -846,11 +856,9 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
     candidate_results.append(baseline_candidate)
     verification_results.append(baseline_candidate['verification_details'])
 
-    print(kw_complexity_score)
 
     # PIPELINE STAGE 1: Apply Kameda-Weiner to original NFA (only if below threshold)
     if kw_complexity_score <= kameda_weiner_threshold:
-        print("applying Kw")
         all_stages.append(
             f"Kameda-Weiner on Original NFA (states: {preprocessed_states} <= threshold: {kameda_weiner_threshold})")
         kw_original_nfa, kw_original_stages = apply_kameda_weiner(current_nfa, "Original NFA")
@@ -876,7 +884,6 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
 
     # PIPELINE STAGE 2: Determinise original NFA and minimise DFA (always run)
     try:
-        print("applying minimise via dfa")
         all_stages.append("Determinise original NFA")
         dfa = nfa_to_dfa(current_nfa)
 

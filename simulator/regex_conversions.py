@@ -4,7 +4,7 @@ from typing import Dict, List, Set, Optional, Tuple
 from collections import defaultdict
 import re
 from .fsa_properties import validate_fsa_structure
-from .minimise_nfa import minimise_nfa
+from .minimise_nfa import minimise_nfa, remove_unreachable_states, remove_dead_states
 from .fsa_equivalence import are_automata_equivalent
 
 
@@ -504,14 +504,18 @@ def fsa_to_regex(fsa: Dict, skip_simplification_threshold: int = 2500) -> Dict:
     }
 
     try:
-        print("step1")
         # Step 1: Validation
         validation = validate_fsa_structure(fsa)
         if not validation['valid']:
             result['error'] = f"Invalid FSA structure: {validation['error']}"
             return result
 
-        print("step2")
+        # Step 1: Remove unreachable states
+        fsa = remove_unreachable_states(fsa)
+
+        # Step 2: Remove dead states
+        fsa = remove_dead_states(fsa)
+
         # Step 2: Handle empty FSA early
         if not fsa.get('states'):
             result['regex'] = '∅'
@@ -520,7 +524,6 @@ def fsa_to_regex(fsa: Dict, skip_simplification_threshold: int = 2500) -> Dict:
             result['verification'] = {'equivalent': True, 'empty_language': True}
             return result
 
-        print("step3")
         # Step 3: Minimise the automaton
         try:
             minimisation_result = minimise_nfa(fsa)
@@ -588,30 +591,25 @@ def fsa_to_regex(fsa: Dict, skip_simplification_threshold: int = 2500) -> Dict:
         )
 
         estimated_complexity = num_states * num_symbols * num_transitions
-        print(estimated_complexity)
 
         if estimated_complexity > skip_simplification_threshold:
             # Skip state elimination optimization for very large FSAs
             result['simplification_skipped'] = True
 
-        print("step4")
         # Step 4: Convert to GNFA
         gnfa = fsa_to_gnfa(minimised_fsa)
 
-        print("step5")
         # Step 5: Eliminate states to get original regex
         original_regex = eliminate_states(gnfa)
 
         # Apply complexity-aware simplification
         if not result.get('simplification_skipped', False):
-            print("step6")
             # Step 6 (optional): Create simplified version
             simplified_regex = simplify_regex(original_regex)
 
         else:
             simplified_regex = original_regex  # Skip simplification
 
-        print("step7")
         # Step 7: Verify with fallback strategy
         final_regex, verification_result = verify(
             fsa, original_regex, simplified_regex
@@ -640,10 +638,13 @@ def verify(fsa: Dict, original_regex: str, simplified_regex: str) -> tuple:
     Returns:
         tuple: (final_regex, verification_dict)
     """
-
     # Try to verify simplified regex first
     try:
         converted_back_simplified = regex_to_epsilon_nfa(simplified_regex)
+        # preprocess the converted FSA
+        converted_back_simplified = remove_unreachable_states(converted_back_simplified)
+        converted_back_simplified = remove_dead_states(converted_back_simplified)
+
         is_equivalent_simplified, equiv_details_simplified = are_automata_equivalent(
             fsa, converted_back_simplified
         )
@@ -664,6 +665,10 @@ def verify(fsa: Dict, original_regex: str, simplified_regex: str) -> tuple:
     # Simplified failed, try original regex
     try:
         converted_back_original = regex_to_epsilon_nfa(original_regex)
+        #  Also preprocess the converted FSA
+        converted_back_original = remove_unreachable_states(converted_back_original)
+        converted_back_original = remove_dead_states(converted_back_original)
+
         is_equivalent_original, equiv_details_original = are_automata_equivalent(
             fsa, converted_back_original
         )
@@ -1684,7 +1689,7 @@ def _detect_char_star_patterns(node: RegexNode) -> RegexNode:
     elif isinstance(node, MultiOperatorNode):
         inner = _detect_char_star_patterns(node.inner)
         result = MultiOperatorNode(inner, node.operators)
-        return result.simplify()  
+        return result.simplify()
 
     else:
         # Leaf nodes

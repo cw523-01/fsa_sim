@@ -673,7 +673,7 @@ class EquivalenceManager {
             `;
 
             resultsSection.style.display = 'block';
-            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
 
@@ -792,7 +792,7 @@ class EquivalenceManager {
         `;
 
         resultsSection.style.display = 'block';
-        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     /**
