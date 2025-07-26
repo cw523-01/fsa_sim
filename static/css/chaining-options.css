@@ -98,7 +98,6 @@
 }
 
 .chaining-options h4::before {
-    content: '⚡';
     font-size: var(--font-size-lg);
 }
 

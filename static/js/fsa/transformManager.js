@@ -594,7 +594,6 @@ class FSATransformManager {
                         
                         <div class="limitation-highlight">
                             <div class="limitation-header">
-                                <span class="limitation-icon">⚠️</span>
                                 <span>Important Algorithm Limitation</span>
                             </div>
                             <div class="limitation-content">
@@ -620,7 +619,6 @@ class FSATransformManager {
                 if (stateCount > this.NFA_MINIMISATION_THRESHOLD) {
                     sizeWarningSection = `
                         <div class="size-threshold-warning">
-                            <span class="size-threshold-icon">🔄</span>
                             <div class="size-threshold-content">
                                 <div class="size-threshold-title">Large NFA Detected</div>
                                 <div class="size-threshold-text">
@@ -673,7 +671,6 @@ class FSATransformManager {
     generateWarningSection(text) {
         return `
             <div class="warning-section">
-                <span class="warning-icon">⚠️</span>
                 <div class="warning-text">
                     <strong>Warning:</strong> ${text} 
                     Consider exporting your current FSA first if you want to save it.
@@ -685,7 +682,6 @@ class FSATransformManager {
     generateInfoSection(text) {
         return `
             <div class="info-section">
-                <span class="info-icon">ℹ️</span>
                 <div class="info-text">
                     <strong>Info:</strong> ${text}
                 </div>

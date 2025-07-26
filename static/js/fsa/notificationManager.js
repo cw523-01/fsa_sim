@@ -153,7 +153,7 @@ class NotificationManager {
                 loopDetails = `
                     <div class="epsilon-loops-details">
                         <div class="loops-summary">
-                            <strong>⚠️ ${reachableLoops.length} reachable epsilon loop(s) detected!</strong>
+                            <strong>${reachableLoops.length} reachable epsilon loop(s) detected!</strong>
                         </div>
                         <div class="loops-explanation">
                             Epsilon loops can cause infinite execution paths during simulation, 

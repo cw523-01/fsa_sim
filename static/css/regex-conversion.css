@@ -1213,7 +1213,6 @@
 .error-icon {
     font-size: 40px;
     margin-bottom: var(--spacing-lg);
-    animation: error-shake 0.5s ease-in-out;
 }
 
 .error-header h4 {

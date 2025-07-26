@@ -126,9 +126,6 @@ class PropertyInfoManager {
         // Show the backdrop and popup (now always centered)
         this.backdrop.classList.add('show');
 
-        console.log(`Showing property info for: ${property}`);
-
-        // Note: Removed auto-hide timeout - popup will stay open until manually closed
     }
 
     /**

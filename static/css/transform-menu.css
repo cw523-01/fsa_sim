@@ -245,7 +245,6 @@
 }
 
 .file-operation-popup.complete .completion-info li::before {
-    content: '⚡';
     position: absolute;
     left: calc(-1 * var(--spacing-lg));
     color: var(--accent-colour);
@@ -724,7 +723,6 @@
 }
 
 .file-operation-popup.minimise-nfa .algorithm-explanation h4::before {
-    content: '🔬';
     font-size: 12px;
 }
 

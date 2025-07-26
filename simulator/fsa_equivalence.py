@@ -1,6 +1,26 @@
 from typing import Dict, Tuple, Set, Optional
-from .fsa_transformations import nfa_to_dfa, minimise_dfa, complete_dfa
+from .fsa_transformations import nfa_to_dfa, minimise_dfa, complete_dfa, remove_unreachable_states, remove_dead_states
 from .fsa_properties import is_deterministic
+
+
+def preprocess_automaton(automaton: Dict) -> Dict:
+    """
+    Preprocess an automaton by removing unreachable and dead states,
+    and cleaning up the alphabet to remove unused symbols.
+
+    Args:
+        automaton: An FSA (either NFA or DFA)
+
+    Returns:
+        A preprocessed automaton equivalent to the input
+    """
+    # Remove unreachable states first
+    processed = remove_unreachable_states(automaton)
+
+    # Then remove dead states (which also cleans up the alphabet)
+    processed = remove_dead_states(processed)
+
+    return processed
 
 
 def normalise_automaton(automaton: Dict) -> Dict:
@@ -13,11 +33,14 @@ def normalise_automaton(automaton: Dict) -> Dict:
     Returns:
         A minimal DFA equivalent to the input automaton
     """
+    # First preprocess to remove unreachable/dead states and clean alphabet
+    preprocessed = preprocess_automaton(automaton)
+
     # Convert to DFA if needed
-    if is_deterministic(automaton):
-        dfa = automaton
+    if is_deterministic(preprocessed):
+        dfa = preprocessed
     else:
-        dfa = nfa_to_dfa(automaton)
+        dfa = nfa_to_dfa(preprocessed)
 
     # Minimise the DFA
     minimal_dfa = minimise_dfa(dfa)
@@ -43,6 +66,10 @@ def find_state_mapping(dfa1: Dict, dfa2: Dict) -> Optional[Dict[str, str]]:
         return None
     if set(dfa1['alphabet']) != set(dfa2['alphabet']):
         return None
+
+    # Special case: both DFAs are empty
+    if len(dfa1['states']) == 0 and len(dfa2['states']) == 0:
+        return {}  # Empty mapping for empty DFAs
 
     # Try to find a mapping starting from the start states
     mapping = {}
@@ -133,9 +160,18 @@ def are_automata_equivalent(automaton1: Dict, automaton2: Dict) -> Tuple[bool, D
     }
 
     try:
+        # Preprocess both automata before normalisation
+        preprocessed1 = preprocess_automaton(automaton1)
+        preprocessed2 = preprocess_automaton(automaton2)
+
+        details['preprocessed1_states'] = len(preprocessed1['states'])
+        details['preprocessed2_states'] = len(preprocessed2['states'])
+        details['preprocessed1_alphabet'] = len(preprocessed1['alphabet'])
+        details['preprocessed2_alphabet'] = len(preprocessed2['alphabet'])
+
         # Normalise both automata to minimal DFAs
-        minimal_dfa1 = normalise_automaton(automaton1)
-        minimal_dfa2 = normalise_automaton(automaton2)
+        minimal_dfa1 = normalise_automaton(preprocessed1)
+        minimal_dfa2 = normalise_automaton(preprocessed2)
 
         details['minimal_dfa1_states'] = len(minimal_dfa1['states'])
         details['minimal_dfa2_states'] = len(minimal_dfa2['states'])

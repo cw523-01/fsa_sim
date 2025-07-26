@@ -384,7 +384,6 @@ class FSAFileUIManager {
                 </div>
 
                 <div class="warning-section">
-                    <span class="warning-icon">⚠️</span>
                     <div class="warning-text">
                         <strong>Warning:</strong> This action cannot be undone. All states and transitions will be permanently deleted. 
                         Consider exporting your current FSA first if you want to save it.
@@ -472,7 +471,6 @@ class FSAFileUIManager {
                 </div>
 
                 <div class="warning-section">
-                    <span class="warning-icon">⚠️</span>
                     <div class="warning-text">
                         <strong>Warning:</strong> All current states and transitions labels will be permanently replaced with the imported FSA. 
                         Consider exporting your current FSA first if you want to save it.

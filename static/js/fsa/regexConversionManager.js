@@ -294,14 +294,14 @@ class RegexConversionManager {
                         </button>
                     </div>
                     <div class="verification-status verified">
-                        ✅ The generated REGEX has been verified to be equivalent to the original FSA
+                        <img src="static/img/success.png" alt="✓" class="property-icon success-icon"> The generated REGEX has been verified to be equivalent to the original FSA
                     </div>
                 </div>
                 ` : `
                 <div class="conversion-failed-section">
                     <h4>Conversion Result</h4>
                     <div class="verification-status unverified">
-                        ⚠️ The system could not generate a verified regular expression for your FSA
+                        The system could not generate a verified regular expression for your FSA
                     </div>
                     ${verification.error ? `
                     <div class="verification-error">
@@ -321,7 +321,6 @@ class RegexConversionManager {
     
                 <div class="important-notice">
                     <div class="notice-header">
-                        <span class="notice-icon">ℹ️</span>
                         <span class="notice-title">Important Notice</span>
                     </div>
                     <div class="notice-content">
@@ -370,7 +369,7 @@ class RegexConversionManager {
             contentDiv.innerHTML = `
                 <div class="conversion-error-section">
                     <div class="error-header">
-                        <div class="error-icon">❌</div>
+                        <div class="error-icon"><img src="static/img/error.png" alt="✗" class="property-icon error-icon"></div>
                         <h4>Conversion Failed</h4>
                     </div>
                     <div class="error-description">
@@ -479,14 +478,14 @@ class RegexConversionManager {
                             </button>
                         </div>
                         <div class="verification-status verified">
-                            ✅ The generated REGEX has been verified to be equivalent to the original FSA
+                            <img src="static/img/success.png" alt="✓" class="property-icon success-icon"> The generated REGEX has been verified to be equivalent to the original FSA
                         </div>
                     </div>
                     ` : `
                     <div class="conversion-failed-section">
                         <h4>Conversion Result</h4>
                         <div class="verification-status unverified">
-                            ⚠️ The system could not generate a verified regular expression for your FSA
+                            The system could not generate a verified regular expression for your FSA
                         </div>
                         ${verification.error ? `
                         <div class="verification-error">
@@ -506,7 +505,6 @@ class RegexConversionManager {
     
                     <div class="important-notice">
                         <div class="notice-header">
-                            <span class="notice-icon">ℹ️</span>
                             <span class="notice-title">Important Notice</span>
                         </div>
                         <div class="notice-content">
@@ -718,7 +716,6 @@ class RegexConversionManager {
                 </div>
     
                 <div class="warning-section">
-                    <span class="warning-icon">⚠️</span>
                     <div class="warning-text">
                         <strong>Warning:</strong> This operation will replace the current FSA with the generated automaton. 
                         Consider exporting your current FSA first if you want to save it.

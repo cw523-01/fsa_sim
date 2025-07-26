@@ -13,6 +13,16 @@ def minimise_dfa(fsa: Dict) -> Dict:
     Returns:
         Dict: A minimised DFA in the same format.
     """
+    # Handle empty DFA (represents empty language)
+    if not fsa['states']:
+        return {
+            'states': [],
+            'alphabet': fsa['alphabet'][:],
+            'transitions': {},
+            'startingState': '',
+            'acceptingStates': []
+        }
+
     if not is_deterministic(fsa):
         raise ValueError("DFA minimisation requires a deterministic FSA.")
 
@@ -312,6 +322,16 @@ def complete_dfa(dfa: Dict) -> Dict:
     Raises:
         ValueError: If the input is not a deterministic FSA
     """
+    # Handle empty DFA (represents empty language)
+    if not dfa['states']:
+        return {
+            'states': [],
+            'alphabet': dfa['alphabet'][:],
+            'transitions': {},
+            'startingState': '',
+            'acceptingStates': []
+        }
+
     if not is_deterministic(dfa):
         raise ValueError("Input must be a deterministic FSA (DFA)")
 
@@ -373,3 +393,99 @@ def complement_dfa(dfa: Dict) -> Dict:
         'startingState': complete_dfa_result['startingState'],
         'acceptingStates': new_accepting
     }
+
+def remove_unreachable_states(nfa: Dict) -> Dict:
+    """Remove states that are unreachable from the start state."""
+
+    # BFS from start state to find all reachable states
+    reachable = set()
+    queue = deque([nfa['startingState']])
+    reachable.add(nfa['startingState'])
+
+    while queue:
+        current = queue.popleft()
+        if current in nfa['transitions']:
+            for symbol in nfa['transitions'][current]:
+                for target in nfa['transitions'][current][symbol]:
+                    if target not in reachable:
+                        reachable.add(target)
+                        queue.append(target)
+
+    # Build new NFA with only reachable states
+    new_states = [s for s in nfa['states'] if s in reachable]
+    new_accepting = [s for s in nfa['acceptingStates'] if s in reachable]
+    new_transitions = {}
+
+    for state in new_states:
+        if state in nfa['transitions']:
+            new_transitions[state] = {}
+            for symbol in nfa['transitions'][state]:
+                targets = [t for t in nfa['transitions'][state][symbol] if t in reachable]
+                if targets:
+                    new_transitions[state][symbol] = targets
+
+    result = {
+        'states': new_states,
+        'alphabet': nfa['alphabet'][:],
+        'transitions': new_transitions,
+        'startingState': nfa['startingState'],
+        'acceptingStates': new_accepting
+    }
+
+    return result
+
+
+def remove_dead_states(nfa: Dict) -> Dict:
+    """Remove states that cannot reach any accepting state."""
+
+    # Build reverse graph
+    reverse_graph = defaultdict(set)
+    for state in nfa['states']:
+        if state in nfa['transitions']:
+            for symbol in nfa['transitions'][state]:
+                for target in nfa['transitions'][state][symbol]:
+                    reverse_graph[target].add(state)
+
+    # BFS backwards from accepting states
+    alive_states = set(nfa['acceptingStates'])
+    queue = deque(nfa['acceptingStates'])
+
+    while queue:
+        state = queue.popleft()
+        for predecessor in reverse_graph[state]:
+            if predecessor not in alive_states:
+                alive_states.add(predecessor)
+                queue.append(predecessor)
+
+    # Build new NFA with only alive states
+    new_states = [s for s in nfa['states'] if s in alive_states]
+    new_accepting = [s for s in nfa['acceptingStates'] if s in alive_states]
+    new_transitions = {}
+
+    for state in new_states:
+        if state in nfa['transitions']:
+            new_transitions[state] = {}
+            for symbol in nfa['transitions'][state]:
+                targets = [t for t in nfa['transitions'][state][symbol] if t in alive_states]
+                if targets:
+                    new_transitions[state][symbol] = targets
+
+    used_symbols = set()
+
+    # Removing a dead state may have removed a character from the alphabet
+    # In result, only use characters found in resulting transition for new alphabet
+    for state in new_states:
+        if state in new_transitions:
+            for symbol in new_transitions[state]:
+                if symbol != '':  # Don't include epsilon in alphabet
+                    used_symbols.add(symbol)
+
+    result = {
+        'states': new_states,
+        'alphabet': sorted(list(used_symbols)),
+        'transitions': new_transitions,
+        'startingState': nfa['startingState'] if nfa['startingState'] in alive_states else '',
+        'acceptingStates': new_accepting
+    }
+
+    return result

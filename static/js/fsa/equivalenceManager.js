@@ -299,7 +299,6 @@ class EquivalenceManager {
                             </div>
                         </div>
                         <div class="validation-note" id="fsa-fsa-validation">
-                            <span class="warning-icon">⚠️</span>
                             The second FSA must be from a file. Please select a file for the second FSA.
                         </div>
                     `,
@@ -383,7 +382,6 @@ class EquivalenceManager {
                 `,
                 infoSection: `
                     <div class="info-section">
-                        <span class="info-icon">ℹ️</span>
                         <div class="info-text">
                             <strong>Note:</strong> The equivalence check converts both regular expressions to FSAs 
                             and compares their minimal DFAs. This process is computationally intensive for complex expressions.
@@ -593,7 +591,7 @@ class EquivalenceManager {
         }
 
         if (validationNote) {
-            validationNote.innerHTML = `<span class="warning-icon">${isValid ? '✓' : '⚠️'}</span> ${message}`;
+            validationNote.innerHTML = `${message}`;
         }
     }
 
@@ -728,7 +726,7 @@ class EquivalenceManager {
             resultsTitle.textContent = 'Error';
             resultsContent.innerHTML = `
                 <div class="result-status error">
-                    <div class="result-icon">❌</div>
+                    <div class="result-icon"><img src="static/img/error.png" alt="✗" class="property-icon error-icon"></div>
                     <div class="result-message">
                         <strong>Equivalence check failed:</strong><br>
                         ${errorMessage}
@@ -752,7 +750,9 @@ class EquivalenceManager {
         if (!resultsSection || !resultsTitle || !resultsContent) return;
 
         const equivalent = result.equivalent;
-        const icon = equivalent ? '✅' : '❌';
+        const icon = equivalent ?
+            '<img src="static/img/success.png" alt="✓" class="property-icon success-icon">' :
+            '<img src="static/img/error.png" alt="✗" class="property-icon error-icon">';
         const statusClass = equivalent ? 'equivalent' : 'not-equivalent';
 
         let comparisonText;

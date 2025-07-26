@@ -6,7 +6,6 @@
     cursor: pointer;
     opacity: 0.6;
     transition: var(--transition-fast);
-    /* Make the white icon black */
     filter: brightness(0);
 }
 
@@ -34,6 +33,126 @@
     vertical-align: middle;
 }
 
+.property-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+}
+
+/* Success icon - neutral green */
+.property-icon.success-icon {
+    filter: brightness(0) saturate(100%) invert(35%) sepia(93%) saturate(1352%) hue-rotate(87deg) brightness(110%) contrast(110%);
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+}
+
+/* Error icon - neutral red */
+.property-icon.error-icon {
+    filter: brightness(0) saturate(100%) invert(35%) sepia(93%) saturate(1352%) hue-rotate(346deg) brightness(104%) contrast(110%);
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+}
+
+/* Property value containers - simplified, no background */
+.property-value {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.property-value .property-icon {
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .property-icon.success-icon {
+        filter: brightness(0) saturate(120%) invert(35%) sepia(93%) saturate(1652%) hue-rotate(87deg) brightness(115%) contrast(120%);
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+    }
+
+    .property-icon.error-icon {
+        filter: brightness(0) saturate(120%) invert(25%) sepia(93%) saturate(1652%) hue-rotate(346deg) brightness(110%) contrast(115%);
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .property-icon.success-icon {
+        filter: brightness(0) saturate(110%) invert(35%) sepia(93%) saturate(1352%) hue-rotate(87deg) brightness(115%) contrast(115%);
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+    }
+
+    .property-icon.error-icon {
+        filter: brightness(0) saturate(110%) invert(45%) sepia(93%) saturate(1352%) hue-rotate(346deg) brightness(110%) contrast(115%);
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .property-icon {
+        width: 14px;
+        height: 14px;
+    }
+
+    .property-icon.error-icon {
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+    }
+}
+
+/* Loading state for property updates */
+.property-value.loading {
+    opacity: 0.6;
+    position: relative;
+}
+
+.property-value.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    margin-top: -6px;
+    margin-left: -6px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--text-gray);
+    border-radius: 50%;
+    animation: property-spin 1s linear infinite;
+}
+
+@keyframes property-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Focus states for accessibility */
+.property-value:focus-within {
+    outline: 2px solid var(--primary-colour);
+    outline-offset: 2px;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .property-value,
+    .property-icon {
+        transition: none;
+    }
+
+    .property-value.loading::after {
+        animation: none;
+    }
+}
+
 /* Epsilon transition checkbox group styling */
 .epsilon-transition {
     display: flex;
@@ -47,6 +166,7 @@
     margin-right: 0;
     font-weight: var(--font-weight-medium);
 }
+
 .table-section {
     display: flex;
     align-items: center;
@@ -71,7 +191,7 @@
     height: 16px;
 }
 
-/* Property row styling updates */
+/* Property row styling */
 .property {
     display: flex;
     align-items: center;
@@ -85,6 +205,10 @@
 }
 
 .checkmark {
+    margin-right: var(--spacing-xs);
+}
+
+.crossmark {
     margin-right: var(--spacing-xs);
 }
 
@@ -187,7 +311,7 @@
     display: block;
 }
 
-/* Positioning for different property types */
+/* Property-specific popup styling */
 .property-info-popup.connected {
     border-left-color: var(--primary-colour);
 }

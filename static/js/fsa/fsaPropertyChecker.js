@@ -11,15 +11,15 @@ import {
  */
 const PROPERTY_STATES = {
     TRUE: {
-        text: '✓',
+        html: '<img src="static/img/success.png" alt="✓" class="property-icon success-icon">',
         className: 'checkmark'
     },
     FALSE: {
-        text: '✗',
+        html: '<img src="static/img/error.png" alt="✗" class="property-icon error-icon">',
         className: 'crossmark'
     },
     ERROR: {
-        text: '?',
+        html: '<img src="static/img/error.png" alt="?" class="property-icon error-icon">',
         className: 'error'
     }
 };
@@ -61,13 +61,13 @@ class FSAPropertyManager {
         }
 
         // Update the element
-        element.textContent = state.text;
+        element.innerHTML = state.html;
         element.className = `property-value ${state.className}`;
 
         // Also set data attribute for potential CSS styling
         element.setAttribute('data-property-state', value === true ? 'true' : value === false ? 'false' : 'error');
 
-        console.log(`Updated property ${propertyName}: ${value} (${state.text})`);
+        console.log(`Updated property ${propertyName}: ${value} (${state.html})`);
         return true;
     }
 
