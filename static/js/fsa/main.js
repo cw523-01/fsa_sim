@@ -308,9 +308,6 @@ function initialiseFSASerialization() {
     // Setup edit menu with universal menu manager
     setupEditMenu();
 
-    // Setup unified menu system - replaces setupSimpleMenuDebug
-    setupUnifiedMenuSystem();
-
     // Setup drag and drop for file import (minimal visual feedback)
     setupFileDragAndDrop();
 
@@ -346,49 +343,6 @@ function setupEditMenu() {
 function setupEditMenuItems() {
     const menuUndo = document.getElementById('menu-undo');
     const menuRedo = document.getElementById('menu-redo');
-
-    if (menuUndo) {
-        // Clone to remove existing handlers
-        const newMenuUndo = menuUndo.cloneNode(true);
-        menuUndo.parentNode.replaceChild(newMenuUndo, menuUndo);
-
-        newMenuUndo.addEventListener('click', (e) => {
-            e.stopPropagation();
-            menuManager.closeAllMenus();
-            if (undoRedoManager) {
-                undoRedoManager.undo();
-            }
-        });
-    }
-
-    if (menuRedo) {
-        // Clone to remove existing handlers
-        const newMenuRedo = menuRedo.cloneNode(true);
-        menuRedo.parentNode.replaceChild(newMenuRedo, menuRedo);
-
-        newMenuRedo.addEventListener('click', (e) => {
-            e.stopPropagation();
-            menuManager.closeAllMenus();
-            if (undoRedoManager) {
-                undoRedoManager.redo();
-            }
-        });
-    }
-}
-
-/**
- * Setup unified menu system - replaces setupSimpleMenuDebug
- */
-function setupUnifiedMenuSystem() {
-    console.log('Setting up unified menu system...');
-
-    // The menu manager now handles all the dropdown behavior
-    // Individual menu items are handled by their respective managers:
-    // - File menu items: handled by fsaFileUIManager
-    // - Edit menu items: handled by undoRedoManager (setup above)
-    // - Transform menu items: handled by fsaTransformManager
-
-    console.log('Unified menu system setup complete');
 }
 
 /**

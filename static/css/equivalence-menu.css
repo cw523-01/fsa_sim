@@ -1202,3 +1202,99 @@
     right: auto !important;
     bottom: auto !important;
 }
+
+/* File processing loading indicators */
+.file-processing-indicator {
+    display: none;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: rgba(33, 150, 243, 0.08);
+    border: 1px solid rgba(33, 150, 243, 0.2);
+    border-radius: var(--radius-md);
+    margin-top: var(--spacing-sm);
+    transition: var(--transition-fast);
+}
+
+.file-processing-indicator.show {
+    display: flex;
+}
+
+.file-processing-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(33, 150, 243, 0.2);
+    border-top: 2px solid var(--secondary-colour);
+    border-radius: var(--radius-circle);
+    animation: file-spin var(--animation-fast) linear infinite;
+    flex-shrink: 0;
+}
+
+.file-processing-text {
+    font-size: var(--font-size-sm);
+    color: var(--secondary-colour);
+    font-weight: var(--font-weight-medium);
+}
+
+@keyframes file-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Success state for file processing */
+.file-processing-indicator.success {
+    background: var(--sim-final-bg);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.file-processing-indicator.success .file-processing-text {
+    color: var(--success-colour);
+}
+
+.file-processing-indicator.success .file-processing-spinner {
+    display: none;
+}
+
+.file-processing-indicator.success::before {
+    content: '✓';
+    color: var(--success-colour);
+    font-weight: var(--font-weight-bold);
+    margin-right: var(--spacing-xs);
+}
+
+/* Error state for file processing */
+.file-processing-indicator.error {
+    background: var(--sim-rejected-bg);
+    border-color: rgba(244, 67, 54, 0.3);
+}
+
+.file-processing-indicator.error .file-processing-text {
+    color: var(--error-colour);
+}
+
+.file-processing-indicator.error .file-processing-spinner {
+    display: none;
+}
+
+.file-processing-indicator.error::before {
+    content: '⚠';
+    color: var(--error-colour);
+    font-weight: var(--font-weight-bold);
+    margin-right: var(--spacing-xs);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .file-processing-indicator {
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .file-processing-spinner {
+        width: 14px;
+        height: 14px;
+    }
+
+    .file-processing-text {
+        font-size: var(--font-size-xs);
+    }
+}

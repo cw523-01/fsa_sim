@@ -244,7 +244,6 @@ class EquivalenceManager {
                         </label>
                     </div>`;
 
-                // FSA2 can only be from file (no current FSA option)
                 return {
                     description: `<div class="file-operation-description">${config.description}</div>`,
                     formContent: `
@@ -268,6 +267,10 @@ class EquivalenceManager {
                                     </button>
                                     <span class="file-input-label" id="fsa1-file-label">No file selected</span>
                                 </div>
+                                <div class="file-processing-indicator" id="fsa1-processing-indicator">
+                                    <div class="file-processing-spinner"></div>
+                                    <span class="file-processing-text">Processing file...</span>
+                                </div>
                             </div>
                         </div>
                         <div class="form-group">
@@ -288,6 +291,10 @@ class EquivalenceManager {
                                         Choose File
                                     </button>
                                     <span class="file-input-label" id="fsa2-file-label">No file selected</span>
+                                </div>
+                                <div class="file-processing-indicator" id="fsa2-processing-indicator">
+                                    <div class="file-processing-spinner"></div>
+                                    <span class="file-processing-text">Processing file...</span>
                                 </div>
                             </div>
                         </div>
@@ -342,6 +349,10 @@ class EquivalenceManager {
                                         Choose File
                                     </button>
                                     <span class="file-input-label" id="regex-fsa-file-label">No file selected</span>
+                                </div>
+                                <div class="file-processing-indicator" id="regex-fsa-processing-indicator">
+                                    <div class="file-processing-spinner"></div>
+                                    <span class="file-processing-text">Processing file...</span>
                                 </div>
                             </div>
                         </div>
@@ -849,6 +860,107 @@ class EquivalenceManager {
     }
 
     /**
+     * Show file processing indicator
+     * @param {string} fileInputId - ID of the file input (fsa1 or fsa2)
+     * @param {string} message - Processing message to display
+     */
+    showFileProcessingIndicator(fileInputId, message = 'Processing file...') {
+        const indicator = document.getElementById(`${fileInputId}-processing-indicator`);
+        const text = indicator?.querySelector('.file-processing-text');
+
+        if (indicator && text) {
+            text.textContent = message;
+            indicator.classList.remove('success', 'error');
+            indicator.classList.add('show');
+        }
+    }
+
+    /**
+     * Hide file processing indicator
+     * @param {string} fileInputId - ID of the file input (fsa1 or fsa2)
+     * @param {string} state - 'success', 'error', or null to just hide
+     * @param {string} message - Optional message for success/error states
+     */
+    hideFileProcessingIndicator(fileInputId, state = null, message = '') {
+        const indicator = document.getElementById(`${fileInputId}-processing-indicator`);
+        const text = indicator?.querySelector('.file-processing-text');
+
+        if (indicator && text) {
+            if (state === 'success') {
+                text.textContent = message || 'File processed successfully';
+                indicator.classList.remove('error');
+                indicator.classList.add('success', 'show');
+
+                // Auto-hide success state after 2 seconds
+                setTimeout(() => {
+                    indicator.classList.remove('show', 'success');
+                }, 2000);
+            } else if (state === 'error') {
+                text.textContent = message || 'Error processing file';
+                indicator.classList.remove('success');
+                indicator.classList.add('error', 'show');
+
+                // Auto-hide error state after 5 seconds
+                setTimeout(() => {
+                    indicator.classList.remove('show', 'error');
+                }, 5000);
+            } else {
+                indicator.classList.remove('show', 'success', 'error');
+            }
+        }
+    }
+
+    /**
+     * Enhanced file reading with loading indicator
+     * @param {File} file - File to read
+     * @param {string} fileInputId - ID for showing progress indicator
+     * @returns {Promise} - Promise resolving to parsed JSON data
+     */
+    async readJSONFileWithProgress(file, fileInputId) {
+        this.showFileProcessingIndicator(fileInputId, `Reading ${file.name}...`);
+
+        try {
+            // Add small delay for user feedback on very fast operations
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+
+                reader.onload = (e) => {
+                    try {
+                        this.showFileProcessingIndicator(fileInputId, 'Parsing JSON...');
+                        const parsedData = JSON.parse(e.target.result);
+                        resolve(parsedData);
+                    } catch (error) {
+                        reject(new Error(`Invalid JSON in file ${file.name}: ${error.message}`));
+                    }
+                };
+
+                reader.onerror = () => {
+                    reject(new Error(`Failed to read file ${file.name}`));
+                };
+
+                reader.readAsText(file);
+            });
+
+            // Validate basic FSA structure
+            this.showFileProcessingIndicator(fileInputId, 'Validating FSA structure...');
+            await new Promise(resolve => setTimeout(resolve, 50)); // Brief validation delay
+
+            if (!data.states || !data.transitions || !data.startingState) {
+                throw new Error(`File ${file.name} does not contain a valid FSA structure`);
+            }
+
+            this.hideFileProcessingIndicator(fileInputId, 'success', `${file.name} loaded successfully`);
+            return data;
+
+        } catch (error) {
+            this.hideFileProcessingIndicator(fileInputId, 'error', error.message);
+            throw error;
+        }
+    }
+
+    /**
      * Perform FSA-FSA equivalence check
      */
     async performFSAFSAEquivalenceCheck() {
@@ -858,80 +970,87 @@ class EquivalenceManager {
         let fsa1, fsa1Name;
         let fsa2, fsa2Name;
 
-        // Get first FSA
-        if (fsa1Source === 'current') {
-            fsa1 = convertFSAToBackendFormat(this.jsPlumbInstance);
-            fsa1Name = 'Current FSA';
-        } else {
-            const fsa1File = document.getElementById('fsa1-file-input').files[0];
-            const fsa1Data = await this.readJSONFile(fsa1File);
-            fsa1 = this.convertSerialisedFSAToBackendFormat(fsa1Data);
-            fsa1Name = fsa1File.name;
-        }
-
-        // Get second FSA (always from file)
-        const fsa2File = document.getElementById('fsa2-file-input').files[0];
-        const fsa2Data = await this.readJSONFile(fsa2File);
-        fsa2 = this.convertSerialisedFSAToBackendFormat(fsa2Data);
-        fsa2Name = fsa2File.name;
-
-        // Call backend API
-        const response = await fetch('/api/check-fsa-equivalence/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fsa1: fsa1, fsa2: fsa2 })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        result.operationType = 'fsaFsa';
-        result.fsa1Name = fsa1Name;
-        result.fsa2Name = fsa2Name;
-
-        // If not equivalent, try to generate equivalent REGEXes for both FSAs
-        if (!result.equivalent) {
-            // Try to generate REGEX for FSA1
-            try {
-                const fsa1ToRegexResponse = await fetch('/api/fsa-to-regex/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fsa: fsa1 })
-                });
-
-                if (fsa1ToRegexResponse.ok) {
-                    const fsa1ToRegexResult = await fsa1ToRegexResponse.json();
-                    if (fsa1ToRegexResult.success && fsa1ToRegexResult.verification && fsa1ToRegexResult.verification.equivalent) {
-                        result.suggestedFsa1Regex = fsa1ToRegexResult.regex;
-                    }
-                }
-            } catch (error) {
-                console.warn('Failed to generate equivalent REGEX for FSA1:', error);
+        try {
+            // Get first FSA
+            if (fsa1Source === 'current') {
+                fsa1 = convertFSAToBackendFormat(this.jsPlumbInstance);
+                fsa1Name = 'Current FSA';
+            } else {
+                const fsa1File = document.getElementById('fsa1-file-input').files[0];
+                const fsa1Data = await this.readJSONFileWithProgress(fsa1File, 'fsa1');
+                fsa1 = this.convertSerialisedFSAToBackendFormat(fsa1Data);
+                fsa1Name = fsa1File.name;
             }
 
-            // Try to generate REGEX for FSA2
-            try {
-                const fsa2ToRegexResponse = await fetch('/api/fsa-to-regex/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fsa: fsa2 })
-                });
+            // Get second FSA (always from file)
+            const fsa2File = document.getElementById('fsa2-file-input').files[0];
+            const fsa2Data = await this.readJSONFileWithProgress(fsa2File, 'fsa2');
+            fsa2 = this.convertSerialisedFSAToBackendFormat(fsa2Data);
+            fsa2Name = fsa2File.name;
 
-                if (fsa2ToRegexResponse.ok) {
-                    const fsa2ToRegexResult = await fsa2ToRegexResponse.json();
-                    if (fsa2ToRegexResult.success && fsa2ToRegexResult.verification && fsa2ToRegexResult.verification.equivalent) {
-                        result.suggestedFsa2Regex = fsa2ToRegexResult.regex;
-                    }
-                }
-            } catch (error) {
-                console.warn('Failed to generate equivalent REGEX for FSA2:', error);
+            // Call backend API
+            const response = await fetch('/api/check-fsa-equivalence/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fsa1: fsa1, fsa2: fsa2 })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
-        }
 
-        return result;
+            const result = await response.json();
+            result.operationType = 'fsaFsa';
+            result.fsa1Name = fsa1Name;
+            result.fsa2Name = fsa2Name;
+
+            // If not equivalent, try to generate equivalent REGEXes for both FSAs
+            if (!result.equivalent) {
+                // Try to generate REGEX for FSA1
+                try {
+                    const fsa1ToRegexResponse = await fetch('/api/fsa-to-regex/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fsa: fsa1 })
+                    });
+
+                    if (fsa1ToRegexResponse.ok) {
+                        const fsa1ToRegexResult = await fsa1ToRegexResponse.json();
+                        if (fsa1ToRegexResult.success && fsa1ToRegexResult.verification && fsa1ToRegexResult.verification.equivalent) {
+                            result.suggestedFsa1Regex = fsa1ToRegexResult.regex;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Failed to generate equivalent REGEX for FSA1:', error);
+                }
+
+                // Try to generate REGEX for FSA2
+                try {
+                    const fsa2ToRegexResponse = await fetch('/api/fsa-to-regex/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fsa: fsa2 })
+                    });
+
+                    if (fsa2ToRegexResponse.ok) {
+                        const fsa2ToRegexResult = await fsa2ToRegexResponse.json();
+                        if (fsa2ToRegexResult.success && fsa2ToRegexResult.verification && fsa2ToRegexResult.verification.equivalent) {
+                            result.suggestedFsa2Regex = fsa2ToRegexResult.regex;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Failed to generate equivalent REGEX for FSA2:', error);
+                }
+            }
+
+            return result;
+        } catch (error) {
+            // Hide any remaining processing indicators
+            this.hideFileProcessingIndicator('fsa1', 'error', 'Processing failed');
+            this.hideFileProcessingIndicator('fsa2', 'error', 'Processing failed');
+            throw error;
+        }
     }
 
     /**
@@ -943,55 +1062,62 @@ class EquivalenceManager {
 
         let fsa, fsaName;
 
-        // Get FSA
-        if (fsaSource === 'current') {
-            fsa = convertFSAToBackendFormat(this.jsPlumbInstance);
-            fsaName = 'Current FSA';
-        } else {
-            const fsaFile = document.getElementById('regex-fsa-file-input').files[0];
-            const fsaData = await this.readJSONFile(fsaFile);
-            fsa = this.convertSerialisedFSAToBackendFormat(fsaData);
-            fsaName = fsaFile.name;
-        }
-
-        // Call backend API
-        const response = await fetch('/api/check-fsa-regex-equivalence/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fsa: fsa, regex: regex })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        result.operationType = 'regexFsa';
-        result.regex = regex;
-        result.fsaName = fsaName;
-
-        // If not equivalent, try to generate equivalent REGEX for the FSA
-        if (!result.equivalent) {
-            try {
-                const fsaToRegexResponse = await fetch('/api/fsa-to-regex/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fsa: fsa })
-                });
-
-                if (fsaToRegexResponse.ok) {
-                    const fsaToRegexResult = await fsaToRegexResponse.json();
-                    if (fsaToRegexResult.success && fsaToRegexResult.verification && fsaToRegexResult.verification.equivalent) {
-                        result.suggestedFsaRegex = fsaToRegexResult.regex;
-                    }
-                }
-            } catch (error) {
-                console.warn('Failed to generate equivalent REGEX for FSA:', error);
+        try {
+            // Get FSA
+            if (fsaSource === 'current') {
+                fsa = convertFSAToBackendFormat(this.jsPlumbInstance);
+                fsaName = 'Current FSA';
+            } else {
+                const fsaFile = document.getElementById('regex-fsa-file-input').files[0];
+                const fsaData = await this.readJSONFileWithProgress(fsaFile, 'regex-fsa');
+                fsa = this.convertSerialisedFSAToBackendFormat(fsaData);
+                fsaName = fsaFile.name;
             }
-        }
 
-        return result;
+            // Call backend API
+            const response = await fetch('/api/check-fsa-regex-equivalence/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fsa: fsa, regex: regex })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            result.operationType = 'regexFsa';
+            result.regex = regex;
+            result.fsaName = fsaName;
+
+            // If not equivalent, try to generate equivalent REGEX for the FSA
+            if (!result.equivalent) {
+                try {
+                    const fsaToRegexResponse = await fetch('/api/fsa-to-regex/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fsa: fsa })
+                    });
+
+                    if (fsaToRegexResponse.ok) {
+                        const fsaToRegexResult = await fsaToRegexResponse.json();
+                        if (fsaToRegexResult.success && fsaToRegexResult.verification && fsaToRegexResult.verification.equivalent) {
+                            result.suggestedFsaRegex = fsaToRegexResult.regex;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Failed to generate equivalent REGEX for FSA:', error);
+                }
+            }
+
+            return result;
+
+        } catch (error) {
+            // Hide any remaining processing indicators
+            this.hideFileProcessingIndicator('regex-fsa', 'error', 'Processing failed');
+            throw error;
+        }
     }
 
     /**

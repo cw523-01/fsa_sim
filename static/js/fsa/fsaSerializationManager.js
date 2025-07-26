@@ -195,9 +195,10 @@ class FSASerializationManager {
      * Deserialize and load an FSA from JSON data
      * @param {Object} data - Serialized FSA data
      * @param {Object} jsPlumbInstance - The JSPlumb instance
+     * @param repositionStates - Whether the states should be repositioned once deserialized, default true
      * @returns {Promise<boolean>} - Whether loading was successful
      */
-    async deserializeFSA(data, jsPlumbInstance) {
+    async deserializeFSA(data, jsPlumbInstance, repositionStates = true) {
         try {
             // Validate the data structure
             if (!this.validateSerializedData(data)) {
@@ -208,10 +209,12 @@ class FSASerializationManager {
             await this.clearCurrentFSA(jsPlumbInstance);
 
             // Optimise positions if needed
-            const optimisedStatesData = this.optimiseStatePositions(data);
+            if(repositionStates) {
+                data = this.optimiseStatePositions(data);
+            }
 
             // Load states first
-            await this.deserializeStates(optimisedStatesData.states, jsPlumbInstance);
+            await this.deserializeStates(data.states, jsPlumbInstance);
 
             // Then load transitions
             await this.deserializeTransitions(data.transitions, jsPlumbInstance);
@@ -734,7 +737,7 @@ class FSASerializationManager {
             reader.onload = async (e) => {
                 try {
                     const jsonData = JSON.parse(e.target.result);
-                    const success = await this.deserializeFSA(jsonData, jsPlumbInstance);
+                    const success = await this.deserializeFSA(jsonData, jsPlumbInstance, false);
 
                     if (success) {
                         notificationManager.showSuccess(
