@@ -323,16 +323,38 @@ class FSATransformManager {
     }
 
     /**
-     * Unified popup display method
+     * Show transform popup with modal overlay
      */
     showTransformPopup(type, fsa, propertiesResult) {
         const config = this.transformConfigs[type];
         const summary = propertiesResult.summary;
         const properties = propertiesResult.properties;
 
-        // Remove any existing popup
+        // Remove any existing popup and overlay
         const existingPopup = document.getElementById('transform-operation-popup');
         if (existingPopup) existingPopup.remove();
+
+        const existingOverlay = document.getElementById('transform-modal-overlay');
+        if (existingOverlay) existingOverlay.remove();
+
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'transform-modal-overlay';
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: var(--z-modals);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
 
         // Generate popup content based on type
         const popupContent = this.generatePopupContent(type, summary, properties);
@@ -340,6 +362,16 @@ class FSATransformManager {
         const popup = document.createElement('div');
         popup.id = 'transform-operation-popup';
         popup.className = `file-operation-popup ${config.popupClass}`;
+        popup.style.cssText = `
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            margin: 20px;
+            max-height: calc(100vh - 40px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        `;
 
         popup.innerHTML = `
             <div class="popup-header" style="background: linear-gradient(135deg, ${config.headerGradient});">
@@ -369,15 +401,33 @@ class FSATransformManager {
             </div>
         `;
 
-        const canvas = document.getElementById('fsa-canvas');
-        if (canvas) {
-            canvas.appendChild(popup);
+        // Add popup to overlay
+        overlay.appendChild(popup);
 
-            // Setup event handlers for chaining options if present
-            this.setupTransformPopupHandlers(type);
+        // Add overlay to body
+        document.body.appendChild(overlay);
 
-            setTimeout(() => popup.classList.add('show'), 100);
-        }
+        // Setup event handlers for chaining options if present
+        this.setupTransformPopupHandlers(type);
+
+        // Close modal when clicking overlay (but not popup)
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                this.hideTransformPopup();
+            }
+        });
+
+        // Prevent popup clicks from closing modal
+        popup.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Show with animation
+        setTimeout(() => {
+            overlay.classList.add('show');
+            overlay.style.opacity = '1';
+            popup.style.opacity = '1';
+        }, 10);
     }
 
     /**
@@ -644,13 +694,22 @@ class FSATransformManager {
     }
 
     /**
-     * Hide transform popup
+     * Hide transform popup and overlay
      */
     hideTransformPopup() {
+        const overlay = document.getElementById('transform-modal-overlay');
         const popup = document.getElementById('transform-operation-popup');
-        if (popup) {
-            popup.classList.add('hide');
-            setTimeout(() => popup.parentNode?.removeChild(popup), 300);
+
+        if (overlay && popup) {
+            // Animate out
+            overlay.classList.remove('show');
+            overlay.style.opacity = '0';
+
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
         }
     }
 

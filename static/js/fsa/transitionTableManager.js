@@ -93,7 +93,7 @@ export function generateTransitionTable(jsPlumbInstance) {
             }
         });
 
-        // FIXED: Add epsilon transition using empty string '' instead of epsilon symbol
+        // Add epsilon transition using empty string '' instead of epsilon symbol
         if (isEpsilon && table.hasEpsilon) {
             if (table.transitions[sourceId] && table.transitions[sourceId]['']) { // Use empty string
                 if (!table.transitions[sourceId][''].includes(targetId)) {

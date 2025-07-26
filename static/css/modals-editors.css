@@ -97,8 +97,8 @@
     transition: var(--transition-fast);
     padding: 0 var(--spacing-xs);
     line-height: 1;
-    margin-top: -var(--spacing-xs);
-    margin-right: -var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+    margin-right: var(--spacing-xs);
 }
 
 .close-btn:hover {
@@ -198,4 +198,233 @@
 .symbol-edit-input:invalid,
 .symbol-edit-input[style*="red"] {
     border: 2px solid var(--error-colour);
+}
+
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: var(--z-modals);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity var(--transition-normal) ease;
+}
+
+/* Remove the old positioning styles from popups when used with overlay */
+.modal-overlay .file-operation-popup {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: scale(0.9) !important;
+    transition: transform var(--transition-normal) ease !important;
+    margin: var(--spacing-xl);
+    max-height: calc(100vh - 40px);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+
+/* Responsive adjustments for modal popups */
+@media (max-width: 768px) {
+    .modal-overlay .file-operation-popup {
+        margin: var(--spacing-md);
+        max-height: calc(100vh - 20px);
+        width: calc(100vw - 20px);
+        max-width: none;
+    }
+}
+
+/* Ensure proper z-index layering */
+.modal-overlay {
+    z-index: 1000;
+}
+
+.modal-overlay .file-operation-popup {
+    z-index: 1001;
+}
+
+/* Smooth fade-in animation for overlay */
+.modal-overlay.show {
+    opacity: 1;
+}
+
+.modal-overlay.show .file-operation-popup {
+    transform: scale(1) !important;
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+    overflow: hidden;
+}
+
+/* Focus trap styling - ensure modals are clearly focused */
+.modal-overlay:focus-within {
+    outline: none;
+}
+
+.modal-overlay .file-operation-popup:focus-within {
+    box-shadow: var(--shadow-lg), 0 0 0 3px rgba(76, 175, 80, 0.3);
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .modal-overlay {
+        background-color: rgba(0, 0, 0, 0.8);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .modal-overlay {
+        transition: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .modal-overlay .file-operation-popup {
+        transition: none !important;
+        transform: none !important;
+    }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    .modal-overlay {
+        background-color: rgba(0, 0, 0, 0.8);
+    }
+}
+
+/* Ensure proper cursor styling */
+.modal-overlay {
+    cursor: pointer;
+}
+
+.modal-overlay .file-operation-popup {
+    cursor: default;
+}
+
+/* Loading state adjustments for overlay modals */
+.modal-overlay .file-operation-popup .file-action-btn.loading {
+    pointer-events: none;
+}
+
+/* Better visual hierarchy for nested content */
+.modal-overlay .file-operation-popup .scrollable-content {
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Scrollbar styling for modal content */
+.modal-overlay .file-operation-popup .scrollable-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-overlay .file-operation-popup .scrollable-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-sm);
+}
+
+.modal-overlay .file-operation-popup .scrollable-content::-webkit-scrollbar-thumb {
+    background: rgba(108, 117, 125, 0.5);
+    border-radius: var(--radius-sm);
+}
+
+.modal-overlay .file-operation-popup .scrollable-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(108, 117, 125, 0.7);
+}
+
+/* Animation keyframes for smooth modal transitions */
+@keyframes modal-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes modal-scale-in {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Apply animations */
+.modal-overlay {
+    animation: modal-fade-in var(--transition-normal) ease forwards;
+}
+
+.modal-overlay .file-operation-popup {
+    animation: modal-scale-in var(--transition-normal) ease forwards;
+}
+
+/* Ensure modal content is properly contained */
+.modal-overlay .file-operation-popup {
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+    max-height: calc(100vh - 40px);
+}
+
+.modal-overlay .file-operation-popup .file-operation-content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-overlay .file-operation-popup .scrollable-content {
+    flex: 1;
+    min-height: 0;
+}
+
+.modal-overlay .file-operation-popup.regex-convert.show,
+.modal-overlay .file-operation-popup.fsa-to-regex.show,
+.modal-overlay .file-operation-popup.minimise.show,
+.modal-overlay .file-operation-popup.convert.show,
+.modal-overlay .file-operation-popup.complete.show,
+.modal-overlay .file-operation-popup.complement.show,
+.modal-overlay .file-operation-popup.minimise-nfa.show {
+    transform: scale(1) !important;
+    opacity: 1 !important;
+}
+
+.modal-overlay .file-operation-popup.regex-convert.hide,
+.modal-overlay .file-operation-popup.fsa-to-regex.hide,
+.modal-overlay .file-operation-popup.minimise.hide,
+.modal-overlay .file-operation-popup.convert.hide,
+.modal-overlay .file-operation-popup.complete.hide,
+.modal-overlay .file-operation-popup.complement.hide,
+.modal-overlay .file-operation-popup.minimise-nfa.hide {
+    transform: scale(0.9) !important;
+    opacity: 0 !important;
+}
+
+.modal-overlay .file-operation-popup {
+    animation: none !important; /* Prevent conflicts with existing animations */
+}
+
+.modal-overlay .file-operation-popup {
+    /* Start in the correct state for the overlay animation */
+    transform: scale(0.9);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.modal-overlay.show .file-operation-popup {
+    transform: scale(1);
+    opacity: 1;
 }

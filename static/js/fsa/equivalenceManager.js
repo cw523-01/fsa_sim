@@ -118,13 +118,39 @@ class EquivalenceManager {
     showEquivalencePopup(type) {
         const config = this.equivalenceConfigs[type];
 
-        // Remove any existing popup
+        // Remove any existing popup and overlay
         const existingPopup = document.getElementById('equivalence-operation-popup');
         if (existingPopup) existingPopup.remove();
+
+        const existingOverlay = document.getElementById('equivalence-modal-overlay');
+        if (existingOverlay) existingOverlay.remove();
+
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'equivalence-modal-overlay';
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: var(--z-modals);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
 
         const popup = document.createElement('div');
         popup.id = 'equivalence-operation-popup';
         popup.className = `file-operation-popup ${config.popupClass}`;
+        popup.style.cssText = `
+            margin: 20px;
+            max-height: calc(100vh - 40px);
+        `;
 
         const popupContent = this.generatePopupContent(type);
 
@@ -165,15 +191,32 @@ class EquivalenceManager {
             </div>
         `;
 
-        const canvas = document.getElementById('fsa-canvas');
-        if (canvas) {
-            canvas.appendChild(popup);
+        // Add popup to overlay
+        overlay.appendChild(popup);
 
-            // Setup event handlers
-            this.setupEquivalencePopupHandlers(type);
+        // Add overlay to body
+        document.body.appendChild(overlay);
 
-            setTimeout(() => popup.classList.add('show'), 100);
-        }
+        // Setup event handlers
+        this.setupEquivalencePopupHandlers(type);
+
+        // Close modal when clicking overlay (but not popup)
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                this.hideEquivalencePopup();
+            }
+        });
+
+        // Prevent popup clicks from closing modal
+        popup.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Show with animation
+        setTimeout(() => {
+            overlay.classList.add('show');
+            overlay.style.opacity = '1';
+        }, 10);
     }
 
     /**
@@ -594,14 +637,24 @@ class EquivalenceManager {
     }
 
     /**
-     * Hide equivalence popup
+     * Hide equivalence popup and overlay
      */
     hideEquivalencePopup() {
+        const overlay = document.getElementById('equivalence-modal-overlay');
         const popup = document.getElementById('equivalence-operation-popup');
-        if (popup) {
-            popup.classList.add('hide');
-            setTimeout(() => popup.parentNode?.removeChild(popup), 300);
+
+        if (overlay && popup) {
+            // Animate out
+            overlay.classList.remove('show');
+            overlay.style.opacity = '0';
+
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 300);
         }
+
         this.currentOperationType = null;
     }
 

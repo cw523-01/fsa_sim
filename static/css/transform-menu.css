@@ -31,6 +31,25 @@
     /* Inherit styles from existing file operation popup */
 }
 
+.modal-overlay .file-operation-popup.minimise,
+.modal-overlay .file-operation-popup.convert,
+.modal-overlay .file-operation-popup.complete,
+.modal-overlay .file-operation-popup.complement,
+.modal-overlay .file-operation-popup.minimise-nfa {
+    /* Remove conflicting positioning */
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    transform: scale(1) !important;
+    opacity: 1 !important;
+
+    /* Ensure proper sizing within overlay */
+    width: 600px;
+    max-width: 90vw;
+    max-height: calc(100vh - 40px);
+    margin: 20px;
+}
+
 /* Transform menu header for minimise popup */
 .file-operation-popup.minimise .popup-header {
     background: linear-gradient(135deg, var(--primary-colour) 0%, var(--primary-hover) 100%);

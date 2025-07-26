@@ -19,6 +19,22 @@
     flex-direction: column;
 }
 
+.modal-overlay .file-operation-popup.regex-convert,
+.modal-overlay .file-operation-popup.fsa-to-regex {
+    /* Remove conflicting positioning */
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    transform: scale(1) !important;
+    opacity: 1 !important;
+
+    /* Ensure proper sizing within overlay */
+    width: 600px;
+    max-width: 90vw;
+    max-height: calc(100vh - 40px);
+    margin: 20px;
+}
+
 .file-operation-popup.regex-convert.show {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
@@ -28,6 +44,9 @@
     opacity: 0;
     transform: translate(-50%, -50%) scale(0.9);
 }
+
+
+
 
 /* FSA to REGEX result popup - updated to green theme */
 .file-operation-popup.fsa-to-regex {

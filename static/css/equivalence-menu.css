@@ -65,8 +65,20 @@
 .file-operation-popup.fsa-fsa-equiv.show,
 .file-operation-popup.regex-fsa-equiv.show,
 .file-operation-popup.regex-regex-equiv.show {
+    position: relative;
+    transform: scale(1);
+    width: 600px;
+    max-width: 90vw;
+    max-height: 80vh;
+    background: linear-gradient(135deg, var(--light-gray) 0%, var(--medium-gray) 100%);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transition: transform var(--transition-normal) ease, opacity var(--transition-normal) ease;
+    display: flex;
+    flex-direction: column;
+    margin: 20px; /* This provides spacing from screen edges */
 }
 
 /* Hide animations for all equivalence popups */
@@ -1163,4 +1175,30 @@
     .suggested-regexes {
         padding: var(--spacing-sm);
     }
+}
+
+/* Animation states */
+.file-operation-popup.popup-entering {
+    opacity: 0;
+    transform: scale(0.9);
+}
+
+.file-operation-popup.popup-entered {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.file-operation-popup.popup-exiting {
+    opacity: 0;
+    transform: scale(0.9);
+}
+
+/* Ensure the overlay centers the popup */
+.modal-overlay > .file-operation-popup {
+    /* Remove any positioning overrides */
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
 }
