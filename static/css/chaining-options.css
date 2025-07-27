@@ -1,4 +1,4 @@
-/* Scrollable Content for REGEX Modal Only - FIXED */
+/* Scrollable Content for REGEX Modal Only */
 .file-operation-popup.regex-convert {
     max-height: 90vh !important;
 }
@@ -41,7 +41,7 @@
     scrollbar-color: rgba(108, 117, 125, 0.5) rgba(255, 255, 255, 0.3) !important;
 }
 
-/* Option Title and Description - Fixed Text Colors */
+/* Option Title and Description */
 .option-title {
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);

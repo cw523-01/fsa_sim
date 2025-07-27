@@ -469,7 +469,7 @@ class FSATransformManager {
     /**
      * Generate popup content based on transform type
      */
-    generatePopupContent(type, summary, properties) {
+        generatePopupContent(type, summary, properties) {
         const transitionCount = this.getTransitionCount();
         const baseStatesInfo = `
             <div class="states-info">
@@ -481,7 +481,7 @@ class FSATransformManager {
         const contentGenerators = {
             minimise: () => ({
                 description: `<div class="file-operation-description">
-                    Minimising the DFA will replace the current automaton with an equivalent minimal DFA using Hopcroft's algorithm.
+                    Minimising the DFA will replace the current automaton with an equivalent minimal DFA using <a href="https://en.wikipedia.org/wiki/DFA_minimization#Hopcroft's_algorithm" target="_blank" rel="noopener noreferrer">Hopcroft's algorithm</a>.
                 </div>`,
                 statesInfo: baseStatesInfo,
                 warningSection: this.generateWarningSection(
@@ -535,7 +535,7 @@ class FSATransformManager {
                 return {
                     description: `<div class="file-operation-description">
                         ${isComplete ? 'The DFA is already complete. No changes will be made.' :
-                                      'Completing the DFA will add missing transitions by introducing a dead state and routing undefined transitions to it.'}
+                                      'Completing the DFA will add missing transitions by introducing a <a href="https://www.tutorialspoint.com/automata_theory/dead_state_in_finite_automata.htm" target="_blank" rel="noopener noreferrer">dead state</a> and routing undefined transitions to it.'}
                     </div>`,
                     statesInfo: `<div class="states-info">
                         Current DFA: <span class="states-count">${isComplete ? 'Complete' : 'Incomplete'}</span><br>
@@ -561,7 +561,7 @@ class FSATransformManager {
                     description: `<div class="file-operation-description">
                         ${isComplete ? 
                             `Taking the complement will swap accepting and non-accepting states. ${acceptingCount} accepting states will become non-accepting, and ${nonAcceptingCount} non-accepting states will become accepting.` :
-                            `Taking the complement will first complete the DFA (adding dead states for missing transitions), then swap accepting and non-accepting states. The result accepts exactly the strings that the original DFA rejects.`}
+                            `Taking the complement will first complete the DFA (adding <a href="https://www.tutorialspoint.com/automata_theory/dead_state_in_finite_automata.htm" target="_blank" rel="noopener noreferrer">dead states</a> for missing transitions), then swap accepting and non-accepting states. The result accepts exactly the strings that the original DFA rejects.`}
                     </div>`,
                     statesInfo: `<div class="states-info">
                         Current DFA: <span class="states-count">${isComplete ? 'Complete' : 'Incomplete'}</span><br>
@@ -597,7 +597,7 @@ class FSATransformManager {
                                 <span>Important Algorithm Limitation</span>
                             </div>
                             <div class="limitation-content">
-                                <strong>NFA minimisation is a computationally difficult problem.</strong> Unlike DFA minimisation, which guarantees an optimal result, this NFA minimisation technique uses heuristic approaches that may not always find the absolute minimum.
+                                <strong>NFA minimisation is a computationally difficult problem.</strong> Unlike <a href="https://en.wikipedia.org/wiki/DFA_minimization#Hopcroft's_algorithm" target="_blank" rel="noopener noreferrer">DFA minimisation</a>, which guarantees an optimal result, this NFA minimisation technique uses heuristic approaches that may not always find the absolute minimum.
                             </div>
                             <ul class="limitation-points">
                                 <li>The result <strong>may not be the smallest possible</strong> equivalent NFA</li>
@@ -609,7 +609,7 @@ class FSATransformManager {
             
                         <div class="algorithm-explanation">
                             <h4>Algorithm Details</h4>
-                            <p>Uses a hybrid approach combining the Kameda-Weiner algorithm with determinisation and DFA minimisation techniques. The method adapts based on automaton size and complexity for improved practical results.</p>
+                            <p>Uses a hybrid approach combining the <a href="https://www.researchgate.net/publication/3045459_On_the_State_Minimization_of_Nondeterministic_Finite_Automata" target="_blank" rel="noopener noreferrer">Kameda-Weiner algorithm</a> with <a href="https://en.wikipedia.org/wiki/Powerset_construction" target="_blank" rel="noopener noreferrer">determinisation</a> and <a href="https://en.wikipedia.org/wiki/DFA_minimization#Hopcroft's_algorithm" target="_blank" rel="noopener noreferrer">DFA minimisation</a> techniques. The method adapts based on automaton size and complexity for improved practical results.</p>
                         </div>
                     </div>
                 `;
@@ -665,7 +665,7 @@ class FSATransformManager {
         } else if (isDeterministic && hasEpsilon) {
             return 'The conversion will remove epsilon transitions while maintaining determinism.';
         }
-        return 'The conversion will create an equivalent deterministic automaton (DFA) using subset construction.';
+        return 'The conversion will create an equivalent deterministic automaton (DFA) using <a href="https://en.wikipedia.org/wiki/Powerset_construction" target="_blank" rel="noopener noreferrer">subset construction</a>.';
     }
 
     generateWarningSection(text) {

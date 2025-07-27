@@ -90,7 +90,7 @@ class VisualSimulationManager {
                 await this.highlightStartingTransition(startingState);
                 this.highlightState(startingState, 'current');
 
-                // FIXED: Track input position separately from step index for epsilon transitions
+                // Track input position separately from step index for epsilon transitions
                 let inputPosition = 0;
 
                 // Execute each step in the path

@@ -48,7 +48,7 @@
 
 
 
-/* FSA to REGEX result popup - updated to green theme */
+/* FSA to REGEX result popup */
 .file-operation-popup.fsa-to-regex {
     /* Inherit base popup styles */
     position: fixed;
@@ -80,7 +80,7 @@
     transform: translate(-50%, -50%) scale(0.9);
 }
 
-/* Updated header with green theme */
+/* Header with green theme */
 .file-operation-popup.fsa-to-regex .popup-header {
     background: linear-gradient(135deg, var(--primary-colour) 0%, var(--primary-hover) 100%);
     display: flex;
@@ -175,7 +175,7 @@
     transform: translateY(-1px);
 }
 
-/* Updated primary button with green theme */
+/* Primary button with green theme */
 .file-operation-popup.fsa-to-regex .file-action-btn.primary {
     background: var(--primary-colour);
 }
@@ -184,7 +184,7 @@
     background: var(--primary-hover);
 }
 
-/* REGEX result display section - updated with green accent */
+/* REGEX result display section */
 .regex-result-section {
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid var(--border-color);
@@ -224,7 +224,7 @@
     max-width: 100%;
 }
 
-/* Updated copy button with green theme */
+/* Copy button with green theme */
 .copy-regex-btn {
     background: var(--primary-colour);
     color: var(--white);
@@ -241,7 +241,7 @@
     background: var(--primary-hover);
 }
 
-/* Verification section - updated with green theme */
+/* Verification section */
 .verification-section {
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid var(--border-color);
@@ -293,6 +293,7 @@
     border-radius: var(--radius-md);
     padding: var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
+    text-align: left;
 }
 
 .notice-header {
@@ -843,7 +844,7 @@
     cursor: not-allowed;
 }
 
-/* Animation for successful copy - updated to green */
+/* Animation for successful copy */
 @keyframes copy-success {
     0% { background: var(--primary-colour); }
     100% { background: var(--primary-hover); }
@@ -1064,6 +1065,7 @@
     padding: var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
     border-left: 4px solid var(--primary-colour);
+    text-align: left;
 }
 
 .loading-description p {
@@ -1537,4 +1539,84 @@
     .progress-step.completed .step-icon {
         animation: none;
     }
+}
+
+.file-operation-popup.regex-convert .file-operation-description a {
+    color: var(--secondary-colour) !important;
+    text-decoration: underline;
+    font-weight: var(--font-weight-medium);
+}
+
+/* Conversion algorithm info section */
+.conversion-algorithm-info {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    border-left: 4px solid var(--primary-colour);
+    text-align: left;
+}
+
+.conversion-algorithm-info .algorithm-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+.conversion-algorithm-info .algorithm-title {
+    color: var(--primary-colour);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-lg);
+    font-family: var(--font-family-ui);
+}
+.conversion-algorithm-info .algorithm-content {
+    color: var(--text-color);
+    font-size: var(--font-size-md);
+    line-height: var(--line-height);
+    font-family: var(--font-family-ui);
+}
+.conversion-algorithm-info .algorithm-content p {
+    margin: 0 0 var(--spacing-md) 0;
+}
+.conversion-algorithm-info .algorithm-content p:last-child {
+    margin-bottom: 0;
+}
+.conversion-algorithm-info .algorithm-steps {
+    margin: var(--spacing-md) 0 0 0;
+}
+.conversion-algorithm-info .algorithm-steps strong {
+    color: var(--primary-colour);
+    font-weight: var(--font-weight-bold);
+    display: block;
+    margin-bottom: var(--spacing-sm);
+}
+
+.conversion-algorithm-info .algorithm-steps ol {
+    margin: 0;
+    padding-left: var(--spacing-xl);
+    list-style-type: decimal;
+}
+
+.conversion-algorithm-info .algorithm-steps li {
+    margin-bottom: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    color: var(--text-color);
+    line-height: var(--line-height);
+    font-family: var(--font-family-ui);
+}
+
+.conversion-algorithm-info .algorithm-steps li:last-child {
+    margin-bottom: 0;
+}
+
+/* Ensure hyperlinks in algorithm sections are properly styled */
+.conversion-algorithm-info a {
+    color: var(--secondary-colour);
+    text-decoration: underline;
+    font-weight: var(--font-weight-medium);
+}
+
+.conversion-algorithm-info a:hover {
+    color: var(--secondary-hover);
 }

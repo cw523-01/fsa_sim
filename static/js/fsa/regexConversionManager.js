@@ -208,17 +208,36 @@ class RegexConversionManager {
                             <h4>Converting FSA to Regular Expression...</h4>
                         </div>
                         <div class="loading-description">
-                            <p>Please wait while we generate the regular expression from your FSA. This process may take a moment for complex automata.</p>
+                            <p>Converting your finite state automaton to a regular expression using the <a href="https://www.geeksforgeeks.org/theory-of-computation/state-elimination-method-convert-dfa-nfa-%C9%9B-nfa-into-regular-expression/" target="_blank" rel="noopener noreferrer">state elimination algorithm</a>.</p>
                         </div>
+                        
+                        <div class="conversion-algorithm-info">
+                            <div class="algorithm-header">
+                                <span class="algorithm-title">Conversion Algorithm Details</span>
+                            </div>
+                            <div class="algorithm-content">
+                                <p>The conversion uses the <a href="https://www.geeksforgeeks.org/theory-of-computation/state-elimination-method-convert-dfa-nfa-%C9%9B-nfa-into-regular-expression/" target="_blank" rel="noopener noreferrer">state elimination algorithm</a>, which systematically removes states from a <a href="https://en.wikipedia.org/wiki/Generalized_nondeterministic_finite_automaton" target="_blank" rel="noopener noreferrer">Generalized NFA (GNFA)</a> until only the start and accept states remain.</p>
+                                <div class="algorithm-steps">
+                                    <strong>Process steps:</strong>
+                                    <ol>
+                                        <li>Convert FSA to GNFA format</li>
+                                        <li>Apply state elimination with transition combination</li>
+                                        <li>Generate regular expression from final transition</li>
+                                        <li>Apply simplification patterns for readability</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="loading-progress">
                             <div class="progress-steps">
                                 <div class="progress-step active">
                                     <div class="step-icon">1</div>
-                                    <div class="step-text">Analyzing FSA structure</div>
+                                    <div class="step-text">Converting to GNFA</div>
                                 </div>
                                 <div class="progress-step active">
                                     <div class="step-icon">2</div>
-                                    <div class="step-text">Applying conversion algorithm</div>
+                                    <div class="step-text">Eliminating states</div>
                                 </div>
                                 <div class="progress-step processing">
                                     <div class="step-icon">
@@ -319,13 +338,31 @@ class RegexConversionManager {
                 </div>
                 `}
     
+                <div class="conversion-algorithm-info">
+                    <div class="algorithm-header">
+                        <span class="algorithm-title">Conversion Algorithm Details</span>
+                    </div>
+                    <div class="algorithm-content">
+                        <p>The conversion used the <a href="https://www.geeksforgeeks.org/theory-of-computation/state-elimination-method-convert-dfa-nfa-%C9%9B-nfa-into-regular-expression/" target="_blank" rel="noopener noreferrer">state elimination algorithm</a>, which systematically removes states from a <a href="https://en.wikipedia.org/wiki/Generalized_nondeterministic_finite_automaton" target="_blank" rel="noopener noreferrer">Generalized NFA (GNFA)</a> until only the start and accept states remain.</p>
+                        <div class="algorithm-steps">
+                            <strong>Process completed:</strong>
+                            <ol>
+                                <li>Converted FSA to GNFA format</li>
+                                <li>Applied state elimination with transition combination</li>
+                                <li>Generated regular expression from final transition</li>
+                                <li>Applied simplification patterns for readability (only applied to REGEX up to a certain size due to complexity).</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="important-notice">
                     <div class="notice-header">
                         <span class="notice-title">Important Notice</span>
                     </div>
                     <div class="notice-content">
                         <p><strong>The generated regular expression may not be the smallest or most optimal possible.</strong></p>
-                        <p>Regular expression minimisation is a complex problem, and the conversion algorithm prioritises correctness over brevity. The resulting expression is guaranteed to be equivalent to your FSA, but there may exist shorter equivalent expressions.</p>
+                        <p>Regular expression minimisation is a complex problem, and the state elimination algorithm prioritises correctness over brevity. The resulting expression is guaranteed to be equivalent to your FSA, but there may exist shorter equivalent expressions.</p>
                         <ul class="notice-points">
                             <li>The REGEX is functionally correct and equivalent to your FSA</li>
                             <li>Manual optimisation may be possible for shorter expressions</li>
@@ -666,7 +703,7 @@ class RegexConversionManager {
             </div>
             <div class="file-operation-content scrollable-content">
                 <div class="file-operation-description">
-                    Enter a regular expression to convert it into an equivalent NFA using Thompson's construction algorithm.
+                    Enter a regular expression to convert it into an equivalent NFA using <a href="https://en.wikipedia.org/wiki/Thompson%27s_construction" target="_blank" rel="noopener noreferrer">Thompson's construction</a> algorithm.
                 </div>
                 
                 <div class="form-group">

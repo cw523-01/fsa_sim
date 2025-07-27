@@ -45,7 +45,7 @@
 .transition-table {
     width: auto; /* Let table size naturally */
     min-width: 100%; /* Ensure minimum width */
-    border-collapse: separate; /* CRITICAL: collapse breaks sticky positioning */
+    border-collapse: separate; /* collapse breaks sticky positioning */
     border-spacing: 0; /* Remove spacing between cells */
     margin: 0; /* Remove margins since wrapper handles spacing */
 }

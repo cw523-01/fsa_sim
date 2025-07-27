@@ -209,7 +209,7 @@ class RegexParser:
 
 
 class GNFA:
-    """Generalized NFA for state elimination algorithm."""
+    """Generalised NFA for state elimination algorithm."""
 
     def __init__(self):
         self.states = set()
@@ -492,7 +492,6 @@ def eliminate_states(gnfa: GNFA) -> str:
 def fsa_to_regex(fsa: Dict, skip_simplification_threshold: int = 2500) -> Dict:
     """
     Convert a finite state automaton to a regular expression.
-    Now with improved verification that falls back to original regex if simplification fails.
     """
     result = {
         'regex': '',
@@ -1187,7 +1186,7 @@ class UnionNode(RegexNode):
         if isinstance(right, StarNode) and isinstance(left, PlusNode):
             return UnionNode(StarNode(left.inner).simplify(), right).simplify()
 
-        # CRITICAL MISSING RULE: (ε|R*) → R* - HIGHEST PRIORITY
+        # RULE: (ε|R*) → R*
         if isinstance(left, EpsilonNode) and isinstance(right, StarNode):
             return right
         if isinstance(right, EpsilonNode) and isinstance(left, StarNode):

@@ -207,7 +207,7 @@ function positionStatesInLayers(layers, config) {
         const x = config.startX + (layerIndex * config.layerSpacingX);
 
         if (layer.length === 1) {
-            // Single state - center it vertically
+            // Single state - centre it vertically
             const y = config.canvasHeight / 2;
             positions[layer[0]] = { x, y };
         } else {
@@ -279,24 +279,24 @@ function calculateHierarchicalLayout(fsa, config) {
     const redistributedLevels = redistributeLevels(levels, config.maxNodesPerLevel);
 
     // Position states level by level
-    const centerX = config.canvasWidth / 2;
+    const centreX = config.canvasWidth / 2;
     const startY = 80;
 
     redistributedLevels.forEach((levelStates, levelIndex) => {
         const y = startY + levelIndex * config.levelSpacing;
 
         if (levelStates.length === 1) {
-            // Single state - center it
-            positions[levelStates[0]] = { x: centerX, y: y };
+            // Single state - centre it
+            positions[levelStates[0]] = { x: centreX, y: y };
         } else {
             // Multiple states - distribute evenly but not too wide
             const maxWidth = Math.min(config.canvasWidth * 0.8, levelStates.length * config.nodeSpacing);
             const spacing = maxWidth / Math.max(1, levelStates.length - 1);
-            const startX = centerX - maxWidth / 2;
+            const startX = centreX - maxWidth / 2;
 
             levelStates.forEach((stateId, index) => {
                 positions[stateId] = {
-                    x: levelStates.length === 1 ? centerX : startX + index * spacing,
+                    x: levelStates.length === 1 ? centreX : startX + index * spacing,
                     y: y
                 };
             });
@@ -310,7 +310,7 @@ function calculateHierarchicalLayout(fsa, config) {
     if (unpositioned.length > 0) {
         const isolatedY = startY + redistributedLevels.length * config.levelSpacing;
         const isolatedPositions = calculateCompactGrid(unpositioned, {
-            centerX: centerX,
+            centerX: centreX,
             startY: isolatedY,
             nodeSpacing: config.nodeSpacing,
             canvasWidth: config.canvasWidth
@@ -704,7 +704,7 @@ function calculateCompactGrid(states, config) {
         const row = Math.floor(index / cols);
         const col = index % cols;
 
-        // Center the last row if it's not full
+        // Centre the last row if it's not full
         let x = startX + col * config.nodeSpacing;
         if (row === rows - 1) {
             const statesInLastRow = states.length - row * cols;
@@ -833,20 +833,20 @@ function constrainToCanvas(positions, config) {
 
     const scale = Math.min(scaleX, scaleY, 1); // Don't scale up
 
-    // Apply scaling and centering
-    const centerX = config.canvasWidth / 2;
-    const centerY = config.canvasHeight / 2;
-    const boundsCenterX = (bounds.minX + bounds.maxX) / 2;
-    const boundsCenterY = (bounds.minY + bounds.maxY) / 2;
+    // Apply scaling and centring
+    const centreX = config.canvasWidth / 2;
+    const centreY = config.canvasHeight / 2;
+    const boundsCentreX = (bounds.minX + bounds.maxX) / 2;
+    const boundsCentreY = (bounds.minY + bounds.maxY) / 2;
 
     Object.values(positions).forEach(pos => {
-        // Scale around center
-        pos.x = boundsCenterX + (pos.x - boundsCenterX) * scale;
-        pos.y = boundsCenterY + (pos.y - boundsCenterY) * scale;
+        // Scale around centre
+        pos.x = boundsCentreX + (pos.x - boundsCentreX) * scale;
+        pos.y = boundsCentreY + (pos.y - boundsCentreY) * scale;
 
-        // Translate to canvas center
-        pos.x = centerX + (pos.x - boundsCenterX);
-        pos.y = centerY + (pos.y - boundsCenterY);
+        // Translate to canvas centre
+        pos.x = centreX + (pos.x - boundsCentreX);
+        pos.y = centreY + (pos.y - boundsCentreY);
 
         // Final constraint
         pos.x = Math.max(margin, Math.min(config.canvasWidth - margin, pos.x));

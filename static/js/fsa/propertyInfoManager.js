@@ -123,7 +123,7 @@ class PropertyInfoManager {
         // Update popup styling based on property type
         this.popup.className = `property-info-popup ${property}`;
 
-        // Show the backdrop and popup (now always centered)
+        // Show the backdrop and popup (now always centred)
         this.backdrop.classList.add('show');
 
     }

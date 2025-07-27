@@ -1193,7 +1193,7 @@
     transform: scale(0.9);
 }
 
-/* Ensure the overlay centers the popup */
+/* Ensure the overlay centres the popup */
 .modal-overlay > .file-operation-popup {
     /* Remove any positioning overrides */
     position: static !important;

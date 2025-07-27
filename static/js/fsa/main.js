@@ -132,8 +132,6 @@ export function initialiseSimulator() {
     // Initialise equivalence checking system
     initialiseEquivalenceChecking();
 
-    // Setup performance monitoring
-    setupPerformanceMonitoring();
 
     // Initial displays update using centralised function
     updateFSADisplays(jsPlumbInstance);
@@ -144,76 +142,6 @@ export function initialiseSimulator() {
     // Make sure the correct button is highlighted (Straight is default)
     document.getElementById('straight-edges-btn').classList.add('active');
     document.getElementById('curved-edges-btn').classList.remove('active');
-}
-
-/**
- * Setup performance monitoring for drag operations
- */
-function setupPerformanceMonitoring() {
-    let dragPerformanceWarningShown = false;
-
-    // Monitor for potential performance issues
-    const observer = new MutationObserver((mutations) => {
-        let hasDragMutations = false;
-
-        mutations.forEach((mutation) => {
-            if (mutation.target && mutation.target.classList) {
-                if (mutation.target.classList.contains('ui-draggable-dragging') ||
-                    mutation.target.classList.contains('state') ||
-                    mutation.target.classList.contains('accepting-state')) {
-                    hasDragMutations = true;
-                }
-            }
-        });
-
-        // If we detect excessive mutations during drag, log a warning
-        if (hasDragMutations && !dragPerformanceWarningShown) {
-            console.log('Performance: Drag mutations detected - monitoring for issues');
-            dragPerformanceWarningShown = true;
-        }
-    });
-
-    observer.observe(document.getElementById('fsa-canvas'), {
-        attributes: true,
-        childList: true,
-        subtree: true,
-        attributeFilter: ['style', 'class']
-    });
-
-    // Monitor frame rate during drag operations
-    let lastFrameTime = performance.now();
-    let frameCount = 0;
-    let dragStartTime = null;
-
-    function monitorFrameRate() {
-        const now = performance.now();
-        frameCount++;
-
-        // Check if we're currently dragging
-        const isDragging = document.querySelector('.ui-draggable-dragging') !== null;
-
-        if (isDragging && !dragStartTime) {
-            dragStartTime = now;
-            frameCount = 0;
-        } else if (!isDragging && dragStartTime) {
-            const dragDuration = now - dragStartTime;
-            const fps = frameCount / (dragDuration / 1000);
-
-            if (fps < 30) {
-                console.warn(`Performance: Low FPS during drag: ${fps.toFixed(1)} fps`);
-            } else {
-                console.log(`Performance: Drag completed at ${fps.toFixed(1)} fps`);
-            }
-
-            dragStartTime = null;
-        }
-
-        lastFrameTime = now;
-        requestAnimationFrame(monitorFrameRate);
-    }
-
-    // Start monitoring
-    requestAnimationFrame(monitorFrameRate);
 }
 
 /**
@@ -541,20 +469,12 @@ export function setupEventListeners() {
 
             const snapshotCommand = undoRedoManager.createSnapshotCommand('Set all edges to straight');
 
-            // Add performance mode during edge style changes
-            document.body.classList.add('performance-mode');
-
             // Apply straight edges to all connections
             setAllEdgeStyles(jsPlumbInstance, false);
 
             // Update button styling
             this.classList.add('active');
             document.getElementById('curved-edges-btn').classList.remove('active');
-
-            // Remove performance mode after a brief delay
-            setTimeout(() => {
-                document.body.classList.remove('performance-mode');
-            }, 100);
 
             if (snapshotCommand) {
                 undoRedoManager.finishSnapshotCommand(snapshotCommand);
@@ -583,20 +503,12 @@ export function setupEventListeners() {
 
             const snapshotCommand = undoRedoManager.createSnapshotCommand('Set all edges to curved');
 
-            // Add performance mode during edge style changes
-            document.body.classList.add('performance-mode');
-
             // Apply curved edges to all connections
             setAllEdgeStyles(jsPlumbInstance, true);
 
             // Update button styling
             this.classList.add('active');
             document.getElementById('straight-edges-btn').classList.remove('active');
-
-            // Remove performance mode after a brief delay
-            setTimeout(() => {
-                document.body.classList.remove('performance-mode');
-            }, 100);
 
             if (snapshotCommand) {
                 undoRedoManager.finishSnapshotCommand(snapshotCommand);
@@ -1171,31 +1083,29 @@ function setupFunctionalButtons() {
 function setupDraggableTools() {
     $('.tool').draggable({
         cursor: 'move',
-        cursorAt: { left: 30, top: 30 }, // Center the helper on cursor
+        cursorAt: { left: 30, top: 30 },
         helper: function() {
-            // Create a custom helper with high z-index
             const clone = $(this).clone();
             clone.css({
-                'z-index': '9999', // Very high z-index to stay on top of canvas
-                'position': 'fixed', // Use fixed positioning to avoid canvas interference
-                'pointer-events': 'none' // Prevent interference with drop detection
+                'z-index': '9999',
+                'position': 'fixed',
+                'pointer-events': 'none'
             });
             return clone;
         },
-        appendTo: 'body', // Append to body to avoid canvas clipping
+        appendTo: 'body',
         start: function(event, ui) {
-            // Check if controls are locked before allowing drag
             if (controlLockManager.isControlsLocked()) {
-                return false; // Cancel the drag
+                return false;
             }
 
-            // Add performance optimisation class during tool drag
+            // Disable animations during tool drag for smooth performance
             document.body.classList.add('no-animation');
         },
         stop: function(event, ui) {
             if (controlLockManager.isControlsLocked()) return;
 
-            // Remove performance optimisation class
+            // KEEP: Re-enable animations after drag
             document.body.classList.remove('no-animation');
 
             const tool = $(this).attr('id');

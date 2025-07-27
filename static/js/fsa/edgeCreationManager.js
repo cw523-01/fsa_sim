@@ -10,84 +10,25 @@ class EdgeCreationManager {
         this.instructionsElement = null;
         this.cancelInstructionsElement = null;
         this.cursorFollower = null;
-        this.connectionDot = null;
         this.canvas = null;
         this.mouseMoveHandler = null;
         this.keydownHandler = null;
-
-        // Performance optimisation: throttle mouse move events
-        this.mouseThrottleTimeout = null;
-        this.lastMouseUpdate = 0;
-        this.mouseUpdateInterval = 16; // ~60fps
-
-        // Cache for expensive DOM operations
-        this.canvasRect = null;
-        this.statePositions = new Map();
-        this.cacheUpdateTime = 0;
-        this.cacheTimeout = 100; // Cache for 100ms
-
-        // Performance tracking
-        this.isDragInProgress = false;
-        this.dragCheckInterval = null;
-
-        // Don't bind methods here - bind them when they're used
+        this.canvasClickHandler = null;
     }
 
     /**
-     * Initialise the edge creation manager
+     * Initialize the edge creation manager
      * @param {HTMLElement} canvasElement - The FSA canvas element
      */
     initialise(canvasElement) {
         this.canvas = canvasElement;
         this.setupEventListeners();
-        this.setupDragDetection();
-    }
-
-    /**
-     * Setup drag detection to prevent mouse tracking during state dragging
-     */
-    setupDragDetection() {
-        // Monitor for drag state changes
-        this.dragCheckInterval = setInterval(() => {
-            const wasDragging = this.isDragInProgress;
-            this.isDragInProgress = document.querySelector('.ui-draggable-dragging') !== null;
-
-            // If drag state changed, update mouse tracking accordingly
-            if (wasDragging !== this.isDragInProgress) {
-                if (this.isDragInProgress) {
-                    console.log('Drag detected - pausing edge creation mouse tracking');
-                    this.pauseMouseTracking();
-                } else {
-                    console.log('Drag ended - resuming edge creation mouse tracking');
-                    this.resumeMouseTracking();
-                }
-            }
-        }, 16); // Check every frame
-    }
-
-    /**
-     * Pause mouse tracking temporarily
-     */
-    pauseMouseTracking() {
-        if (this.mouseMoveHandler && this.canvas) {
-            this.canvas.removeEventListener('mousemove', this.mouseMoveHandler);
-        }
-    }
-
-    /**
-     * Resume mouse tracking if edge creation is active
-     */
-    resumeMouseTracking() {
-        if (this.isEdgeCreationMode && this.sourceState && this.mouseMoveHandler && this.canvas) {
-            this.canvas.addEventListener('mousemove', this.mouseMoveHandler, { passive: true });
-        }
     }
 
     /**
      * Setup global event listeners
      */
     setupEventListeners() {
-        // Create and bind the keydown handler when setting up
         this.keydownHandler = (e) => {
             if (e.key === 'Escape' && this.isEdgeCreationMode) {
                 this.cancelEdgeCreation();
@@ -95,7 +36,6 @@ class EdgeCreationManager {
         };
         document.addEventListener('keydown', this.keydownHandler);
 
-        // Create and bind the canvas click handler when setting up
         this.canvasClickHandler = (e) => {
             if (this.isEdgeCreationMode && e.target === this.canvas) {
                 this.cancelEdgeCreation();
@@ -124,7 +64,6 @@ class EdgeCreationManager {
         // Show instructions
         this.showInstructions('Click on a state to start creating an edge');
 
-        console.log('Edge creation mode activated');
     }
 
     /**
@@ -147,7 +86,6 @@ class EdgeCreationManager {
         // Clean up any active edge creation
         this.cancelEdgeCreation();
 
-        console.log('Edge creation mode deactivated');
     }
 
     /**
@@ -171,14 +109,13 @@ class EdgeCreationManager {
         // Create cursor follower
         this.createCursorFollower();
 
-        // Start optimized mouse tracking
-        this.startOptimisedMouseTracking();
+        // Start mouse tracking
+        this.startMouseTracking();
 
         // Update instructions
         this.showInstructions('Click on a target state to create the edge');
         this.showCancelInstructions('Press ESC or click empty space to cancel');
 
-        console.log('Edge creation started from state:', sourceStateElement.id);
     }
 
     /**
@@ -194,7 +131,8 @@ class EdgeCreationManager {
 
         console.log('Edge creation completed:', sourceId, '->', targetId);
 
-        // Clean up visual elements
+        // Stop mouse tracking and clean up
+        this.stopMouseTracking();
         this.cleanupEdgeCreation();
 
         // Call the completion callback
@@ -202,7 +140,7 @@ class EdgeCreationManager {
             onComplete(sourceId, targetId);
         }
 
-        // Reset state but keep edge creation mode active for potential next edge
+        // Reset state but keep edge creation mode active
         this.sourceState = null;
         this.canvas.classList.remove('edge-creation-active');
         this.showInstructions('Click on a state to start creating another edge');
@@ -213,8 +151,7 @@ class EdgeCreationManager {
      * Cancel current edge creation
      */
     cancelEdgeCreation() {
-        console.log('Edge creation cancelled');
-
+        this.stopMouseTracking();
         this.cleanupEdgeCreation();
         this.sourceState = null;
         this.canvas.classList.remove('edge-creation-active');
@@ -240,18 +177,9 @@ class EdgeCreationManager {
         // Remove cursor follower
         this.removeCursorFollower();
 
-        // Remove connection dot
-        this.removeConnectionDot();
-
-        // Stop mouse tracking
-        this.stopMouseTracking();
-
         // Hide instructions
         this.hideInstructions();
         this.hideCancelInstructions();
-
-        // Clear caches
-        this.clearCache();
     }
 
     /**
@@ -269,9 +197,6 @@ class EdgeCreationManager {
         svg.style.height = '100%';
         svg.style.pointerEvents = 'none';
         svg.style.zIndex = '5';
-        // Add GPU acceleration
-        svg.style.willChange = 'transform';
-        svg.style.transform = 'translate3d(0, 0, 0)';
 
         // Create line element
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -325,9 +250,6 @@ class EdgeCreationManager {
 
         const follower = document.createElement('div');
         follower.classList.add('edge-creation-cursor');
-        // Add GPU acceleration
-        follower.style.willChange = 'transform';
-        follower.style.transform = 'translate3d(0, 0, 0)';
         this.canvas.appendChild(follower);
         this.cursorFollower = follower;
     }
@@ -343,77 +265,16 @@ class EdgeCreationManager {
     }
 
     /**
-     * Update connection dot position efficiently
-     * @param {HTMLElement} dot - The dot element
-     * @param {HTMLElement} stateElement - The state element
-     */
-    updateConnectionDotPosition(dot, stateElement) {
-        const rect = this.getCachedElementRect(stateElement);
-        const canvasRect = this.getCachedCanvasRect();
-
-        // Use transform for better performance
-        const left = rect.left - canvasRect.left + rect.width - 4;
-        const top = rect.top - canvasRect.top + rect.height / 2 - 4;
-        dot.style.transform = `translate(${left}px, ${top}px)`;
-    }
-
-    /**
-     * Remove connection dot
-     */
-    removeConnectionDot() {
-        if (this.connectionDot) {
-            this.connectionDot.remove();
-            this.connectionDot = null;
-        }
-    }
-
-    /**
      * Start mouse tracking
      */
-    startOptimisedMouseTracking() {
+    startMouseTracking() {
         if (this.mouseMoveHandler) return;
 
-        // Create throttled mouse move handler with drag detection
         this.mouseMoveHandler = (e) => {
-            // Drag detection - check multiple indicators
-            if (this.isDragInProgress ||
-                document.querySelector('.ui-draggable-dragging') ||
-                document.body.classList.contains('no-animation')) {
-                return;
-            }
-
-            // Additional check: if any state is currently being dragged
-            const states = document.querySelectorAll('.state, .accepting-state');
-            for (const state of states) {
-                if (state.classList.contains('ui-draggable-dragging')) {
-                    return;
-                }
-            }
-
-            const now = performance.now();
-            if (now - this.lastMouseUpdate < this.mouseUpdateInterval) {
-                // Clear any pending throttle timeout
-                if (this.mouseThrottleTimeout) {
-                    clearTimeout(this.mouseThrottleTimeout);
-                }
-
-                // Schedule update for next frame
-                this.mouseThrottleTimeout = setTimeout(() => {
-                    this.handleMouseMove(e);
-                    this.lastMouseUpdate = performance.now();
-                }, this.mouseUpdateInterval);
-                return;
-            }
-
             this.handleMouseMove(e);
-            this.lastMouseUpdate = now;
         };
 
-        // Only add listener if not currently dragging
-        if (!this.isDragInProgress) {
-            this.canvas.addEventListener('mousemove', this.mouseMoveHandler, { passive: true });
-        }
-        console.log('Optimised mouse tracking started');
+        this.canvas.addEventListener('mousemove', this.mouseMoveHandler);
     }
 
     /**
@@ -424,13 +285,6 @@ class EdgeCreationManager {
             this.canvas.removeEventListener('mousemove', this.mouseMoveHandler);
             this.mouseMoveHandler = null;
         }
-
-        if (this.mouseThrottleTimeout) {
-            clearTimeout(this.mouseThrottleTimeout);
-            this.mouseThrottleTimeout = null;
-        }
-
-        console.log('Optimised mouse tracking stopped');
     }
 
     /**
@@ -440,15 +294,16 @@ class EdgeCreationManager {
     handleMouseMove(e) {
         if (!this.sourceState || !this.previewEdge) return;
 
-        const canvasRect = this.getCachedCanvasRect();
+        const canvasRect = this.canvas.getBoundingClientRect();
         const mouseX = e.clientX - canvasRect.left;
         const mouseY = e.clientY - canvasRect.top;
 
-        // Update cursor follower position using transform for better performance
+        // Update cursor follower position
         if (this.cursorFollower) {
-            this.cursorFollower.style.transform = `translate(${mouseX - 6}px, ${mouseY - 6}px)`;
+            this.cursorFollower.style.left = (mouseX - 6) + 'px';
+            this.cursorFollower.style.top = (mouseY - 6) + 'px';
 
-            // State proximity check
+            // Check if near a state for visual feedback
             const isNearState = this.isMouseNearState(mouseX, mouseY);
             this.cursorFollower.classList.toggle('large', isNearState);
         }
@@ -465,13 +320,13 @@ class EdgeCreationManager {
     updatePreviewEdge(mouseX, mouseY) {
         if (!this.sourceState || !this.previewEdge) return;
 
-        const sourceRect = this.getCachedElementRect(this.sourceState);
-        const canvasRect = this.getCachedCanvasRect();
+        const sourceRect = this.sourceState.getBoundingClientRect();
+        const canvasRect = this.canvas.getBoundingClientRect();
 
         const sourceX = sourceRect.left - canvasRect.left + sourceRect.width / 2;
         const sourceY = sourceRect.top - canvasRect.top + sourceRect.height / 2;
 
-        // Calculate edge points (from edge of circle, not center)
+        // Calculate edge points (from edge of circle, not centre)
         const dx = mouseX - sourceX;
         const dy = mouseY - sourceY;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -493,18 +348,23 @@ class EdgeCreationManager {
     }
 
     /**
-     * Check if mouse is near a state element using cached positions
+     * Check if mouse is near a state element
      * @param {number} mouseX - Mouse X coordinate
      * @param {number} mouseY - Mouse Y coordinate
      * @returns {boolean} - True if mouse is near a state
      */
     isMouseNearState(mouseX, mouseY) {
-        const threshold = 40; // Distance threshold
-        const states = this.getCachedStatePositions();
+        const threshold = 40;
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const states = this.canvas.querySelectorAll('.state, .accepting-state');
 
-        for (const [stateId, position] of states) {
+        for (const state of states) {
+            const rect = state.getBoundingClientRect();
+            const stateX = rect.left - canvasRect.left + rect.width / 2;
+            const stateY = rect.top - canvasRect.top + rect.height / 2;
+
             const distance = Math.sqrt(
-                Math.pow(mouseX - position.x, 2) + Math.pow(mouseY - position.y, 2)
+                Math.pow(mouseX - stateX, 2) + Math.pow(mouseY - stateY, 2)
             );
 
             if (distance < threshold) {
@@ -513,78 +373,6 @@ class EdgeCreationManager {
         }
 
         return false;
-    }
-
-    /**
-     * Get cached canvas rect to avoid expensive getBoundingClientRect calls
-     * @returns {DOMRect} - Canvas bounding rect
-     */
-    getCachedCanvasRect() {
-        const now = performance.now();
-        if (!this.canvasRect || (now - this.cacheUpdateTime) > this.cacheTimeout) {
-            this.canvasRect = this.canvas.getBoundingClientRect();
-            this.cacheUpdateTime = now;
-        }
-        return this.canvasRect;
-    }
-
-    /**
-     * Get cached element rect
-     * @param {HTMLElement} element - The element
-     * @returns {DOMRect} - Element bounding rect
-     */
-    getCachedElementRect(element) {
-        // For source state, we can cache more aggressively since it's not moving during edge creation
-        if (element === this.sourceState && this.sourceStateRect) {
-            return this.sourceStateRect;
-        }
-
-        const rect = element.getBoundingClientRect();
-
-        if (element === this.sourceState) {
-            this.sourceStateRect = rect;
-        }
-
-        return rect;
-    }
-
-    /**
-     * Get cached state positions for proximity checking
-     * @returns {Map} - Map of state IDs to positions
-     */
-    getCachedStatePositions() {
-        const now = performance.now();
-        if (this.statePositions.size === 0 || (now - this.cacheUpdateTime) > this.cacheTimeout) {
-            this.updateStatePositionsCache();
-        }
-        return this.statePositions;
-    }
-
-    /**
-     * Update the cache of state positions
-     */
-    updateStatePositionsCache() {
-        this.statePositions.clear();
-        const canvasRect = this.getCachedCanvasRect();
-        const states = this.canvas.querySelectorAll('.state, .accepting-state');
-
-        states.forEach(state => {
-            const rect = state.getBoundingClientRect();
-            this.statePositions.set(state.id, {
-                x: rect.left - canvasRect.left + rect.width / 2,
-                y: rect.top - canvasRect.top + rect.height / 2
-            });
-        });
-    }
-
-    /**
-     * Clear all caches
-     */
-    clearCache() {
-        this.canvasRect = null;
-        this.sourceStateRect = null;
-        this.statePositions.clear();
-        this.cacheUpdateTime = 0;
     }
 
     /**
@@ -676,12 +464,6 @@ class EdgeCreationManager {
      */
     destroy() {
         this.deactivateEdgeCreationMode();
-
-        // Stop drag detection
-        if (this.dragCheckInterval) {
-            clearInterval(this.dragCheckInterval);
-            this.dragCheckInterval = null;
-        }
 
         // Remove event listeners
         if (this.keydownHandler) {

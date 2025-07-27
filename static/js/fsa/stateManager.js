@@ -72,7 +72,7 @@ const jsPlumbCleanup = {
                 // Continue with manual cleanup even if remove() failed
             }
 
-            // 4. CRITICAL: Clean up managed elements cache manually
+            // 4. Clean up managed elements cache manually
             // This is the key fix for ID reuse issues
             try {
                 const managedElements = jsPlumbInstance.getManagedElements();
@@ -278,7 +278,7 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks, expli
         }
     });
 
-    // CRITICAL: Use a more robust approach to JSPlumb registration
+    // Use a more robust approach to JSPlumb registration
     // This ensures proper registration especially after ID reuse
     setTimeout(() => {
         // Force revalidation before registration
@@ -548,10 +548,10 @@ function ensureStartSource(jsPlumbInstance) {
  * @param {HTMLElement} stateElement - The target state element
  */
 function positionStartSource(startSource, stateElement) {
-    // Calculate center position of the state
+    // Calculate centre position of the state
     const stateHeight = stateElement.offsetHeight;
     const leftPos = stateElement.offsetLeft - 50;
-    const topPos = stateElement.offsetTop + (stateHeight / 2) - 5; // Center vertically, adjust by -10 for visual alignment
+    const topPos = stateElement.offsetTop + (stateHeight / 2) - 5; // Centre vertically, adjust by -10 for visual alignment
 
     startSource.style.left = leftPos + 'px';
     startSource.style.top = topPos + 'px';

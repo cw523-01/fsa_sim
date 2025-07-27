@@ -2708,7 +2708,7 @@ class RegexConversionViewTests(FSAViewTestCase):
 
     def test_regex_validation_before_conversion(self):
         """Test that regex validation occurs before conversion attempt"""
-        # Test various invalid regex patterns (updated to exclude consecutive operators)
+        # Test various invalid regex patterns
         invalid_regexes = [
             'a(b',      # Unmatched opening parenthesis
             'ab)',      # Unmatched closing parenthesis
