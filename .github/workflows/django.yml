@@ -28,3 +28,13 @@ jobs:
     - name: Run Tests
       run: |
         python manage.py test
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && success()
+
+    steps:
+    - name: Trigger Render Deploy
+      run: |
+        curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
