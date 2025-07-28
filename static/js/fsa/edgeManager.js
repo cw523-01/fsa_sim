@@ -36,8 +36,14 @@ export function createConnection(jsPlumbInstance, source, target, symbolsString,
     // If curve style not specified, use the global default
     const curveStyle = isCurved !== null ? isCurved : useCurvedEdges;
 
+    // Check if this is a self-loop
+    const isSelfLoop = source === target;
+
     // Determine connector type based on curve style and if it's a self-loop
     const connectorType = determineConnectorType(source, target, curveStyle);
+
+    // Determine the CSS class for the label based on whether it's a self-loop
+    const labelCssClass = isSelfLoop ? "edge-label-style self-loop-label" : "edge-label-style";
 
     const connection = jsPlumbInstance.connect({
         source: source,
@@ -54,7 +60,7 @@ export function createConnection(jsPlumbInstance, source, target, symbolsString,
                 cssClass: "edge-label",
                 location: 0.3,
                 labelStyle: {
-                    cssClass: "edge-label-style"
+                    cssClass: labelCssClass
                 }
             }]
         ]
@@ -76,6 +82,14 @@ export function createConnection(jsPlumbInstance, source, target, symbolsString,
 
     // Set label with epsilon if needed
     updateConnectionLabel(connection, symbols, hasEpsilon);
+
+    // Add self-loop-label class manually if this is a self-loop
+    if (isSelfLoop) {
+        const labelOverlay = connection.getOverlay('label');
+        if (labelOverlay && labelOverlay.canvas) {
+            labelOverlay.canvas.classList.add('self-loop-label');
+        }
+    }
 
     // Add epsilon class if needed
     if (hasEpsilon) {
@@ -290,6 +304,14 @@ export function updateEdgeCurveStyle(jsPlumbInstance, connection, curved) {
     // Set the label with proper symbols
     updateConnectionLabel(newConnection, symbols, hasEpsilon);
 
+    // Add self-loop-label class manually if this is a self-loop
+    if (isSelfLoop) {
+        const labelOverlay = newConnection.getOverlay('label');
+        if (labelOverlay && labelOverlay.canvas) {
+            labelOverlay.canvas.classList.add('self-loop-label');
+        }
+    }
+
     // Add epsilon class if needed
     if (hasEpsilon && newConnection.canvas) {
         newConnection.canvas.classList.add('has-epsilon');
@@ -353,8 +375,11 @@ export function setAllEdgeStyles(jsPlumbInstance, curved) {
             continue;
         }
 
+        // Check if this is a self-loop
+        const isSelfLoop = connection.sourceId === connection.targetId;
+
         // Self-loops are always curved, so skip if trying to make straight
-        if (connection.sourceId === connection.targetId && !curved) {
+        if (isSelfLoop && !curved) {
             continue;
         }
 
@@ -368,7 +393,8 @@ export function setAllEdgeStyles(jsPlumbInstance, curved) {
                 targetId: connection.targetId,
                 originalConnection: connection,
                 symbols: edgeSymbolMap.get(connection.id) || [],
-                hasEpsilon: epsilonTransitionMap.get(connection.id) || false
+                hasEpsilon: epsilonTransitionMap.get(connection.id) || false,
+                isSelfLoop: isSelfLoop
             });
         }
     }
@@ -421,6 +447,14 @@ export function setAllEdgeStyles(jsPlumbInstance, curved) {
         // Set the label with proper symbols
         updateConnectionLabel(newConnection, connData.symbols, connData.hasEpsilon);
 
+        // Add self-loop-label class manually if this is a self-loop
+        if (connData.isSelfLoop) {
+            const labelOverlay = newConnection.getOverlay('label');
+            if (labelOverlay && labelOverlay.canvas) {
+                labelOverlay.canvas.classList.add('self-loop-label');
+            }
+        }
+
         // Add epsilon class if needed
         if (connData.hasEpsilon && newConnection.canvas) {
             newConnection.canvas.classList.add('has-epsilon');
@@ -434,7 +468,6 @@ export function setAllEdgeStyles(jsPlumbInstance, curved) {
     jsPlumbInstance.repaintEverything();
 
     updateFSADisplays(jsPlumbInstance);
-
 }
 
 /**

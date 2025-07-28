@@ -141,6 +141,13 @@
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-color);
     font-size: var(--font-size-sm);
+    margin-top: -10px;
+}
+
+.self-loop-label {
+    margin-top: -25px;
+    margin-left: -22px;
+    /* transform: translateX(-50%); /* Center the label horizontally relative to its new position */
 }
 
 /* JSPlumb Connection Styles */

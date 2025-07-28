@@ -529,19 +529,21 @@ class FSASerializationManager {
     async deserializeTransitions(transitionsData, jsPlumbInstance) {
         for (const transitionData of transitionsData) {
             try {
+                // Check if this is a self-loop
+                const isSelfLoop = transitionData.sourceId === transitionData.targetId;
+
                 // Determine connector type
                 let connectorType = 'Straight';
                 if (transitionData.visual) {
-                    if (transitionData.visual.isCurved ||
-                        transitionData.sourceId === transitionData.targetId) {
-                        connectorType = transitionData.sourceId === transitionData.targetId ?
+                    if (transitionData.visual.isCurved || isSelfLoop) {
+                        connectorType = isSelfLoop ?
                             ["Bezier", { curviness: 60 }] :
                             ["StateMachine", { curviness: 100 }];
                     }
                 }
 
                 // Determine anchors
-                const anchors = transitionData.sourceId === transitionData.targetId ?
+                const anchors = isSelfLoop ?
                     ["Top", "Left"] :
                     (transitionData.visual && transitionData.visual.anchors ?
                         transitionData.visual.anchors :
@@ -580,6 +582,14 @@ class FSASerializationManager {
                     this.updateConnectionLabel(connection,
                         transitionData.symbols || [],
                         transitionData.hasEpsilon || false);
+
+                    // Add self-loop-label class manually if this is a self-loop
+                    if (isSelfLoop) {
+                        const labelOverlay = connection.getOverlay('label');
+                        if (labelOverlay && labelOverlay.canvas) {
+                            labelOverlay.canvas.classList.add('self-loop-label');
+                        }
+                    }
 
                     // Add epsilon class if needed
                     if (transitionData.hasEpsilon && connection.canvas) {
