@@ -1,4 +1,4 @@
-from typing import Dict, Set, Tuple, List, FrozenSet
+from typing import Dict, Set, Tuple, List, FrozenSet, Union
 from collections import defaultdict, deque
 from .fsa_properties import is_deterministic, validate_fsa_structure
 
@@ -158,7 +158,7 @@ def _add_dead_state(transitions: Dict, states: Set[str], alphabet: List[str]) ->
     return updated_states, True
 
 
-def nfa_to_dfa(nfa: Dict) -> Dict:
+def nfa_to_dfa(nfa: Dict, return_state_mapping: bool = False) -> Union[Dict, Tuple[Dict, Dict]]:
     """
     Converts a non-deterministic finite automaton (NFA) to a deterministic finite automaton (DFA)
     using subset construction algorithm.
@@ -170,9 +170,10 @@ def nfa_to_dfa(nfa: Dict) -> Dict:
             - transitions: Dictionary of transitions (may include epsilon transitions with '')
             - startingState: The starting state
             - acceptingStates: List of accepting states
+        return_state_mapping (bool): If True, also return the mapping from frozensets to DFA state names
 
     Returns:
-        Dict: A DFA in the same format where each state represents a subset of NFA states
+        Dict or Tuple[Dict, Dict]: A DFA in the same format, and optionally the state mapping
 
     Raises:
         ValueError: If the input is not a valid NFA structure
@@ -307,7 +308,10 @@ def nfa_to_dfa(nfa: Dict) -> Dict:
         'acceptingStates': sorted(dfa_accepting)
     }
 
-    return dfa
+    if return_state_mapping:
+        return dfa, dfa_state_map
+    else:
+        return dfa
 
 def complete_dfa(dfa: Dict) -> Dict:
     """

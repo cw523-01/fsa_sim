@@ -155,78 +155,14 @@ def eliminate_epsilon_transitions(nfa: Dict) -> Dict:
     return result
 
 
-def determinise_nfa(nfa: Dict) -> Tuple[Dict, Dict]:
-    """Convert NFA to DFA using subset construction."""
-
-    # Map from StateSet to new state name
-    state_sets_to_states = {}
-    state_counter = 0
-
-    def get_state_name(state_set):
-        nonlocal state_counter
-        state_set_obj = StateSet(state_set)
-        if state_set_obj not in state_sets_to_states:
-            state_sets_to_states[state_set_obj] = f"d{state_counter}"
-            state_counter += 1
-        return state_sets_to_states[state_set_obj]
-
-    # Start with the initial state set
-    initial_set = {nfa['startingState']}
-    start_state = get_state_name(initial_set)
-
-    # BFS to build DFA
-    queue = deque([StateSet(initial_set)])
-    processed = set()
-    dfa_transitions = {}
-
-    while queue:
-        current_set = queue.popleft()
-        if current_set in processed:
-            continue
-        processed.add(current_set)
-
-        current_state = state_sets_to_states[current_set]
-        dfa_transitions[current_state] = {}
-
-        # For each symbol in alphabet
-        for symbol in nfa['alphabet']:
-            next_states = set()
-
-            # Collect all states reachable by this symbol
-            for state in current_set:
-                if state in nfa['transitions'] and symbol in nfa['transitions'][state]:
-                    next_states.update(nfa['transitions'][state][symbol])
-
-            if next_states:
-                next_state_set = StateSet(next_states)
-                next_state = get_state_name(next_states)
-                dfa_transitions[current_state][symbol] = [next_state]
-
-                if next_state_set not in processed:
-                    queue.append(next_state_set)
-
-    # Determine accepting states
-    accepting_states = []
-    for state_set, state_name in state_sets_to_states.items():
-        if state_set.any(lambda s: s in nfa['acceptingStates']):
-            accepting_states.append(state_name)
-
-    dfa = {
-        'states': list(state_sets_to_states.values()),
-        'alphabet': nfa['alphabet'][:],
-        'transitions': dfa_transitions,
-        'startingState': start_state,
-        'acceptingStates': accepting_states
-    }
-
-    return dfa, state_sets_to_states
-
-
-def make_state_map(nfa: Dict) -> Tuple[Dict, Dict, Dict, Dict]:
+def make_state_map(nfa: Dict, dfa: Dict = None, state_mapping: Dict = None) -> Tuple[Dict, Dict, Dict, Dict]:
     """Create state map as described in Kameda-Weiner algorithm."""
 
-    # Determinise NFA
-    dfa, state_mapping = determinise_nfa(nfa)
+    # Use provided DFA and mapping, or compute them using the safe method
+    if dfa is None or state_mapping is None:
+        dfa, frozenset_mapping = nfa_to_dfa(nfa, return_state_mapping=True)
+        # Convert frozenset mapping to StateSet mapping for Kameda-Weiner compatibility
+        state_mapping = {StateSet(fs): name for fs, name in frozenset_mapping.items()}
 
     # Create dual (reverse) NFA
     dual_nfa = {
@@ -260,7 +196,9 @@ def make_state_map(nfa: Dict) -> Tuple[Dict, Dict, Dict, Dict]:
         if '' not in dual_nfa['alphabet']:
             dual_nfa['alphabet'].append('')
 
-    dual_dfa, dual_state_mapping = determinise_nfa(dual_nfa)
+    # Determinise dual NFA
+    dual_dfa, dual_frozenset_mapping = nfa_to_dfa(dual_nfa, return_state_mapping=True)
+    dual_state_mapping = {StateSet(fs): name for fs, name in dual_frozenset_mapping.items()}
 
     # Create state map matrix
     dfa_states = dfa['states'][:]
@@ -533,7 +471,8 @@ def build_minimal_nfa_from_cover(original_nfa: Dict, cover: Cover, dfa: Dict, st
     return result
 
 
-def apply_kameda_weiner(nfa: Dict, method_name: str) -> Tuple[Dict, List[str]]:
+def apply_kameda_weiner(nfa: Dict, method_name: str, dfa: Dict = None, state_mapping: Dict = None) -> Tuple[
+    Dict, List[str]]:
     """Apply Kameda-Weiner algorithm to an NFA and return the result with stages."""
 
     stages = []
@@ -541,7 +480,7 @@ def apply_kameda_weiner(nfa: Dict, method_name: str) -> Tuple[Dict, List[str]]:
     try:
         # Kameda-Weiner algorithm
         stages.append(f"Create state map ({method_name})")
-        state_map, dfa, dual_dfa, state_mapping = make_state_map(nfa)
+        state_map, used_dfa, dual_dfa, used_state_mapping = make_state_map(nfa, dfa, state_mapping)
 
         stages.append(f"Elementary automaton matrix ({method_name})")
         matrix = make_elementary_automaton_matrix(state_map)
@@ -567,7 +506,7 @@ def apply_kameda_weiner(nfa: Dict, method_name: str) -> Tuple[Dict, List[str]]:
 
             try:
                 stages.append(f"Try cover with {len(cover)} grids ({method_name})")
-                candidate_nfa = build_minimal_nfa_from_cover(nfa, cover, dfa, state_mapping)
+                candidate_nfa = build_minimal_nfa_from_cover(nfa, cover, used_dfa, used_state_mapping)
 
                 # Basic validation
                 if candidate_nfa['states'] and len(candidate_nfa['states']) < len(best_nfa['states']):
@@ -624,8 +563,8 @@ def verify_candidate_equivalence(original_nfa: Dict, candidate_nfa: Dict, method
         return False, verification_details
 
 
-# Pick the best candidate (minimum states, with priority for DFA method on ties)
 def candidate_priority(candidate):
+    """Pick the best candidate (minimum states, with priority for DFA method on ties)"""
     # Primary key: number of states (lower is better)
     # Secondary key: method priority (0 = highest priority)
     method_priorities = {
@@ -636,6 +575,7 @@ def candidate_priority(candidate):
 
     method_priority = method_priorities.get(candidate['method'], 999)  # Default low priority
     return (candidate['states'], method_priority)
+
 
 def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationResult:
     """
@@ -737,11 +677,17 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
         )
 
     preprocessed_states = len(current_nfa['states'])
-    preprocessed_transitions = sum(len(targets) for state in nfa['transitions'].values() for targets in state.values())
+    preprocessed_transitions = sum(
+        len(targets) for state in current_nfa['transitions'].values() for targets in state.values())
     kw_complexity_score = preprocessed_states + preprocessed_transitions
 
+    # DETERMINISE ONCE - shared between all methods that need it
+    all_stages.append("Determinise NFA (shared for all methods)")
+    dfa, frozenset_mapping = nfa_to_dfa(current_nfa, return_state_mapping=True)
+    # Convert to StateSet mapping for Kameda-Weiner compatibility
+    state_mapping = {StateSet(fs): name for fs, name in frozenset_mapping.items()}
+
     # BASELINE CANDIDATE: Add preprocessed NFA as a baseline candidate
-    # This ensures we never return something worse than what we started with
     all_stages.append("Add preprocessed NFA as baseline candidate")
     baseline_candidate = {
         'nfa': current_nfa,
@@ -759,12 +705,13 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
     candidate_results.append(baseline_candidate)
     verification_results.append(baseline_candidate['verification_details'])
 
-
     # PIPELINE STAGE 1: Apply Kameda-Weiner to original NFA (only if below threshold)
     if kw_complexity_score <= kameda_weiner_threshold:
         all_stages.append(
             f"Kameda-Weiner on Original NFA (states: {preprocessed_states} <= threshold: {kameda_weiner_threshold})")
-        kw_original_nfa, kw_original_stages = apply_kameda_weiner(current_nfa, "Original NFA")
+        kw_original_nfa, kw_original_stages = apply_kameda_weiner(
+            current_nfa, "Original NFA", dfa, state_mapping
+        )
         candidate_info = {
             'nfa': kw_original_nfa,
             'method': 'Kameda-Weiner on Original NFA',
@@ -785,12 +732,9 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
         all_stages.append(
             f"Skipping Kameda-Weiner on Original NFA (states: {preprocessed_states} > threshold: {kameda_weiner_threshold})")
 
-    # PIPELINE STAGE 2: Determinise original NFA and minimise DFA (always run)
+    # PIPELINE STAGE 2: Minimise the pre-computed DFA (no need to determinise again!)
     try:
-        all_stages.append("Determinise original NFA")
-        dfa = nfa_to_dfa(current_nfa)
-
-        all_stages.append("Minimise DFA")
+        all_stages.append("Minimise DFA (using pre-computed DFA)")
         minimised_dfa = minimise_dfa(dfa)
 
         candidate_info = {
@@ -812,7 +756,8 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
         # Store the minimised DFA for potential use in stage 3
         stage2_result = minimised_dfa
         stage2_states = len(minimised_dfa['states']) if minimised_dfa['states'] else 0
-        stage2_transitions = sum(len(targets) for state in current_nfa['transitions'].values() for targets in state.values())
+        stage2_transitions = sum(
+            len(targets) for state in minimised_dfa['transitions'].values() for targets in state.values())
         stage2_complexity_score = stage2_states + stage2_transitions
 
     except Exception as e:
@@ -830,7 +775,8 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
         # Use current NFA as fallback for stage 3
         stage2_result = current_nfa
         stage2_states = len(current_nfa['states']) if current_nfa['states'] else 0
-        stage2_transitions = sum(len(targets) for state in current_nfa['transitions'].values() for targets in state.values())
+        stage2_transitions = sum(
+            len(targets) for state in current_nfa['transitions'].values() for targets in state.values())
         stage2_complexity_score = stage2_states + stage2_transitions
 
     # PIPELINE STAGE 3: Apply Kameda-Weiner to minimised DFA (only if result from stage 2 is below threshold)
@@ -838,7 +784,21 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
         try:
             all_stages.append(
                 f"Kameda-Weiner on Minimised DFA (states: {stage2_states} <= threshold: {kameda_weiner_threshold})")
-            kw_dfa_nfa, kw_dfa_stages = apply_kameda_weiner(stage2_result, "Minimised DFA")
+
+            # For Kameda-Weiner on the minimised DFA, we need to provide the DFA and its mapping
+            # The minimised DFA is already a DFA, so we can pass it directly, but we need its mapping
+            if stage2_result == dfa:
+                # If it's the same as our original DFA, reuse the mapping
+                kw_dfa_nfa, kw_dfa_stages = apply_kameda_weiner(
+                    stage2_result, "Minimised DFA", dfa, state_mapping
+                )
+            else:
+                # It's a different DFA (the minimised one), so we need to compute its mapping
+                # Since it's already a DFA, we can pass None for both and let make_state_map compute them
+                kw_dfa_nfa, kw_dfa_stages = apply_kameda_weiner(
+                    stage2_result, "Minimised DFA"
+                )
+
             candidate_info = {
                 'nfa': kw_dfa_nfa,
                 'method': 'Kameda-Weiner on Minimised DFA',
