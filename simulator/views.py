@@ -1417,8 +1417,6 @@ def fsa_to_regex(request):
         from .regex_conversions import fsa_to_regex as convert_fsa_to_regex
         result = convert_fsa_to_regex(fsa)
 
-        print(result['valid'])
-
         # Check if conversion was successful
         if not result['valid']:
             return JsonResponse({
