@@ -451,7 +451,7 @@ export async function runFSASimulation(jsPlumbInstance, inputString, visualMode 
         } else {
             return {
                 success: false,
-                message: `❌ SIMULATION ERROR!\n\n${error.message}`,
+                message: `SIMULATION ERROR!\n\n${error.message}`,
                 type: 'backend_error',
                 isVisual: false
             };

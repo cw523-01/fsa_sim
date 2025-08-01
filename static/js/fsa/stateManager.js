@@ -135,23 +135,6 @@ function getNextAvailableStateId() {
 }
 
 /**
- * Updates the state counter to ensure it doesn't conflict with an existing state ID
- * This is kept for backward compatibility but not used in ID generation
- * @param {string} stateId - The state ID to check against
- */
-function ensureCounterIsUpToDate(stateId) {
-    // Extract the numeric part from the state ID (e.g., "S0" -> 0, "S12" -> 12)
-    const match = stateId.match(/^S(\d+)$/);
-    if (match) {
-        const stateNumber = parseInt(match[1], 10);
-        // Ensure our counter is at least one higher than this state number
-        if (stateCounter <= stateNumber) {
-            stateCounter = stateNumber + 1;
-        }
-    }
-}
-
-/**
  * Creates a state element on the canvas
  * @param {Object} jsPlumbInstance - The JSPlumb instance
  * @param {number} x - X position
@@ -173,15 +156,9 @@ export function createState(jsPlumbInstance, x, y, isAccepting, callbacks, expli
             console.error(`State with ID ${stateId} already exists!`);
             return null;
         }
-
-        // Update the counter for backward compatibility (but don't use it for generation)
-        ensureCounterIsUpToDate(stateId);
     } else {
         // Always find the next available ID starting from S0
         stateId = getNextAvailableStateId();
-
-        // Update the counter for backward compatibility
-        ensureCounterIsUpToDate(stateId);
     }
 
     // Ensure JSPlumb has no lingering references to this ID
@@ -649,14 +626,6 @@ function createStartingConnection(jsPlumbInstance, startSource, targetStateId) {
  */
 export function getStartingStateId() {
     return startingStateId;
-}
-
-/**
- * Get the current state counter value (kept for backward compatibility)
- * @returns {number} - The current state counter
- */
-export function getStateCounter() {
-    return stateCounter;
 }
 
 /**

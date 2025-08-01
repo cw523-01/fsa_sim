@@ -1,12 +1,5 @@
 import { updateFSADisplays } from './fsaUpdateUtils.js';
 
-window.openInlineEdgeEditor = function(connection, jsPlumbInstance) {
-    // Import from uiManager.js if available
-    if (typeof openInlineEdgeEditor === 'function') {
-        openInlineEdgeEditor(connection, jsPlumbInstance);
-    }
-};
-
 // Map to store edge symbols
 const edgeSymbolMap = new Map();
 // Map to track epsilon transitions
@@ -22,6 +15,101 @@ let useCurvedEdges = false;
 const EPSILON = 'ε';
 
 /**
+ * Validates symbols and prevents manual epsilon entry with comprehensive checks
+ * @param {Array} symbols - Array of symbols to validate
+ * @returns {Object} - Object with cleanedSymbols array, hasManualEpsilon boolean, and isEmpty boolean
+ */
+function validateAndCleanSymbols(symbols) {
+    const cleanedSymbols = [];
+    let hasManualEpsilon = false;
+
+    for (const symbol of symbols) {
+        if (symbol === EPSILON) {
+            hasManualEpsilon = true;
+            // Skip adding epsilon to cleaned symbols
+            continue;
+        }
+        cleanedSymbols.push(symbol);
+    }
+
+    return {
+        cleanedSymbols,
+        hasManualEpsilon,
+        isEmpty: cleanedSymbols.length === 0
+    };
+}
+
+/**
+ * Comprehensive validation for symbol strings with UI feedback
+ * @param {string} symbolsString - Comma-separated string of symbols
+ * @param {boolean} isNewTransition - Whether this is for a new transition (prevents empty)
+ * @returns {Object} - Comprehensive validation result
+ */
+export function validateSymbolsInput(symbolsString, isNewTransition = false) {
+    const rawSymbols = symbolsString.split(',')
+        .map(s => s.trim())
+        .filter(s => s.length === 1);
+
+    const validation = validateAndCleanSymbols(rawSymbols);
+
+    // Check for various validation issues
+    const hasManualEpsilon = validation.hasManualEpsilon;
+    const wouldBeEmpty = validation.isEmpty;
+    const isValidForCreation = !wouldBeEmpty || !isNewTransition;
+
+    return {
+        isValid: !hasManualEpsilon && isValidForCreation,
+        hasManualEpsilon,
+        wouldBeEmpty,
+        cleanedSymbols: validation.cleanedSymbols,
+        cleanedString: validation.cleanedSymbols.join(','),
+        errorMessage: hasManualEpsilon
+            ? 'Manual epsilon entry not allowed. Use the epsilon checkbox instead.'
+            : wouldBeEmpty && isNewTransition
+            ? 'Transition must have at least one symbol or use epsilon checkbox.'
+            : null
+    };
+}
+
+/**
+ * Shows appropriate notification for validation errors
+ * @param {Object} validationResult - Result from validateSymbolsInput
+ */
+function showValidationNotification(validationResult) {
+    if (!validationResult.errorMessage) return;
+
+    if (window.notificationManager) {
+        if (validationResult.hasManualEpsilon) {
+            window.notificationManager.showWarning(
+                'Manual Epsilon Not Allowed',
+                'Please use the epsilon transition checkbox instead of manually entering "ε" as a symbol.'
+            );
+        } else if (validationResult.wouldBeEmpty) {
+            window.notificationManager.showWarning(
+                'Empty Transition Not Allowed',
+                'Transition must have at least one symbol or use the epsilon checkbox.'
+            );
+        }
+    }
+}
+
+/**
+ * Function for UI to check if input should be highlighted red (for real-time validation)
+ * @param {string} symbolsString - Comma-separated string of symbols
+ * @param {boolean} hasEpsilon - Whether epsilon checkbox is checked
+ * @param {boolean} isNewTransition - Whether this is for a new transition
+ * @returns {boolean} - Whether the input should be highlighted red
+ */
+export function shouldHighlightInputRed(symbolsString, hasEpsilon = false, isNewTransition = false) {
+    const validation = validateSymbolsInput(symbolsString, isNewTransition);
+
+    // Highlight red if:
+    // 1. Manual epsilon is entered, OR
+    // 2. Would be empty without epsilon checkbox (for existing transitions)
+    return validation.hasManualEpsilon || (validation.wouldBeEmpty && !hasEpsilon && !isNewTransition);
+}
+
+/**
  * Creates a connection with a label
  * @param {Object} jsPlumbInstance - The JSPlumb instance
  * @param {string} source - Source state ID
@@ -33,6 +121,20 @@ const EPSILON = 'ε';
  * @returns {Object} - The created connection
  */
 export function createConnection(jsPlumbInstance, source, target, symbolsString, hasEpsilon, isCurved = null, callbacks) {
+    // Validate symbols before creating connection
+    const validation = validateSymbolsInput(symbolsString, true);
+
+    // If validation fails and it would result in empty transition, prevent creation
+    if (!validation.isValid && validation.wouldBeEmpty && !hasEpsilon) {
+        showValidationNotification(validation);
+        return null; // Prevent connection creation
+    }
+
+    // Show notification for manual epsilon but continue with cleaned symbols
+    if (validation.hasManualEpsilon) {
+        showValidationNotification(validation);
+    }
+
     // If curve style not specified, use the global default
     const curveStyle = isCurved !== null ? isCurved : useCurvedEdges;
 
@@ -72,10 +174,8 @@ export function createConnection(jsPlumbInstance, source, target, symbolsString,
     // Store the curve style in our map
     edgeCurveStyleMap.set(connection.id, curveStyle);
 
-    // Parse and save symbols
-    const symbols = symbolsString.split(',')
-        .map(s => s.trim())
-        .filter(s => s.length === 1);
+    // Use cleaned symbols
+    const symbols = validation.cleanedSymbols;
 
     edgeSymbolMap.set(connection.id, symbols);
     epsilonTransitionMap.set(connection.id, hasEpsilon);
@@ -161,7 +261,7 @@ export function deleteEdge(jsPlumbInstance, connection) {
 }
 
 /**
- * Updates the symbols for an edge
+ * Updates the symbols for an edge with enhanced validation
  * @param {Object} connection - The connection to update
  * @param {Array} symbols - Array of symbols
  * @param {boolean} hasEpsilon - Whether the edge has an epsilon transition
@@ -170,11 +270,36 @@ export function deleteEdge(jsPlumbInstance, connection) {
 export function updateEdgeSymbols(connection, symbols, hasEpsilon, jsPlumbInstance) {
     if (!connection) return;
 
-    edgeSymbolMap.set(connection.id, symbols);
+    // Validate symbols and check for manual epsilon entry
+    const validation = validateAndCleanSymbols(symbols);
+
+    // Check if this would result in empty transition without epsilon
+    const wouldBeEmpty = validation.isEmpty && !hasEpsilon;
+
+    if (validation.hasManualEpsilon) {
+        window.notificationManager.showWarning(
+            'Manual Epsilon Not Allowed',
+            'Please use the epsilon transition checkbox instead of manually entering "ε" as a symbol.'
+        );
+    }
+
+    // Prevent empty transitions
+    if (wouldBeEmpty) {
+        window.notificationManager.showWarning(
+            'Empty Transition Not Allowed',
+            'Transition must have at least one symbol or use the epsilon checkbox.'
+        );
+        return; // Don't update if it would create empty transition
+    }
+
+    // Use cleaned symbols
+    const cleanedSymbols = validation.cleanedSymbols;
+
+    edgeSymbolMap.set(connection.id, cleanedSymbols);
     epsilonTransitionMap.set(connection.id, hasEpsilon);
 
     // Update label with epsilon if needed
-    updateConnectionLabel(connection, symbols, hasEpsilon);
+    updateConnectionLabel(connection, cleanedSymbols, hasEpsilon);
 
     // Update epsilon class
     if (connection.canvas) {
@@ -326,7 +451,6 @@ export function updateEdgeCurveStyle(jsPlumbInstance, connection, curved) {
 
     return newConnection;
 }
-
 
 /**
  * Determines the connector type based on source, target, and specified curve style
@@ -528,9 +652,6 @@ export function getConnectionMap() {
 export function getEpsilonSymbol() {
     return EPSILON;
 }
-
-// For backward compatibility
-export const toggleEdgeStyle = setAllEdgeStyles;
 
 /**
  * Make getEdgeSymbols available globally for visual simulation

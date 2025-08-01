@@ -80,7 +80,7 @@ def simulate_deterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Tuple
 
     # Check if we ended in an accepting state
     if current_state in fsa['acceptingStates']:
-        return execution_path  # Return path directly for accepted (backwards compatibility)
+        return execution_path  # Return path directly for accepted
     else:
         return {
             'accepted': False,

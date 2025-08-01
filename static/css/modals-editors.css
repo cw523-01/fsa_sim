@@ -428,3 +428,80 @@ body.modal-open {
     transform: scale(1);
     opacity: 1;
 }
+
+.remove-btn-icon {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    vertical-align: middle;
+    cursor: pointer;
+    transition: var(--transition-fast);
+
+    /* Error icon - neutral red filter (same as property-info.css) */
+    filter: brightness(0) saturate(100%) invert(35%) sepia(93%) saturate(1352%) hue-rotate(346deg) brightness(104%) contrast(110%);
+
+    margin: 0 !important;
+}
+
+.remove-btn-icon:hover {
+    transform: scale(1.1);
+    filter: brightness(0) saturate(100%) invert(25%) sepia(93%) saturate(1652%) hue-rotate(346deg) brightness(110%) contrast(115%);
+}
+
+/* Remove button container styling */
+.remove-symbol-btn {
+    border: none !important;
+    background: transparent !important;
+    padding: 2px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: var(--transition-fast);
+}
+
+.remove-symbol-btn:hover {
+    background-color: rgba(244, 67, 54, 0.1) !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .remove-btn-icon {
+        filter: brightness(0) saturate(120%) invert(25%) sepia(93%) saturate(1652%) hue-rotate(346deg) brightness(110%) contrast(115%);
+    }
+
+    .remove-btn-icon:hover {
+        filter: brightness(0) saturate(120%) invert(15%) sepia(93%) saturate(1752%) hue-rotate(346deg) brightness(115%) contrast(120%);
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .remove-btn-icon {
+        filter: brightness(0) saturate(110%) invert(45%) sepia(93%) saturate(1352%) hue-rotate(346deg) brightness(110%) contrast(115%);
+    }
+
+    .remove-btn-icon:hover {
+        filter: brightness(0) saturate(110%) invert(55%) sepia(93%) saturate(1352%) hue-rotate(346deg) brightness(115%) contrast(115%);
+    }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .remove-btn-icon {
+        width: 10px;
+        height: 10px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .remove-btn-icon {
+        transition: none;
+    }
+
+    .remove-btn-icon:hover {
+        transform: none;
+    }
+}

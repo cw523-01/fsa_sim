@@ -12,7 +12,7 @@ import {
     getEdgeSymbolMap,
     getEpsilonTransitionMap,
     hasEpsilonTransition,
-    toggleEdgeStyle, setAllEdgeStyles
+    setAllEdgeStyles
 } from './edgeManager.js';
 import {
     selectTool,

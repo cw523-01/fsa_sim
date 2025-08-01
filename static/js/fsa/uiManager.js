@@ -9,7 +9,8 @@ import {
     deleteEdge,
     getEpsilonTransitionMap,
     getEdgeSymbolMap,
-    getConnectionMap
+    getConnectionMap,
+    shouldHighlightInputRed
 } from './edgeManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
 import {updateAlphabetDisplay} from "./alphabetManager.js";
@@ -259,13 +260,31 @@ export function addSymbolEditInput(value = '', container) {
     input.value = value;
     input.style.marginRight = '8px';
 
+    // Add epsilon validation
+    input.addEventListener('input', function() {
+        const epsilonCheckbox = document.getElementById('edge-epsilon-checkbox');
+        const hasEpsilon = epsilonCheckbox && epsilonCheckbox.checked;
+
+        if (shouldHighlightInputRed(input.value, hasEpsilon, false)) {
+            input.style.borderColor = 'red';
+        } else {
+            input.style.borderColor = '';
+        }
+    });
+
     const removeBtn = document.createElement('button');
-    removeBtn.textContent = '❌';
+    removeBtn.innerHTML = '<img src="static/img/error.png" alt="Remove" class="remove-btn-icon">';
     removeBtn.className = 'remove-symbol-btn';
     removeBtn.type = 'button';
+    removeBtn.style.border = 'none';
+    removeBtn.style.background = 'transparent';
+    removeBtn.style.padding = '2px';
+    removeBtn.style.display = 'flex';
+    removeBtn.style.alignItems = 'center';
+    removeBtn.style.justifyContent = 'center';
     removeBtn.style.cursor = 'pointer';
 
-    // MODIFIED: Check if this would be the only input left and if epsilon is checked
+    // Check if this would be the only input left and if epsilon is checked
     removeBtn.onclick = () => {
         const inputsCount = container.querySelectorAll('.symbol-edit-wrapper').length;
         const epsilonCheckbox = document.getElementById('edge-epsilon-checkbox');
@@ -304,6 +323,11 @@ export function openEdgeSymbolModal(source, target, onConfirm) {
     const epsilonCheckbox = document.getElementById('epsilon-transition-checkbox');
     epsilonCheckbox.checked = false;
 
+    // Add epsilon checkbox change listener for validation updates
+    epsilonCheckbox.addEventListener('change', function() {
+        updateAllInputValidation(inputsContainer, epsilonCheckbox.checked, true);
+    });
+
     // Set the curve checkbox to current default or unchecked
     const curveCheckbox = document.getElementById('curve-transition-checkbox');
 
@@ -333,18 +357,39 @@ export function openEdgeSymbolModal(source, target, onConfirm) {
         const symbols = [];
         const seen = new Set();
         let hasDuplicates = false;
+        let hasManualEpsilon = false;
 
         inputs.forEach(input => {
             const val = input.value.trim();
+
+            // Check for manual epsilon entry
+            if (val === 'ε') {
+                hasManualEpsilon = true;
+                input.style.borderColor = 'red';
+                return;
+            }
+
             if (val.length === 1 && !seen.has(val)) {
                 seen.add(val);
                 symbols.push(val);
                 input.style.borderColor = '';
+                input.style.boxShadow = '';
             } else if (seen.has(val)) {
                 hasDuplicates = true;
                 input.style.borderColor = 'red';
             }
         });
+
+        // Show notification for manual epsilon
+        if (hasManualEpsilon) {
+            if (window.notificationManager) {
+                window.notificationManager.showWarning(
+                    'Manual Epsilon Not Allowed',
+                    'Please use the epsilon transition checkbox instead of manually entering "ε" as a symbol.'
+                );
+            }
+            return; // Don't create the connection
+        }
 
         // Allow creation if we have symbols or epsilon is checked
         if ((symbols.length > 0 || hasEpsilon) && !hasDuplicates) {
@@ -372,10 +417,30 @@ export function addSymbolInput(container) {
     input.className = 'symbol-input';
     input.maxLength = 1;
 
+    // Add real-time epsilon validation
+    input.addEventListener('input', function() {
+        const epsilonCheckbox = document.getElementById('epsilon-transition-checkbox');
+        const hasEpsilon = epsilonCheckbox && epsilonCheckbox.checked;
+
+        if (shouldHighlightInputRed(input.value, hasEpsilon, true)) {
+            input.style.borderColor = 'red';
+        } else {
+            input.style.borderColor = '';
+            input.style.boxShadow = '';
+        }
+    });
+
     const removeBtn = document.createElement('button');
-    removeBtn.textContent = '❌';
+    removeBtn.innerHTML = '<img src="static/img/error.png" alt="Remove" class="remove-btn-icon">';
     removeBtn.className = 'remove-symbol-btn';
     removeBtn.type = 'button';
+    removeBtn.style.border = 'none';
+    removeBtn.style.background = 'transparent';
+    removeBtn.style.padding = '2px';
+    removeBtn.style.display = 'flex';
+    removeBtn.style.alignItems = 'center';
+    removeBtn.style.justifyContent = 'center';
+    removeBtn.style.cursor = 'pointer';
 
     // Check if this would be the only input left and if epsilon is checked
     removeBtn.onclick = () => {
@@ -466,6 +531,12 @@ function updateCurrentEdgeLabelDebounced() {
         const val = input.value.trim();
 
         if (val.length === 1) {
+            // Check for manual epsilon entry first
+            if (shouldHighlightInputRed(val, hasEpsilon, false)) {
+                input.style.borderColor = 'red';
+                return;
+            }
+
             if (!seen.has(val)) {
                 seen.add(val);
                 symbols.push(val);
@@ -505,13 +576,34 @@ function setupEdgeLiveUpdates() {
     const container = document.getElementById('edge-symbols-edit-container');
     container.addEventListener('input', updateCurrentEdgeLabelDebounced);
 
-    // Add epsilon checkbox change listener
+    // Add epsilon checkbox change listener that also updates validation
     const epsilonCheckbox = document.getElementById('edge-epsilon-checkbox');
-    epsilonCheckbox.addEventListener('change', updateCurrentEdgeLabelDebounced);
+    epsilonCheckbox.addEventListener('change', function() {
+        // Update validation for all inputs when epsilon checkbox changes
+        updateAllInputValidation(container, epsilonCheckbox.checked, false);
+        updateCurrentEdgeLabelDebounced();
+    });
 
     // Add curve style checkbox change listener - immediate since it's not typed
     const curveStyleCheckbox = document.getElementById('edge-curve-checkbox');
     curveStyleCheckbox.addEventListener('change', updateEdgeCurveStyleChange);
+}
+
+/**
+ * Helper function to update validation for all inputs
+ * @param {HTMLElement} container - Container with inputs
+ * @param {boolean} hasEpsilon - Whether epsilon is checked
+ * @param {boolean} isNewTransition - Whether this is for a new transition
+ */
+function updateAllInputValidation(container, hasEpsilon, isNewTransition) {
+    const inputs = container.querySelectorAll('input[type="text"]');
+    inputs.forEach(input => {
+        if (shouldHighlightInputRed(input.value, hasEpsilon, isNewTransition)) {
+            input.style.borderColor = 'red';
+        } else {
+            input.style.borderColor = '';
+        }
+    });
 }
 
 function updateEdgeCurveStyleChange() {
