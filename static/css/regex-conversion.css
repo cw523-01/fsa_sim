@@ -1208,7 +1208,6 @@
 .error-header {
     display: flex;
     flex-direction: column;
-    align-items: center;
     margin-bottom: var(--spacing-xl);
 }
 
@@ -1219,7 +1218,6 @@
 
 .error-header h4 {
     margin: 0;
-    color: var(--error-colour);
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold);
     font-family: var(--font-family-ui);
@@ -1248,7 +1246,6 @@
     border: 1px solid rgba(244, 67, 54, 0.3);
     border-radius: var(--radius-sm);
     padding: var(--spacing-lg);
-    color: var(--error-colour);
     font-family: var(--font-family-mono);
     font-size: var(--font-size-sm);
     word-break: break-word;
@@ -1619,4 +1616,186 @@
 
 .conversion-algorithm-info a:hover {
     color: var(--secondary-hover);
+}
+
+/* Inline Error Section for REGEX Modal */
+.regex-error-section {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    border-left: 4px solid var(--secondary-colour);
+    animation: error-slide-in var(--transition-normal) ease-out;
+}
+
+.regex-error-section .error-header {
+    margin-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: var(--spacing-sm);
+}
+
+.regex-error-section .error-header h4 {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+}
+
+/* Result status styling */
+.regex-error-section .result-status {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    margin: 0;
+}
+
+.regex-error-section .result-status.error {
+    background: linear-gradient(135deg, var(--sim-rejected-bg) 0%, rgba(244, 67, 54, 0.05) 100%);
+    border: 2px solid rgba(244, 67, 54, 0.3);
+}
+
+.regex-error-section .result-icon {
+    font-size: var(--font-size-xl);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.regex-error-section .result-message {
+    flex: 1;
+    text-align: left;
+}
+
+.regex-error-section .result-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--spacing-xs);
+}
+
+.regex-error-section .result-message p {
+    margin: 0;
+    font-size: var(--font-size-md);
+    line-height: var(--line-height);
+    color: var(--text-color);
+}
+
+
+.regex-error-section .error-content {
+    /* This will contain the result-status structure */
+}
+
+/* Error state for input field */
+
+.form-group.error-state #regex-input-field {
+    border-color: var(--error-colour);
+    background-color: rgba(244, 67, 54, 0.05);
+    box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.2);
+}
+
+.form-group.error-state #regex-input-field:focus {
+    border-color: var(--error-colour);
+    box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.3);
+}
+
+/* Error slide-in animation */
+@keyframes error-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 500px;
+        padding-top: var(--spacing-lg);
+        padding-bottom: var(--spacing-lg);
+    }
+}
+
+/* Error pulse animation for attention */
+@keyframes error-pulse {
+    0% {
+        border-left-color: var(--secondary-colour);
+        box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.4);
+    }
+    50% {
+        border-left-color: var(--error-colour);
+        box-shadow: 0 0 0 8px rgba(244, 67, 54, 0.1);
+    }
+    100% {
+        border-left-color: var(--secondary-colour);
+        box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.4);
+    }
+}
+
+.regex-error-section {
+    animation: error-slide-in var(--transition-normal) ease-out,
+    error-pulse 2s ease-in-out 3;
+}
+
+/* Visual feedback for different result types */
+
+.regex-error-section .result-status.error .result-icon {
+    text-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+}
+
+/* Responsive adjustments for error section */
+@media (max-width: 768px) {
+    .regex-error-section {
+        padding: var(--spacing-md);
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .regex-error-section .result-status {
+        flex-direction: column;
+        text-align: center;
+        padding: var(--spacing-md);
+    }
+
+    .regex-error-section .result-icon {
+        align-self: center;
+        margin-top: 0;
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .regex-error-section .result-title {
+        font-size: var(--font-size-md);
+        line-height: 1.2;
+    }
+}
+
+/* High contrast mode support for error section */
+@media (prefers-contrast: high) {
+    .regex-error-section {
+        border: 2px solid var(--error-colour);
+    }
+
+    .regex-error-section .result-status.error {
+        border: 3px solid var(--error-colour);
+    }
+
+    .form-group.error-state #regex-input-field {
+        border: 2px solid var(--error-colour);
+    }
+}
+
+/* Reduced motion support for error animations */
+@media (prefers-reduced-motion: reduce) {
+    .regex-error-section {
+        animation: none;
+    }
+
+    @keyframes error-slide-in {
+        from, to {
+            opacity: 1;
+            transform: none;
+            max-height: none;
+            padding-top: var(--spacing-lg);
+            padding-bottom: var(--spacing-lg);
+        }
+    }
 }

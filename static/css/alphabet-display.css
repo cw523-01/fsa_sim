@@ -5,7 +5,7 @@
     word-wrap: break-word; /* Legacy support */
 }
 
-/* Style the alphabet paragraph to wrap properly */
+/* Style the alphabet paragraph to wrap */
 .alphabet-info p {
     /* Allow the text to wrap */
     white-space: normal;

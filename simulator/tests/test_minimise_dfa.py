@@ -5,10 +5,10 @@ from simulator.fsa_simulation import simulate_deterministic_fsa
 
 
 class TestMinimiseDFA(TestCase):
-    """Test cases for DFA minimization function"""
+    """Test cases for DFA minimisation function"""
 
-    def test_simple_dfa_minimization(self):
-        """Test minimization of a simple DFA with equivalent states"""
+    def test_simple_dfa_minimisation(self):
+        """Test minimisation of a simple DFA with equivalent states"""
         # DFA that accepts strings ending with 'a'
         # States S0, S1 and S2 are all equivalent (all non-accepting, same transition behavior)
         dfa = {
@@ -24,37 +24,37 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S3']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
         # Should have 2 states (merged S0+S1+S2, S3)
         # S0, S1, S2 are equivalent because they're all non-accepting and have same transition behavior:
 
-        self.assertEqual(len(minimized['states']), 2)
-        self.assertTrue(is_deterministic(minimized))
-        self.assertEqual(minimized['alphabet'], ['a', 'b'])
-        self.assertEqual(len(minimized['acceptingStates']), 1)
+        self.assertEqual(len(minimised['states']), 2)
+        self.assertTrue(is_deterministic(minimised))
+        self.assertEqual(minimised['alphabet'], ['a', 'b'])
+        self.assertEqual(len(minimised['acceptingStates']), 1)
 
         # Test that both DFAs accept the same language
         test_strings = ['', 'a', 'b', 'ab', 'ba', 'aa', 'bb', 'aba', 'bab']
         for test_string in test_strings:
             original_result = simulate_deterministic_fsa(dfa, test_string)
-            minimized_result = simulate_deterministic_fsa(minimized, test_string)
+            minimised_result = simulate_deterministic_fsa(minimised, test_string)
 
             if isinstance(original_result, list):
                 original_accepted = True
             else:
                 original_accepted = original_result.get('accepted', False)
 
-            if isinstance(minimized_result, list):
-                minimized_accepted = True
+            if isinstance(minimised_result, list):
+                minimised_accepted = True
             else:
-                minimized_accepted = minimized_result.get('accepted', False)
+                minimised_accepted = minimised_result.get('accepted', False)
 
-            self.assertEqual(original_accepted, minimized_accepted,
+            self.assertEqual(original_accepted, minimised_accepted,
                              f"Disagreement on string '{test_string}'")
 
-    def test_dfa_minimization_three_states(self):
-        """Test minimization of DFA that results in exactly 3 states"""
+    def test_dfa_minimisation_three_states(self):
+        """Test minimisation of DFA that results in exactly 3 states"""
         # DFA where states have different distances to acceptance
         dfa = {
             'states': ['S0', 'S1', 'S2'],
@@ -68,30 +68,30 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S2']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
         # Should have 3 states - all have different behavior:
         # S0: needs 2 'a's to reach acceptance
         # S1: needs 1 'a' to reach acceptance
         # S2: already accepting
-        self.assertEqual(len(minimized['states']), 3)
-        self.assertTrue(is_deterministic(minimized))
-        self.assertEqual(len(minimized['acceptingStates']), 1)
+        self.assertEqual(len(minimised['states']), 3)
+        self.assertTrue(is_deterministic(minimised))
+        self.assertEqual(len(minimised['acceptingStates']), 1)
 
         # Test language equivalence
         test_strings = ['', 'a', 'aa', 'b', 'ab', 'ba', 'aaa', 'aba']
         for test_string in test_strings:
             original_result = simulate_deterministic_fsa(dfa, test_string)
-            minimized_result = simulate_deterministic_fsa(minimized, test_string)
+            minimised_result = simulate_deterministic_fsa(minimised, test_string)
 
             original_accepted = isinstance(original_result, list)
-            minimized_accepted = isinstance(minimized_result, list)
+            minimised_accepted = isinstance(minimised_result, list)
 
-            self.assertEqual(original_accepted, minimized_accepted,
+            self.assertEqual(original_accepted, minimised_accepted,
                              f"Disagreement on string '{test_string}'")
 
     def test_already_minimal_dfa(self):
-        """Test minimization of a DFA that's already minimal"""
+        """Test minimisation of a DFA that's already minimal"""
         # Simple DFA that's already minimal
         dfa = {
             'states': ['S0', 'S1'],
@@ -104,25 +104,25 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S1']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
-        # Should remain the same size
-        self.assertEqual(len(minimized['states']), 2)
-        self.assertTrue(is_deterministic(minimized))
+        # Should remain the same sise
+        self.assertEqual(len(minimised['states']), 2)
+        self.assertTrue(is_deterministic(minimised))
 
         # Test language equivalence
         test_strings = ['', 'a', 'b', 'ab', 'ba', 'aab', 'abb']
         for test_string in test_strings:
             original_result = simulate_deterministic_fsa(dfa, test_string)
-            minimized_result = simulate_deterministic_fsa(minimized, test_string)
+            minimised_result = simulate_deterministic_fsa(minimised, test_string)
 
             original_accepted = isinstance(original_result, list)
-            minimized_accepted = isinstance(minimized_result, list)
+            minimised_accepted = isinstance(minimised_result, list)
 
-            self.assertEqual(original_accepted, minimized_accepted)
+            self.assertEqual(original_accepted, minimised_accepted)
 
     def test_dfa_with_unreachable_states(self):
-        """Test minimization of DFA with unreachable states"""
+        """Test minimisation of DFA with unreachable states"""
         # DFA with state S3 that's unreachable from start
         dfa = {
             'states': ['S0', 'S1', 'S2', 'S3'],
@@ -137,25 +137,25 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S2']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
         # Should have fewer states (S3 should be in a partition but effectively ignored)
-        self.assertTrue(is_deterministic(minimized))
+        self.assertTrue(is_deterministic(minimised))
 
         # Test language equivalence
         test_strings = ['', 'a', 'aa', 'ab', 'ba', 'aaa', 'aab']
         for test_string in test_strings:
             original_result = simulate_deterministic_fsa(dfa, test_string)
-            minimized_result = simulate_deterministic_fsa(minimized, test_string)
+            minimised_result = simulate_deterministic_fsa(minimised, test_string)
 
             original_accepted = isinstance(original_result, list)
-            minimized_accepted = isinstance(minimized_result, list)
+            minimised_accepted = isinstance(minimised_result, list)
 
-            self.assertEqual(original_accepted, minimized_accepted)
+            self.assertEqual(original_accepted, minimised_accepted)
 
-    def test_complex_dfa_minimization(self):
-        """Test minimization of a more complex DFA"""
-        # DFA that recognizes strings with even number of a's and even number of b's
+    def test_complex_dfa_minimisation(self):
+        """Test minimisation of a more complex DFA"""
+        # DFA that recognises strings with even number of a's and even number of b's
         # Has multiple equivalent states that can be merged
         dfa = {
             'states': ['S00', 'S01', 'S10', 'S11', 'S01_dup', 'S10_dup'],
@@ -172,25 +172,25 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S00']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
         # Should have 4 states (the duplicates should be merged)
-        self.assertEqual(len(minimized['states']), 4)
-        self.assertTrue(is_deterministic(minimized))
+        self.assertEqual(len(minimised['states']), 4)
+        self.assertTrue(is_deterministic(minimised))
 
         # Test language equivalence
         test_strings = ['', 'a', 'b', 'aa', 'ab', 'ba', 'bb', 'aabb', 'abab', 'baba']
         for test_string in test_strings:
             original_result = simulate_deterministic_fsa(dfa, test_string)
-            minimized_result = simulate_deterministic_fsa(minimized, test_string)
+            minimised_result = simulate_deterministic_fsa(minimised, test_string)
 
             original_accepted = isinstance(original_result, list)
-            minimized_accepted = isinstance(minimized_result, list)
+            minimised_accepted = isinstance(minimised_result, list)
 
-            self.assertEqual(original_accepted, minimized_accepted)
+            self.assertEqual(original_accepted, minimised_accepted)
 
     def test_single_state_dfa(self):
-        """Test minimization of single-state DFA"""
+        """Test minimisation of single-state DFA"""
         # Single accepting state with self-loops
         dfa = {
             'states': ['S0'],
@@ -202,14 +202,14 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S0']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
-        self.assertEqual(len(minimized['states']), 1)
-        self.assertTrue(is_deterministic(minimized))
-        self.assertEqual(minimized['acceptingStates'], ['S0'])
+        self.assertEqual(len(minimised['states']), 1)
+        self.assertTrue(is_deterministic(minimised))
+        self.assertEqual(minimised['acceptingStates'], ['S0'])
 
     def test_dfa_with_dead_states(self):
-        """Test minimization of DFA with dead (trap) states"""
+        """Test minimisation of DFA with dead (trap) states"""
         # DFA with multiple dead states that should be merged
         dfa = {
             'states': ['S0', 'S1', 'Dead1', 'Dead2'],
@@ -224,25 +224,25 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S1']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
         # Dead states should be merged into one
-        self.assertEqual(len(minimized['states']), 3)
-        self.assertTrue(is_deterministic(minimized))
+        self.assertEqual(len(minimised['states']), 3)
+        self.assertTrue(is_deterministic(minimised))
 
         # Test language equivalence
         test_strings = ['', 'a', 'b', 'aa', 'ab', 'ba', 'aaa']
         for test_string in test_strings:
             original_result = simulate_deterministic_fsa(dfa, test_string)
-            minimized_result = simulate_deterministic_fsa(minimized, test_string)
+            minimised_result = simulate_deterministic_fsa(minimised, test_string)
 
             original_accepted = isinstance(original_result, list)
-            minimized_accepted = isinstance(minimized_result, list)
+            minimised_accepted = isinstance(minimised_result, list)
 
-            self.assertEqual(original_accepted, minimized_accepted)
+            self.assertEqual(original_accepted, minimised_accepted)
 
     def test_dfa_all_states_accepting(self):
-        """Test minimization when all states are accepting"""
+        """Test minimisation when all states are accepting"""
         dfa = {
             'states': ['S0', 'S1', 'S2'],
             'alphabet': ['a'],
@@ -255,14 +255,14 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S0', 'S1', 'S2']  # All accepting
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
         # Should be reduced to single state since all accept and behavior is equivalent
-        self.assertEqual(len(minimized['states']), 1)
-        self.assertTrue(is_deterministic(minimized))
+        self.assertEqual(len(minimised['states']), 1)
+        self.assertTrue(is_deterministic(minimised))
 
     def test_dfa_no_accepting_states(self):
-        """Test minimization when no states are accepting"""
+        """Test minimisation when no states are accepting"""
         dfa = {
             'states': ['S0', 'S1', 'S2'],
             'alphabet': ['a', 'b'],
@@ -275,21 +275,21 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': []  # No accepting states
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
-        # Should minimize effectively since no states accept
-        self.assertTrue(is_deterministic(minimized))
-        self.assertEqual(minimized['acceptingStates'], [])
+        # Should minimise effectively since no states accept
+        self.assertTrue(is_deterministic(minimised))
+        self.assertEqual(minimised['acceptingStates'], [])
 
         # All strings should be rejected
         test_strings = ['', 'a', 'b', 'ab', 'ba']
         for test_string in test_strings:
-            result = simulate_deterministic_fsa(minimized, test_string)
+            result = simulate_deterministic_fsa(minimised, test_string)
             self.assertIsInstance(result, dict)
             self.assertFalse(result.get('accepted', True))
 
     def test_empty_alphabet_dfa(self):
-        """Test minimization with empty alphabet"""
+        """Test minimisation with empty alphabet"""
         dfa = {
             'states': ['S0', 'S1'],
             'alphabet': [],
@@ -301,14 +301,14 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S1']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
         # Should maintain structure but potentially merge equivalent states
-        self.assertTrue(is_deterministic(minimized))
-        self.assertEqual(minimized['alphabet'], [])
+        self.assertTrue(is_deterministic(minimised))
+        self.assertEqual(minimised['alphabet'], [])
 
     def test_dfa_with_self_loops(self):
-        """Test minimization of DFA with various self-loops"""
+        """Test minimisation of DFA with various self-loops"""
         dfa = {
             'states': ['S0', 'S1', 'S2', 'S3'],
             'alphabet': ['a', 'b'],
@@ -322,23 +322,23 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S3']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
-        self.assertTrue(is_deterministic(minimized))
+        self.assertTrue(is_deterministic(minimised))
 
         # Test language equivalence
         test_strings = ['', 'a', 'b', 'aa', 'ab', 'ba', 'bb', 'aab', 'abb']
         for test_string in test_strings:
             original_result = simulate_deterministic_fsa(dfa, test_string)
-            minimized_result = simulate_deterministic_fsa(minimized, test_string)
+            minimised_result = simulate_deterministic_fsa(minimised, test_string)
 
             original_accepted = isinstance(original_result, list)
-            minimized_accepted = isinstance(minimized_result, list)
+            minimised_accepted = isinstance(minimised_result, list)
 
-            self.assertEqual(original_accepted, minimized_accepted)
+            self.assertEqual(original_accepted, minimised_accepted)
 
-    def test_minimization_preserves_start_state_behavior(self):
-        """Test that minimization preserves start state behavior"""
+    def test_minimisation_preserves_start_state_behavior(self):
+        """Test that minimisation preserves start state behavior"""
         # DFA where start state is accepting
         dfa = {
             'states': ['S0', 'S1', 'S2'],
@@ -352,20 +352,20 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S0', 'S2']  # Start state is accepting
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
         # Empty string should be accepted in both
         original_empty = simulate_deterministic_fsa(dfa, '')
-        minimized_empty = simulate_deterministic_fsa(minimized, '')
+        minimised_empty = simulate_deterministic_fsa(minimised, '')
 
         original_accepts_empty = isinstance(original_empty, list)
-        minimized_accepts_empty = isinstance(minimized_empty, list)
+        minimised_accepts_empty = isinstance(minimised_empty, list)
 
-        self.assertEqual(original_accepts_empty, minimized_accepts_empty)
+        self.assertEqual(original_accepts_empty, minimised_accepts_empty)
         self.assertTrue(original_accepts_empty)  # Should accept empty string
 
     def test_state_naming_convention(self):
-        """Test that minimized DFA uses proper state naming"""
+        """Test that minimised DFA uses proper state naming"""
         dfa = {
             'states': ['A', 'B', 'C'],
             'alphabet': ['0', '1'],
@@ -378,20 +378,20 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['A']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
         # Check that state names are properly formatted (joined with underscores)
-        for state in minimized['states']:
+        for state in minimised['states']:
             self.assertIsInstance(state, str)
             # State names should be non-empty
             self.assertGreater(len(state), 0)
 
         # Check that all transitions reference valid states
-        for state in minimized['transitions']:
-            self.assertIn(state, minimized['states'])
-            for symbol in minimized['transitions'][state]:
-                for target in minimized['transitions'][state][symbol]:
-                    self.assertIn(target, minimized['states'])
+        for state in minimised['transitions']:
+            self.assertIn(state, minimised['states'])
+            for symbol in minimised['transitions'][state]:
+                for target in minimised['transitions'][state][symbol]:
+                    self.assertIn(target, minimised['states'])
 
     def test_non_deterministic_fsa_raises_error(self):
         """Test that non-deterministic FSA raises ValueError"""
@@ -429,8 +429,8 @@ class TestMinimiseDFA(TestCase):
 
         self.assertIn("deterministic", str(context.exception))
 
-    def test_minimization_result_structure(self):
-        """Test that minimized DFA has correct structure"""
+    def test_minimisation_result_structure(self):
+        """Test that minimised DFA has correct structure"""
         dfa = {
             'states': ['S0', 'S1', 'S2'],
             'alphabet': ['a', 'b'],
@@ -443,35 +443,35 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S0']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
         # Check all required keys are present
         required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
         for key in required_keys:
-            self.assertIn(key, minimized)
+            self.assertIn(key, minimised)
 
         # Check types
-        self.assertIsInstance(minimized['states'], list)
-        self.assertIsInstance(minimized['alphabet'], list)
-        self.assertIsInstance(minimized['transitions'], dict)
-        self.assertIsInstance(minimized['startingState'], str)
-        self.assertIsInstance(minimized['acceptingStates'], list)
+        self.assertIsInstance(minimised['states'], list)
+        self.assertIsInstance(minimised['alphabet'], list)
+        self.assertIsInstance(minimised['transitions'], dict)
+        self.assertIsInstance(minimised['startingState'], str)
+        self.assertIsInstance(minimised['acceptingStates'], list)
 
         # Check that start state is in states list
-        self.assertIn(minimized['startingState'], minimized['states'])
+        self.assertIn(minimised['startingState'], minimised['states'])
 
         # Check that all accepting states are in states list
-        for state in minimized['acceptingStates']:
-            self.assertIn(state, minimized['states'])
+        for state in minimised['acceptingStates']:
+            self.assertIn(state, minimised['states'])
 
         # Check that states are sorted
-        self.assertEqual(minimized['states'], sorted(minimized['states']))
+        self.assertEqual(minimised['states'], sorted(minimised['states']))
 
         # Check that accepting states are sorted
-        self.assertEqual(minimized['acceptingStates'], sorted(minimized['acceptingStates']))
+        self.assertEqual(minimised['acceptingStates'], sorted(minimised['acceptingStates']))
 
-    def test_large_dfa_minimization(self):
-        """Test minimization of larger DFA"""
+    def test_large_dfa_minimisation(self):
+        """Test minimisation of larger DFA"""
         # Create DFA with many equivalent states
         states = [f'S{i}' for i in range(10)]
 
@@ -493,25 +493,25 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S1']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
         # Should significantly reduce the number of states
-        self.assertLess(len(minimized['states']), len(states))
-        self.assertTrue(is_deterministic(minimized))
+        self.assertLess(len(minimised['states']), len(states))
+        self.assertTrue(is_deterministic(minimised))
 
         # Test some strings for language equivalence
         test_strings = ['', 'a', 'b', 'ab', 'ba', 'aa', 'bb']
         for test_string in test_strings:
             original_result = simulate_deterministic_fsa(dfa, test_string)
-            minimized_result = simulate_deterministic_fsa(minimized, test_string)
+            minimised_result = simulate_deterministic_fsa(minimised, test_string)
 
             original_accepted = isinstance(original_result, list)
-            minimized_accepted = isinstance(minimized_result, list)
+            minimised_accepted = isinstance(minimised_result, list)
 
-            self.assertEqual(original_accepted, minimized_accepted)
+            self.assertEqual(original_accepted, minimised_accepted)
 
-    def test_minimization_with_missing_transitions(self):
-        """Test minimization when some transitions are missing"""
+    def test_minimisation_with_missing_transitions(self):
+        """Test minimisation when some transitions are missing"""
         # DFA with incomplete transition function
         dfa = {
             'states': ['S0', 'S1', 'S2'],
@@ -525,30 +525,30 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S2']
         }
 
-        minimized = minimise_dfa(dfa)
+        minimised = minimise_dfa(dfa)
 
-        self.assertTrue(is_deterministic(minimized))
+        self.assertTrue(is_deterministic(minimised))
 
         # Test language equivalence for valid inputs
         test_strings = ['a', 'aa', 'aba', 'aaa']
         for test_string in test_strings:
             original_result = simulate_deterministic_fsa(dfa, test_string)
-            minimized_result = simulate_deterministic_fsa(minimized, test_string)
+            minimised_result = simulate_deterministic_fsa(minimised, test_string)
 
             # Both should handle the string the same way
-            if isinstance(original_result, list) and isinstance(minimized_result, list):
+            if isinstance(original_result, list) and isinstance(minimised_result, list):
                 # Both accepted
                 self.assertTrue(True)
-            elif isinstance(original_result, dict) and isinstance(minimized_result, dict):
+            elif isinstance(original_result, dict) and isinstance(minimised_result, dict):
                 # Both rejected - check same acceptance status
                 self.assertEqual(original_result.get('accepted', False),
-                                 minimized_result.get('accepted', False))
+                                 minimised_result.get('accepted', False))
             else:
                 # One accepted, one rejected - this shouldn't happen
                 self.fail(f"Inconsistent results for '{test_string}'")
 
-    def test_minimization_idempotency(self):
-        """Test that minimizing a minimized DFA gives the same result"""
+    def test_minimisation_idempotency(self):
+        """Test that minimising a minimised DFA gives the same result"""
         dfa = {
             'states': ['S0', 'S1', 'S2', 'S3'],
             'alphabet': ['a', 'b'],
@@ -562,17 +562,17 @@ class TestMinimiseDFA(TestCase):
             'acceptingStates': ['S3']
         }
 
-        first_minimization = minimise_dfa(dfa)
-        second_minimization = minimise_dfa(first_minimization)
+        first_minimisation = minimise_dfa(dfa)
+        second_minimisation = minimise_dfa(first_minimisation)
 
         # Should have same number of states
-        self.assertEqual(len(first_minimization['states']), len(second_minimization['states']))
+        self.assertEqual(len(first_minimisation['states']), len(second_minimisation['states']))
 
         # Should accept same language
         test_strings = ['', 'a', 'b', 'ab', 'ba', 'aa', 'bb']
         for test_string in test_strings:
-            first_result = simulate_deterministic_fsa(first_minimization, test_string)
-            second_result = simulate_deterministic_fsa(second_minimization, test_string)
+            first_result = simulate_deterministic_fsa(first_minimisation, test_string)
+            second_result = simulate_deterministic_fsa(second_minimisation, test_string)
 
             first_accepted = isinstance(first_result, list)
             second_accepted = isinstance(second_result, list)

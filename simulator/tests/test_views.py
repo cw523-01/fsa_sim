@@ -1457,8 +1457,8 @@ class IntegrationTests(FSAViewTestCase):
         # Results should be consistent
         self.assertEqual(regex_equivalent, fsa_regex_equivalent)
 
-    def test_minimize_then_check_fsa_regex_equivalence(self):
-        """Test minimizing an FSA then checking equivalence with regex"""
+    def test_minimise_then_check_fsa_regex_equivalence(self):
+        """Test minimising an FSA then checking equivalence with regex"""
         # 1. Start with a potentially non-minimal NFA
         complex_nfa = {
             'states': ['S0', 'S1', 'S2', 'S3'],
@@ -1473,16 +1473,16 @@ class IntegrationTests(FSAViewTestCase):
             'acceptingStates': ['S3']
         }
 
-        # 2. Minimize the NFA
-        minimize_response = self.post_json('/api/minimise-nfa/', {
+        # 2. minimise the NFA
+        minimise_response = self.post_json('/api/minimise-nfa/', {
             'fsa': complex_nfa
         })
-        self.assertEqual(minimize_response.status_code, 200)
-        minimized_fsa = minimize_response.json()['minimised_fsa']
+        self.assertEqual(minimise_response.status_code, 200)
+        minimised_fsa = minimise_response.json()['minimised_fsa']
 
         # 3. Check equivalence with regex (both should accept strings of form 'ab')
         fsa_regex_response = self.post_json('/api/check-fsa-regex-equivalence/', {
-            'fsa': minimized_fsa,
+            'fsa': minimised_fsa,
             'regex': 'ab'
         })
         self.assertEqual(fsa_regex_response.status_code, 200)
@@ -1500,12 +1500,12 @@ class IntegrationTests(FSAViewTestCase):
         self.assertEqual(nfa_to_dfa_response.status_code, 200)
         dfa = nfa_to_dfa_response.json()['converted_dfa']
 
-        # 3. Minimize DFA
-        minimize_response = self.post_json('/api/minimise-dfa/', {
+        # 3. minimise DFA
+        minimise_response = self.post_json('/api/minimise-dfa/', {
             'fsa': dfa
         })
-        self.assertEqual(minimize_response.status_code, 200)
-        minimal_dfa = minimize_response.json()['minimised_fsa']
+        self.assertEqual(minimise_response.status_code, 200)
+        minimal_dfa = minimise_response.json()['minimised_fsa']
 
         # 4. Complete DFA (if needed)
         complete_response = self.post_json('/api/complete-dfa/', {
@@ -1565,12 +1565,12 @@ class PerformanceTests(FSAViewTestCase):
         self.assertEqual(response.status_code, 200)
 
 
-class MinimizeDFAViewTests(FSAViewTestCase):
-    """Tests for the DFA minimization endpoint"""
+class minimiseDFAViewTests(FSAViewTestCase):
+    """Tests for the DFA minimisation endpoint"""
 
-    def test_minimize_dfa_successful(self):
-        """Test successful DFA minimization"""
-        # Create a DFA that can be minimized
+    def test_minimise_dfa_successful(self):
+        """Test successful DFA minimisation"""
+        # Create a DFA that can be minimised
         redundant_dfa = {
             'states': ['S0', 'S1', 'S2', 'S3'],
             'alphabet': ['a', 'b'],
@@ -1595,8 +1595,8 @@ class MinimizeDFAViewTests(FSAViewTestCase):
         self.assertIn('minimised_fsa', data)
         self.assertIn('statistics', data)
 
-    def test_minimize_non_deterministic_fsa(self):
-        """Test minimization fails for non-deterministic FSA"""
+    def test_minimise_non_deterministic_fsa(self):
+        """Test minimisation fails for non-deterministic FSA"""
         response = self.post_json('/api/minimise-dfa/', {
             'fsa': self.sample_nfa
         })
@@ -1606,8 +1606,8 @@ class MinimizeDFAViewTests(FSAViewTestCase):
         self.assertIn('error', data)
         self.assertIn('deterministic FSA', data['error'])
 
-    def test_minimize_dfa_missing_fsa(self):
-        """Test minimization without FSA definition"""
+    def test_minimise_dfa_missing_fsa(self):
+        """Test minimisation without FSA definition"""
         response = self.post_json('/api/minimise-dfa/', {})
 
         self.assertEqual(response.status_code, 400)
@@ -1619,8 +1619,8 @@ class MinimizeDFAViewTests(FSAViewTestCase):
 class CombinedTransformationTests(FSAViewTestCase):
     """Tests for combining multiple transformations"""
 
-    def test_nfa_to_dfa_then_minimize(self):
-        """Test converting NFA to DFA then minimizing the result"""
+    def test_nfa_to_dfa_then_minimise(self):
+        """Test converting NFA to DFA then minimising the result"""
         # 1. Convert NFA to DFA
         convert_response = self.post_json('/api/nfa-to-dfa/', {
             'fsa': self.sample_nfa
@@ -1628,12 +1628,12 @@ class CombinedTransformationTests(FSAViewTestCase):
         self.assertEqual(convert_response.status_code, 200)
         converted_dfa = convert_response.json()['converted_dfa']
 
-        # 2. Minimize the resulting DFA
-        minimize_response = self.post_json('/api/minimise-dfa/', {
+        # 2. minimise the resulting DFA
+        minimise_response = self.post_json('/api/minimise-dfa/', {
             'fsa': converted_dfa
         })
-        self.assertEqual(minimize_response.status_code, 200)
-        self.assertTrue(minimize_response.json()['success'])
+        self.assertEqual(minimise_response.status_code, 200)
+        self.assertTrue(minimise_response.json()['success'])
 
     def test_conversion_preserves_language(self):
         """Test that NFA to DFA conversion preserves the language"""
@@ -2041,8 +2041,8 @@ class StatisticsValidationTests(FSAViewTestCase):
             self.assertIsInstance(stats['states_change_percentage'], (int, float))
             self.assertIsInstance(stats['transitions_change_percentage'], (int, float))
 
-    def test_minimize_dfa_statistics_calculations(self):
-        """Test DFA minimization statistics calculations"""
+    def test_minimise_dfa_statistics_calculations(self):
+        """Test DFA minimisation statistics calculations"""
         response = self.post_json('/api/minimise-dfa/', {
             'fsa': self.sample_dfa
         })
@@ -2979,7 +2979,7 @@ class RegexConversionViewTests(FSAViewTestCase):
 class MinimiseNFAViewTests(FSAViewTestCase):
     """Tests for the NFA minimisation endpoint"""
 
-    def test_minimize_nfa_successful_deterministic(self):
+    def test_minimise_nfa_successful_deterministic(self):
         """Test successful NFA minimisation with deterministic input"""
         response = self.post_json('/api/minimise-nfa/', {
             'fsa': self.sample_dfa  # DFA is also a valid NFA
@@ -2993,7 +2993,7 @@ class MinimiseNFAViewTests(FSAViewTestCase):
         self.assertIn('statistics', data)
         self.assertIn('minimisation_details', data)
 
-        # Check minimization details
+        # Check minimisation details
         details = data['minimisation_details']
         self.assertIn('method_used', details)
         self.assertIn('is_optimal', details)
@@ -3043,7 +3043,7 @@ class MinimiseNFAViewTests(FSAViewTestCase):
     @patch('simulator.views.minimise_nfa')
     def test_minimise_nfa_function_exception(self, mock_minimise):
         """Test exception in NFA minimisation function"""
-        mock_minimise.side_effect = Exception("NFA minimization error")
+        mock_minimise.side_effect = Exception("NFA minimisation error")
 
         response = self.post_json('/api/minimise-nfa/', {
             'fsa': self.sample_nfa

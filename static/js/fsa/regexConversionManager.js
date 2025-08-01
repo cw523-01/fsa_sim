@@ -714,6 +714,16 @@ class RegexConversionManager {
                     </div>
                     <div class="input-error" id="regex-input-error">Please enter a valid regular expression</div>
                 </div>
+                
+                <!-- Error Display Section -->
+                <div class="regex-error-section" id="regex-error-section" style="display: none;">
+                    <div class="error-header">
+                        <h4>Conversion Error</h4>
+                    </div>
+                    <div class="error-content" id="regex-error-content">
+                        <!-- Error message will be populated here -->
+                    </div>
+                </div>
     
                 <div class="examples-section">
                     <div class="examples-dropdown">
@@ -807,6 +817,53 @@ class RegexConversionManager {
     }
 
     /**
+     * Show inline error in the regex modal
+     */
+    showRegexError(errorMessage) {
+        const errorSection = document.getElementById('regex-error-section');
+        const errorContent = document.getElementById('regex-error-content');
+
+        if (errorSection && errorContent) {
+            errorContent.innerHTML = `
+                <div class="result-status error">
+                    <div class="result-message">
+                        <div class="result-title">Conversion Error</div>
+                        <p>${this.escapeHtml(errorMessage)}</p>
+                    </div>
+                </div>
+            `;
+
+            errorSection.style.display = 'block';
+            errorSection.scrollIntoView({behavior: 'smooth', block: 'center'});
+
+            // Add error styling to input field
+            const regexInput = document.getElementById('regex-input-field');
+            const formGroup = regexInput?.closest('.form-group');
+            if (formGroup) {
+                formGroup.classList.add('invalid');
+                formGroup.classList.add('error-state');
+            }
+        }
+    }
+
+    /**
+     * Hide inline error in the regex modal
+     */
+    hideRegexError() {
+        const errorSection = document.getElementById('regex-error-section');
+        if (errorSection) {
+            errorSection.style.display = 'none';
+        }
+
+        // Remove error styling from input field
+        const regexInput = document.getElementById('regex-input-field');
+        const formGroup = regexInput?.closest('.form-group');
+        if (formGroup) {
+            formGroup.classList.remove('error-state');
+        }
+    }
+
+    /**
      * Setup event handlers for REGEX popup
      */
     setupRegexPopupHandlers() {
@@ -817,21 +874,36 @@ class RegexConversionManager {
         const convertToDfaCheckbox = document.getElementById('convert-to-dfa-option');
         const minimiseDfaCheckbox = document.getElementById('minimise-dfa-option');
 
+        // Set initial button state to disabled
+        if (convertBtn) {
+            convertBtn.disabled = true;
+            convertBtn.classList.add('disabled');
+        }
+
         if (regexInput) {
             regexInput.addEventListener('input', () => {
                 const value = regexInput.value.trim();
                 const formGroup = regexInput.closest('.form-group');
 
+                // Hide any previous error when user starts typing
+                this.hideRegexError();
+
                 if (value.length === 0) {
                     formGroup.classList.remove('valid');
                     formGroup.classList.add('invalid');
                     regexError.classList.add('show');
+
+                    // Disable button both visually and functionally
                     convertBtn.classList.add('disabled');
+                    convertBtn.disabled = true;
                 } else {
                     formGroup.classList.remove('invalid');
                     formGroup.classList.add('valid');
                     regexError.classList.remove('show');
+
+                    // Enable button both visually and functionally
                     convertBtn.classList.remove('disabled');
+                    convertBtn.disabled = false;
                 }
 
                 // Update button text based on options
@@ -840,7 +912,7 @@ class RegexConversionManager {
 
             // Enter key to convert
             regexInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !convertBtn.classList.contains('disabled')) {
+                if (e.key === 'Enter' && !convertBtn.disabled) {
                     this.confirmRegexConversion();
                 }
             });
@@ -852,7 +924,7 @@ class RegexConversionManager {
                 const selectedValue = e.target.value;
                 if (selectedValue && regexInput) {
                     regexInput.value = selectedValue;
-                    regexInput.dispatchEvent(new Event('input')); // Trigger validation
+                    regexInput.dispatchEvent(new Event('input')); // Trigger validation and hide errors
                     regexInput.focus();
                     // Reset dropdown to placeholder
                     examplesSelect.value = '';
@@ -948,13 +1020,16 @@ class RegexConversionManager {
         const convertBtn = document.getElementById('regex-convert-btn');
         const regexInput = document.getElementById('regex-input-field');
 
-        if (!convertBtn || !regexInput || convertBtn.classList.contains('disabled')) return;
+        if (!convertBtn || !regexInput || convertBtn.disabled) return;
 
         const regexString = regexInput.value.trim();
         if (!regexString) {
-            notificationManager.showError('Invalid Input', 'Please enter a regular expression');
+            this.showRegexError('Please enter a regular expression');
             return;
         }
+
+        // Hide any previous errors
+        this.hideRegexError();
 
         // Get chaining options
         const convertToDfaCheckbox = document.getElementById('convert-to-dfa-option');
@@ -1060,10 +1135,12 @@ class RegexConversionManager {
 
         } catch (error) {
             console.error('REGEX conversion error:', error);
-            notificationManager.showError(`${config.name} Failed`, error.message);
+
+            // Show error inline instead of using notification
+            this.showRegexError(error.message);
 
             // Reset button state
-            convertBtn.textContent = 'Convert to NFA';
+            this.updateConvertButtonText(); // Use existing method to restore correct text
             convertBtn.disabled = false;
 
             // Don't clear regex data on error - user might retry

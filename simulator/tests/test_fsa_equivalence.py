@@ -42,12 +42,12 @@ class TestFSAEquivalence(TestCase):
         test_strings = ['', 'a', 'b', 'ab', 'ba', 'aab', 'abb', 'abab']
         for test_string in test_strings:
             original_result = simulate_nondeterministic_fsa(nfa, test_string)
-            normalized_result = simulate_deterministic_fsa(result, test_string)
+            normalised_result = simulate_deterministic_fsa(result, test_string)
 
             original_accepted = isinstance(original_result, list)
-            normalized_accepted = isinstance(normalized_result, list)
+            normalised_accepted = isinstance(normalised_result, list)
 
-            self.assertEqual(original_accepted, normalized_accepted,
+            self.assertEqual(original_accepted, normalised_accepted,
                              f"Disagreement on string '{test_string}'")
 
     def test_normalise_automaton_dfa_minimisation(self):
@@ -76,12 +76,12 @@ class TestFSAEquivalence(TestCase):
         test_strings = ['', 'a', 'aa', 'ab', 'ba', 'aaa']
         for test_string in test_strings:
             original_result = simulate_deterministic_fsa(dfa, test_string)
-            normalized_result = simulate_deterministic_fsa(result, test_string)
+            normalised_result = simulate_deterministic_fsa(result, test_string)
 
             original_accepted = isinstance(original_result, list)
-            normalized_accepted = isinstance(normalized_result, list)
+            normalised_accepted = isinstance(normalised_result, list)
 
-            self.assertEqual(original_accepted, normalized_accepted,
+            self.assertEqual(original_accepted, normalised_accepted,
                              f"Disagreement on string '{test_string}'")
 
     def test_find_state_mapping_identical_dfas(self):
@@ -803,12 +803,12 @@ class TestFSAEquivalence(TestCase):
         test_strings = ['', 'a', 'b', 'ab', 'aab', 'abb', 'ba']
         for test_string in test_strings:
             original_result = simulate_nondeterministic_fsa(nfa_with_epsilon, test_string)
-            normalized_result = simulate_deterministic_fsa(result, test_string)
+            normalised_result = simulate_deterministic_fsa(result, test_string)
 
             original_accepted = isinstance(original_result, list)
-            normalized_accepted = isinstance(normalized_result, list)
+            normalised_accepted = isinstance(normalised_result, list)
 
-            self.assertEqual(original_accepted, normalized_accepted,
+            self.assertEqual(original_accepted, normalised_accepted,
                              f"Disagreement on string '{test_string}'")
 
     def test_are_automata_equivalent_with_state_mapping_details(self):
@@ -895,12 +895,12 @@ class TestFSAEquivalence(TestCase):
         test_strings = ['', 'a', 'b', 'ab', 'ba', 'aa', 'bb']
         for test_string in test_strings:
             original_result = simulate_deterministic_fsa(minimal_dfa, test_string)
-            normalized_result = simulate_deterministic_fsa(result, test_string)
+            normalised_result = simulate_deterministic_fsa(result, test_string)
 
             original_accepted = isinstance(original_result, list)
-            normalized_accepted = isinstance(normalized_result, list)
+            normalised_accepted = isinstance(normalised_result, list)
 
-            self.assertEqual(original_accepted, normalized_accepted,
+            self.assertEqual(original_accepted, normalised_accepted,
                              f"Disagreement on string '{test_string}'")
 
     def test_comprehensive_language_equivalence_verification(self):

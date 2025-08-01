@@ -712,8 +712,8 @@ class TestRegexConversions(TestCase):
         # The verification should succeed for this simple case
         self.assertIn('equivalent', result['verification'])
 
-    def test_fsa_to_regex_minimization_effect(self):
-        """Test that FSA to regex conversion shows minimization effect"""
+    def test_fsa_to_regex_minimisation_effect(self):
+        """Test that FSA to regex conversion shows minimisation effect"""
         # FSA with redundant states
         redundant_fsa = {
             'states': ['S0', 'S1', 'S2', 'S3'],
@@ -1559,9 +1559,9 @@ class TestRegexConversions(TestCase):
         result = fsa_to_regex(complex_epsilon_fsa)
         self.assertTrue(result['valid'])
 
-    def test_fsa_to_regex_minimization_failure_handling(self):
-        """Test fsa_to_regex when minimization fails"""
-        # Create FSA that might cause minimization issues
+    def test_fsa_to_regex_minimisation_failure_handling(self):
+        """Test fsa_to_regex when minimisation fails"""
+        # Create FSA that might cause minimisation issues
         problematic_fsa = {
             'states': ['S0', 'S1', 'S2'],
             'alphabet': ['a', 'b'],
@@ -1575,7 +1575,7 @@ class TestRegexConversions(TestCase):
         }
 
         result = fsa_to_regex(problematic_fsa)
-        # Should handle gracefully even if minimization has issues
+        # Should handle gracefully even if minimisation has issues
         self.assertIsNotNone(result)
 
     def test_verify_function_edge_cases(self):
@@ -1893,9 +1893,9 @@ class TestRegexConversions(TestCase):
         result_transition = gnfa.transitions['start']['S1']
         self.assertEqual(result_transition, 'a')
 
-    def test_fsa_to_regex_empty_after_minimization(self):
-        """Test lines 833, 850, 852 - FSA becomes empty after minimization"""
-        # FSA with unreachable states that might become empty after minimization
+    def test_fsa_to_regex_empty_after_minimisation(self):
+        """Test lines 833, 850, 852 - FSA becomes empty after minimisation"""
+        # FSA with unreachable states that might become empty after minimisation
         fsa_with_unreachable = {
             'states': ['S0', 'S1', 'S2'],
             'alphabet': ['a'],
