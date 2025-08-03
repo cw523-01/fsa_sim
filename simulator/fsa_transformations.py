@@ -7,11 +7,10 @@ def minimise_dfa(fsa: Dict) -> Dict:
     """
     Minimises a deterministic finite automaton (DFA) using Hopcroft's algorithm.
 
-    Args:
-        fsa (Dict): A dictionary representing the DFA.
-
-    Returns:
-        Dict: A minimised DFA in the same format.
+    :param fsa: A dictionary representing the DFA
+    :type fsa: Dict
+    :return: A minimised DFA in the same format
+    :rtype: Dict
     """
     # Handle empty DFA (represents empty language)
     if not fsa['states']:
@@ -110,13 +109,14 @@ def _add_dead_state(transitions: Dict, states: Set[str], alphabet: List[str]) ->
     """
     Helper function to add a dead state to transitions if needed for completeness.
 
-    Args:
-        transitions (Dict): Transitions dictionary to modify
-        states (Set[str]): Set of states to potentially modify
-        alphabet (List[str]): Alphabet symbols
-
-    Returns:
-        Tuple[Set[str], bool]: Updated states set and whether a dead state was added
+    :param transitions: Transitions dictionary to modify
+    :type transitions: Dict
+    :param states: Set of states to potentially modify
+    :type states: Set[str]
+    :param alphabet: Alphabet symbols
+    :type alphabet: List[str]
+    :return: Updated states set and whether a dead state was added
+    :rtype: Tuple[Set[str], bool]
     """
     # Check if we need a dead state for completeness
     dead_state_needed = False
@@ -163,20 +163,13 @@ def nfa_to_dfa(nfa: Dict, return_state_mapping: bool = False) -> Union[Dict, Tup
     Converts a non-deterministic finite automaton (NFA) to a deterministic finite automaton (DFA)
     using subset construction algorithm.
 
-    Args:
-        nfa (Dict): A dictionary representing the NFA with the following keys:
-            - states: List of all states
-            - alphabet: List of symbols in the alphabet (excluding epsilon)
-            - transitions: Dictionary of transitions (may include epsilon transitions with '')
-            - startingState: The starting state
-            - acceptingStates: List of accepting states
-        return_state_mapping (bool): If True, also return the mapping from frozensets to DFA state names
-
-    Returns:
-        Dict or Tuple[Dict, Dict]: A DFA in the same format, and optionally the state mapping
-
-    Raises:
-        ValueError: If the input is not a valid NFA structure
+    :param nfa: A dictionary representing the NFA with keys: states, alphabet (excluding epsilon), transitions (may include epsilon transitions with ''), startingState, acceptingStates
+    :type nfa: Dict
+    :param return_state_mapping: If True, also return the mapping from frozensets to DFA state names
+    :type return_state_mapping: bool
+    :return: A DFA in the same format, and optionally the state mapping
+    :rtype: Union[Dict, Tuple[Dict, Dict]]
+    :raises ValueError: If the input is not a valid NFA structure
     """
     # Validate NFA structure
     validation_result = validate_fsa_structure(nfa)
@@ -317,14 +310,11 @@ def complete_dfa(dfa: Dict) -> Dict:
     """
     Completes a DFA by adding a dead state and missing transitions if necessary.
 
-    Args:
-        dfa (Dict): A dictionary representing the DFA
-
-    Returns:
-        Dict: A complete DFA in the same format
-
-    Raises:
-        ValueError: If the input is not a deterministic FSA
+    :param dfa: A dictionary representing the DFA
+    :type dfa: Dict
+    :return: A complete DFA in the same format
+    :rtype: Dict
+    :raises ValueError: If the input is not a deterministic FSA
     """
     # Handle empty DFA (represents empty language)
     if not dfa['states']:
@@ -368,14 +358,11 @@ def complement_dfa(dfa: Dict) -> Dict:
     Returns the complement of a DFA. The complement accepts exactly the strings
     that the original DFA rejects.
 
-    Args:
-        dfa (Dict): A dictionary representing the DFA
-
-    Returns:
-        Dict: The complement DFA in the same format
-
-    Raises:
-        ValueError: If the input is not a deterministic FSA
+    :param dfa: A dictionary representing the DFA
+    :type dfa: Dict
+    :return: The complement DFA in the same format
+    :rtype: Dict
+    :raises ValueError: If the input is not a deterministic FSA
     """
     if not is_deterministic(dfa):
         raise ValueError("Input must be a deterministic FSA (DFA)")
@@ -399,7 +386,14 @@ def complement_dfa(dfa: Dict) -> Dict:
     }
 
 def remove_unreachable_states(nfa: Dict) -> Dict:
-    """Remove states that are unreachable from the start state."""
+    """
+    Remove states that are unreachable from the start state.
+
+    :param nfa: A dictionary representing the NFA
+    :type nfa: Dict
+    :return: A new NFA with only reachable states
+    :rtype: Dict
+    """
 
     # BFS from start state to find all reachable states
     reachable = set()
@@ -440,7 +434,14 @@ def remove_unreachable_states(nfa: Dict) -> Dict:
 
 
 def remove_dead_states(nfa: Dict) -> Dict:
-    """Remove states that cannot reach any accepting state."""
+    """
+    Remove states that cannot reach any accepting state.
+
+    :param nfa: A dictionary representing the NFA
+    :type nfa: Dict
+    :return: A new NFA with only alive states and cleaned alphabet
+    :rtype: Dict
+    """
 
     # Build reverse graph
     reverse_graph = defaultdict(set)

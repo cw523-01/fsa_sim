@@ -10,16 +10,10 @@ def is_deterministic(fsa: Dict) -> bool:
     1. It has no epsilon transitions
     2. For each state and each symbol, there is exactly one transition
 
-    Args:
-        fsa: A dictionary representing the FSA with the following keys:
-            - states: List of all states
-            - alphabet: List of symbols in the alphabet
-            - transitions: Dictionary of transitions
-            - startingState: The starting state
-            - acceptingStates: List of accepting states
-
-    Returns:
-        bool: True if the FSA is deterministic, False otherwise
+    :param fsa: A dictionary representing the FSA with keys: states, alphabet, transitions, startingState, acceptingStates
+    :type fsa: Dict
+    :return: True if the FSA is deterministic, False otherwise
+    :rtype: bool
     """
     # Handle empty alphabet case - trivially deterministic
     if not fsa.get('alphabet') or len(fsa['alphabet']) == 0:
@@ -53,11 +47,10 @@ def is_complete(fsa: Dict) -> bool:
     An FSA is complete if for each state and each symbol, there is at least one transition.
     Epsilon transitions are ignored for completeness check.
 
-    Args:
-        fsa: A dictionary representing the FSA
-
-    Returns:
-        bool: True if the FSA is complete, False otherwise
+    :param fsa: A dictionary representing the FSA
+    :type fsa: Dict
+    :return: True if the FSA is complete, False otherwise
+    :rtype: bool
     """
     # Handle empty cases
     if not fsa.get('states') or len(fsa['states']) == 0:
@@ -89,11 +82,10 @@ def is_connected(fsa: Dict) -> bool:
 
     An FSA is connected if all states are reachable from the starting state.
 
-    Args:
-        fsa: A dictionary representing the FSA
-
-    Returns:
-        bool: True if the FSA is connected, False otherwise
+    :param fsa: A dictionary representing the FSA
+    :type fsa: Dict
+    :return: True if the FSA is connected, False otherwise
+    :rtype: bool
     """
     # Handle empty states case
     if not fsa.get('states') or len(fsa['states']) == 0:
@@ -152,16 +144,10 @@ def check_all_properties(fsa: Dict) -> Dict:
     """
     Check all FSA properties at once.
 
-    Args:
-        fsa: A dictionary representing the FSA
-
-    Returns:
-        Dict: Dictionary containing all property check results:
-        {
-            'deterministic': bool,
-            'complete': bool,
-            'connected': bool
-        }
+    :param fsa: A dictionary representing the FSA
+    :type fsa: Dict
+    :return: Dictionary containing all property check results with keys 'deterministic', 'complete', and 'connected'
+    :rtype: Dict
     """
     return {
         'deterministic': is_deterministic(fsa),
@@ -173,13 +159,11 @@ def check_all_properties(fsa: Dict) -> Dict:
 def validate_fsa_structure(fsa: Dict) -> Dict:
     """
     Validates that the FSA has the required structure for property checking.
-    This is more lenient than before to allow partial FSAs.
 
-    Args:
-        fsa: The FSA dictionary to validate
-
-    Returns:
-        Dict: Validation result with 'valid' boolean and optional 'error' message
+    :param fsa: The FSA dictionary to validate
+    :type fsa: Dict
+    :return: Validation result with 'valid' boolean and optional 'error' message
+    :rtype: Dict
     """
     if not isinstance(fsa, dict):
         return {'valid': False, 'error': 'FSA must be a dictionary'}
@@ -236,11 +220,10 @@ def is_nondeterministic(fsa: Dict) -> bool:
     1. For any state and symbol, there are multiple possible next states
     2. There are epsilon transitions (empty string '')
 
-    Args:
-        fsa: The FSA dictionary
-
-    Returns:
-        True if non-deterministic, False if deterministic
+    :param fsa: The FSA dictionary
+    :type fsa: Dict
+    :return: True if non-deterministic, False if deterministic
+    :rtype: bool
     """
     # Check for epsilon transitions
     for state in fsa['states']:

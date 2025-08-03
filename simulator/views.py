@@ -1464,7 +1464,7 @@ def fsa_to_regex(request):
         elif result['original_states'] == result['minimized_states']:
             message = 'FSA was already minimal, converted to regex successfully'
         else:
-            message = f'FSA minimized from {result["original_states"]} to {result["minimized_states"]} states, then converted to regex successfully'
+            message = f'FSA minimised from {result["original_states"]} to {result["minimized_states"]} states, then converted to regex successfully'
 
         # Add verification details to message
         if result['verification'].get('equivalent'):

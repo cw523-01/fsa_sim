@@ -5,7 +5,32 @@ from .fsa_equivalence import are_automata_equivalent
 
 
 class MinimisationResult(NamedTuple):
-    """Result of NFA minimisation with metadata about the process"""
+    """
+    Result of NFA minimisation with metadata about the process.
+
+    :param nfa: The minimised NFA
+    :type nfa: Dict
+    :param original_states: Number of states in the original NFA
+    :type original_states: int
+    :param final_states: Number of states in the final minimised NFA
+    :type final_states: int
+    :param reduction: Number of states reduced
+    :type reduction: int
+    :param reduction_percent: Percentage reduction in states
+    :type reduction_percent: float
+    :param is_optimal: Whether the result is optimal
+    :type is_optimal: bool
+    :param method_used: Name of the method that produced the best result
+    :type method_used: str
+    :param stages: List of processing stages
+    :type stages: List[str]
+    :param candidate_results: Results from all candidate methods
+    :type candidate_results: List[Dict]
+    :param equivalence_verified: Whether equivalence was verified
+    :type equivalence_verified: bool
+    :param verification_details: Details about verification process
+    :type verification_details: Dict
+    """
     nfa: Dict
     original_states: int
     final_states: int
@@ -93,7 +118,14 @@ class Cover:
 
 
 def eliminate_epsilon_transitions(nfa: Dict) -> Dict:
-    """Eliminate epsilon transitions using standard epsilon elimination."""
+    """
+    Eliminate epsilon transitions using standard epsilon elimination.
+
+    :param nfa: The NFA with epsilon transitions
+    :type nfa: Dict
+    :return: An equivalent NFA without epsilon transitions
+    :rtype: Dict
+    """
 
     if not any('' in nfa['transitions'].get(s, {}) for s in nfa['states']):
         return nfa
@@ -156,7 +188,18 @@ def eliminate_epsilon_transitions(nfa: Dict) -> Dict:
 
 
 def make_state_map(nfa: Dict, dfa: Dict = None, state_mapping: Dict = None) -> Tuple[Dict, Dict, Dict, Dict]:
-    """Create state map as described in Kameda-Weiner algorithm."""
+    """
+    Create state map as described in Kameda-Weiner algorithm.
+
+    :param nfa: The input NFA
+    :type nfa: Dict
+    :param dfa: Pre-computed DFA (optional)
+    :type dfa: Dict
+    :param state_mapping: Pre-computed state mapping (optional)
+    :type state_mapping: Dict
+    :return: Tuple of (state_map, dfa, dual_dfa, state_mapping)
+    :rtype: Tuple[Dict, Dict, Dict, Dict]
+    """
 
     # Use provided DFA and mapping, or compute them using the safe method
     if dfa is None or state_mapping is None:
@@ -244,7 +287,14 @@ def make_state_map(nfa: Dict, dfa: Dict = None, state_mapping: Dict = None) -> T
 
 
 def make_elementary_automaton_matrix(state_map: Dict) -> List[List[bool]]:
-    """Create elementary automaton matrix from state map."""
+    """
+    Create elementary automaton matrix from state map.
+
+    :param state_map: The state map from Kameda-Weiner algorithm
+    :type state_map: Dict
+    :return: Boolean matrix representing elementary automaton
+    :rtype: List[List[bool]]
+    """
 
     rows = len(state_map)
     cols = len(state_map[0]) if rows > 0 else 0
@@ -260,7 +310,14 @@ def make_elementary_automaton_matrix(state_map: Dict) -> List[List[bool]]:
 
 
 def compute_prime_grids(matrix: List[List[bool]]) -> List[Grid]:
-    """Compute prime grids from the matrix """
+    """
+    Compute prime grids from the matrix.
+
+    :param matrix: Boolean matrix from elementary automaton
+    :type matrix: List[List[bool]]
+    :return: List of prime grids
+    :rtype: List[Grid]
+    """
 
     rows = len(matrix)
     cols = len(matrix[0]) if rows > 0 else 0
@@ -321,7 +378,16 @@ def compute_prime_grids(matrix: List[List[bool]]) -> List[Grid]:
 
 
 def enumerate_covers(matrix: List[List[bool]], prime_grids: List[Grid]) -> List[Cover]:
-    """Enumerate covers"""
+    """
+    Enumerate covers.
+
+    :param matrix: Boolean matrix from elementary automaton
+    :type matrix: List[List[bool]]
+    :param prime_grids: List of prime grids
+    :type prime_grids: List[Grid]
+    :return: List of possible covers
+    :rtype: List[Cover]
+    """
 
     rows = len(matrix)
     cols = len(matrix[0]) if rows > 0 else 0
@@ -380,7 +446,20 @@ def enumerate_covers(matrix: List[List[bool]], prime_grids: List[Grid]) -> List[
 
 
 def build_minimal_nfa_from_cover(original_nfa: Dict, cover: Cover, dfa: Dict, state_mapping: Dict) -> Dict:
-    """Build minimal NFA from cover using intersection rule."""
+    """
+    Build minimal NFA from cover using intersection rule.
+
+    :param original_nfa: The original NFA
+    :type original_nfa: Dict
+    :param cover: The cover to use for construction
+    :type cover: Cover
+    :param dfa: The DFA representation
+    :type dfa: Dict
+    :param state_mapping: State mapping information
+    :type state_mapping: Dict
+    :return: Minimal NFA constructed from the cover
+    :rtype: Dict
+    """
 
     if not cover.grids:
         return original_nfa
@@ -473,7 +552,20 @@ def build_minimal_nfa_from_cover(original_nfa: Dict, cover: Cover, dfa: Dict, st
 
 def apply_kameda_weiner(nfa: Dict, method_name: str, dfa: Dict = None, state_mapping: Dict = None) -> Tuple[
     Dict, List[str]]:
-    """Apply Kameda-Weiner algorithm to an NFA and return the result with stages."""
+    """
+    Apply Kameda-Weiner algorithm to an NFA and return the result with stages.
+
+    :param nfa: The input NFA
+    :type nfa: Dict
+    :param method_name: Name of the method for logging
+    :type method_name: str
+    :param dfa: Pre-computed DFA (optional)
+    :type dfa: Dict
+    :param state_mapping: Pre-computed state mapping (optional)
+    :type state_mapping: Dict
+    :return: Tuple of (minimised_nfa, processing_stages)
+    :rtype: Tuple[Dict, List[str]]
+    """
 
     stages = []
 
@@ -528,15 +620,16 @@ def apply_kameda_weiner(nfa: Dict, method_name: str, dfa: Dict = None, state_map
 
 def verify_candidate_equivalence(original_nfa: Dict, candidate_nfa: Dict, method_name: str) -> Tuple[bool, Dict]:
     """
-    Verify that a candidate minimized NFA is equivalent to the original NFA.
+    Verify that a candidate minimised NFA is equivalent to the original NFA.
 
-    Args:
-        original_nfa: The original NFA
-        candidate_nfa: The candidate minimized NFA
-        method_name: Name of the method used to generate the candidate
-
-    Returns:
-        Tuple of (is_equivalent, verification_details)
+    :param original_nfa: The original NFA
+    :type original_nfa: Dict
+    :param candidate_nfa: The candidate minimised NFA
+    :type candidate_nfa: Dict
+    :param method_name: Name of the method used to generate the candidate
+    :type method_name: str
+    :return: Tuple of (is_equivalent, verification_details)
+    :rtype: Tuple[bool, Dict]
     """
     try:
         is_equivalent, details = are_automata_equivalent(original_nfa, candidate_nfa)
@@ -564,7 +657,13 @@ def verify_candidate_equivalence(original_nfa: Dict, candidate_nfa: Dict, method
 
 
 def candidate_priority(candidate):
-    """Pick the best candidate (minimum states, with priority for DFA method on ties)"""
+    """
+    Pick the best candidate (minimum states, with priority for DFA method on ties).
+
+    :param candidate: Candidate information dictionary
+    :return: Priority tuple for sorting
+    :rtype: Tuple[int, int]
+    """
     # Primary key: number of states (lower is better)
     # Secondary key: method priority (0 = highest priority)
     method_priorities = {
@@ -581,9 +680,12 @@ def minimise_nfa(nfa: Dict, kameda_weiner_threshold: int = 25) -> MinimisationRe
     """
     Minimise an NFA using a multi-stage pipeline approach with threshold-based Kameda-Weiner usage.
 
-    Args:
-        nfa: The NFA to minimise
-        kameda_weiner_threshold: Maximum number of states for which Kameda-Weiner will be applied
+    :param nfa: The NFA to minimise
+    :type nfa: Dict
+    :param kameda_weiner_threshold: Maximum number of states for which Kameda-Weiner will be applied
+    :type kameda_weiner_threshold: int
+    :return: Detailed results of the minimisation process
+    :rtype: MinimisationResult
     """
 
     original_states = len(nfa['states'])

@@ -1832,7 +1832,7 @@ class TestRegexConversions(TestCase):
         self.assertIn('position', str(cm.exception))
 
     def test_gnfa_union_existing_transitions(self):
-        """Test lines 390-393 - GNFA adding transition when one already exists"""
+        """Test GNFA adding transition when one already exists"""
         gnfa = GNFA()
         gnfa.add_state('S0')
         gnfa.add_state('S1')
@@ -1850,7 +1850,7 @@ class TestRegexConversions(TestCase):
         self.assertEqual(gnfa.transitions['S0']['S1'], '((a|b)|c)')
 
     def test_gnfa_remove_state_with_complex_self_loop(self):
-        """Test lines 529-532, 658-661 - GNFA state elimination with self-loops"""
+        """Test GNFA state elimination with self-loops"""
         gnfa = GNFA()
         for state in ['start', 'S0', 'S1', 'accept']:
             gnfa.add_state(state)
@@ -1871,7 +1871,7 @@ class TestRegexConversions(TestCase):
         self.assertIn('(c|d)*', result_transition)
 
     def test_gnfa_remove_state_epsilon_handling(self):
-        """Test lines 685-686, 691-711 - GNFA epsilon handling in state elimination"""
+        """Test GNFA epsilon handling in state elimination"""
         gnfa = GNFA()
         for state in ['start', 'S0', 'S1', 'accept']:
             gnfa.add_state(state)
@@ -1894,7 +1894,7 @@ class TestRegexConversions(TestCase):
         self.assertEqual(result_transition, 'a')
 
     def test_fsa_to_regex_empty_after_minimisation(self):
-        """Test lines 833, 850, 852 - FSA becomes empty after minimisation"""
+        """Test FSA becomes empty after minimisation"""
         # FSA with unreachable states that might become empty after minimisation
         fsa_with_unreachable = {
             'states': ['S0', 'S1', 'S2'],
@@ -1930,7 +1930,7 @@ class TestRegexConversions(TestCase):
         self.assertEqual(result['regex'], '∅')
 
     def test_verify_function_simplified_regex_fails(self):
-        """Test lines 898, 902 - verify function when simplified regex fails"""
+        """Test verify function when simplified regex fails"""
         simple_fsa = {
             'states': ['S0', 'S1'],
             'alphabet': ['a'],
@@ -1952,7 +1952,7 @@ class TestRegexConversions(TestCase):
         self.assertIn('fallback_to_original', verification['strategy'])
 
     def test_verify_function_both_fail_equivalence(self):
-        """Test lines around 950-955 - verify when both regexes fail equivalence"""
+        """Test verify when both regexes fail equivalence"""
         # Create FSA that won't match either regex
         fsa = {
             'states': ['S0', 'S1'],
@@ -1974,7 +1974,7 @@ class TestRegexConversions(TestCase):
         self.assertIn('both_failed', verification['strategy'])
 
     def test_verify_function_both_fail_conversion(self):
-        """Test lines 958-963 - verify when both regexes fail to convert"""
+        """Test verify when both regexes fail to convert"""
         simple_fsa = {
             'states': ['S0', 'S1'],
             'alphabet': ['a'],
@@ -1995,7 +1995,7 @@ class TestRegexConversions(TestCase):
         self.assertIn('both_failed_conversion', verification['strategy'])
 
     def test_union_node_complex_simplification_rules(self):
-        """Test lines 1010-1011, 1020-1021 - UnionNode complex simplification"""
+        """Test UnionNode complex simplification"""
         # Test R*|S+ → R*|S* rule
         r_star = StarNode(CharNode('a'))
         s_plus = PlusNode(CharNode('b'))
@@ -2006,7 +2006,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(simplified, UnionNode)
 
     def test_union_node_factor_common_suffix(self):
-        """Test lines 1028-1029, 1035-1036 - UnionNode factoring common suffix"""
+        """Test UnionNode factoring common suffix"""
         # Test X|YX → Y?X pattern
         x = CharNode('a')
         y = CharNode('b')
@@ -2023,7 +2023,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(simplified_rev, ConcatNode)
 
     def test_union_node_optional_rules(self):
-        """Test lines 1042-1043 - UnionNode with optional handling"""
+        """Test UnionNode with optional handling"""
         # Test R|R? → R?, R?|R → R?
         r = CharNode('a')
         r_opt = OptionalNode(CharNode('a'))
@@ -2037,7 +2037,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(simplified2, OptionalNode)
 
     def test_concat_node_x_yx_star_y_pattern(self):
-        """Test lines 1129, 1143, 1145 - ConcatNode X(YX)*Y → (XY)+ pattern"""
+        """Test ConcatNode X(YX)*Y → (XY)+ pattern"""
         # Create X(YX)*Y pattern: b(ab)*a
         x = CharNode('b')
         y = CharNode('a')
@@ -2054,7 +2054,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(simplified, PlusNode)
 
     def test_concat_node_nested_simplification(self):
-        """Test lines 1155, 1161 - ConcatNode nested concatenation simplification"""
+        """Test ConcatNode nested concatenation simplification"""
         # Create nested concatenation that needs simplification
         a = CharNode('a')
         b = CharNode('b')
@@ -2068,7 +2068,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(simplified, ConcatNode)
 
     def test_star_node_advanced_rules(self):
-        """Test lines 1165, 1167, 1173 - StarNode advanced simplification"""
+        """Test StarNode advanced simplification"""
         # Test (R+)* → R*
         plus_node = PlusNode(CharNode('a'))
         star_of_plus = StarNode(plus_node)
@@ -2083,7 +2083,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(simplified2, StarNode)
 
     def test_plus_node_advanced_rules(self):
-        """Test lines 1195, 1197 - PlusNode advanced simplification"""
+        """Test PlusNode advanced simplification"""
         # Test (R*)+ → R*
         star_node = StarNode(CharNode('a'))
         plus_of_star = PlusNode(star_node)
@@ -2097,7 +2097,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(simplified2, StarNode)
 
     def test_optional_node_advanced_rules(self):
-        """Test lines 1223, 1225 - OptionalNode advanced simplification"""
+        """Test OptionalNode advanced simplification"""
         # Test (R*)? → R*
         star_node = StarNode(CharNode('a'))
         opt_of_star = OptionalNode(star_node)
@@ -2111,7 +2111,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(simplified2, StarNode)
 
     def test_multi_operator_node_dominance_rules(self):
-        """Test lines 1241, 1255 - MultiOperatorNode operator dominance"""
+        """Test MultiOperatorNode operator dominance"""
         # Test star dominance
         multi_with_star = MultiOperatorNode(CharNode('a'), ['*', '+', '?'])
         simplified = multi_with_star.simplify()
@@ -2123,7 +2123,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(simplified2, StarNode)
 
     def test_regex_ast_parser_empty_group_handling(self):
-        """Test lines 1301, 1316 - RegexASTParser empty group handling"""
+        """Test RegexASTParser empty group handling"""
         # Test parsing empty groups
         parser = RegexASTParser('()')
         ast = parser.parse()
@@ -2135,7 +2135,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(ast2, ConcatNode)
 
     def test_regex_ast_parser_multiple_consecutive_operators(self):
-        """Test lines 1329, 1337, 1345 - RegexASTParser consecutive operators"""
+        """Test RegexASTParser consecutive operators"""
         # Test multiple consecutive operators
         parser = RegexASTParser('a*+?')
         ast = parser.parse()
@@ -2148,7 +2148,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(ast2, MultiOperatorNode)
 
     def test_pattern_detection_with_re_simplification(self):
-        """Test lines 1364, 1368, 1377, 1381 - Pattern detection re-simplification"""
+        """Test Pattern detection re-simplification"""
         # Test _detect_union_patterns with re-simplification
         eps = EpsilonNode()
         star_a = StarNode(CharNode('a'))
@@ -2159,7 +2159,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(result, StarNode)
 
     def test_flattened_concat_pattern_detection(self):
-        """Test lines 1393, 1397, 1412 - Flattened concatenation patterns"""
+        """Test Flattened concatenation patterns"""
         # Test patterns that require flattening to detect
         # Create [..., R, R*] pattern
         a = CharNode('a')
@@ -2171,7 +2171,7 @@ class TestRegexConversions(TestCase):
         self.assertEqual(len(result), 2)
 
     def test_detect_epsilon_patterns_advanced(self):
-        """Test lines 1425, 1429, 1445 - Advanced epsilon pattern detection"""
+        """Test Advanced epsilon pattern detection"""
         # Test epsilon elimination in complex structures
         eps = EpsilonNode()
         a = CharNode('a')
@@ -2186,7 +2186,7 @@ class TestRegexConversions(TestCase):
         self.assertEqual(result2.to_string(), 'a')
 
     def test_simplify_regex_error_handling(self):
-        """Test lines 1457-1460 - simplify_regex error handling"""
+        """Test simplify_regex error handling"""
         # Test with regex that might cause parsing errors
         try:
             result = simplify_regex('invalid(((regex')
@@ -2197,7 +2197,7 @@ class TestRegexConversions(TestCase):
             pass
 
     def test_eliminate_states_best_state_selection(self):
-        """Test lines 482 - eliminate_states best state selection logic"""
+        """Test eliminate_states best state selection logic"""
         gnfa = GNFA()
 
         # Create GNFA with multiple states to eliminate
@@ -2221,7 +2221,7 @@ class TestRegexConversions(TestCase):
         self.assertIsNotNone(result)
 
     def test_detect_nested_patterns_changes(self):
-        """Test lines 1493, 1513, 1518, 1537 - detect_nested_patterns when changes occur"""
+        """Test detect_nested_patterns when changes occur"""
         # Create nested structure that will change during pattern detection
         inner = StarNode(StarNode(CharNode('a')))  # a**
 
@@ -2230,7 +2230,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(result, StarNode)
 
     def test_ast_node_to_string_edge_cases(self):
-        """Test lines 1606-1607, 1614 - AST node to_string edge cases"""
+        """Test AST node to_string edge cases"""
         # Test UnionNode with empty strings
         empty = EmptyGroupNode()
         a = CharNode('a')
@@ -2240,7 +2240,7 @@ class TestRegexConversions(TestCase):
         self.assertIn('|', result)
 
     def test_empty_group_and_empty_set_handling(self):
-        """Test lines 1635, 1663-1665 - EmptyGroupNode and EmptySetNode handling"""
+        """Test EmptyGroupNode and EmptySetNode handling"""
         # Test EmptyGroupNode simplification
         empty_group = EmptyGroupNode()
         simplified = empty_group.simplify()
@@ -2252,7 +2252,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(empty_set.simplify(), EmptySetNode)
 
     def test_regex_parser_atom_special_cases(self):
-        """Test lines around 564 - RegexParser atom parsing special cases"""
+        """Test RegexParser atom parsing special cases"""
         # Test parsing empty set symbol
         builder = NFABuilder()
         parser = RegexParser('∅', builder)
@@ -2371,7 +2371,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(simplified, EpsilonNode)
 
     def test_gnfa_no_self_loop_case(self):
-        """Test lines 600-602 - GNFA state elimination without self-loop"""
+        """Test GNFA state elimination without self-loop"""
         gnfa = GNFA()
         for state in ['start', 'S0', 'accept']:
             gnfa.add_state(state)
@@ -2391,7 +2391,7 @@ class TestRegexConversions(TestCase):
         self.assertEqual(result_transition, 'ab')
 
     def test_union_node_epsilon_non_star_plus(self):
-        """Test lines 1057, 1062, 1066-1068 - UnionNode epsilon with non-star/plus"""
+        """Test UnionNode epsilon with non-star/plus"""
         # Test ε|R → R? for regular nodes (not star/plus)
         eps = EpsilonNode()
         regular_char = CharNode('a')
@@ -2405,7 +2405,7 @@ class TestRegexConversions(TestCase):
         self.assertIsInstance(simplified_right, OptionalNode)
 
     def test_concat_node_nested_different_patterns(self):
-        """Test lines 1143, 1145 - ConcatNode nested pattern detection edge cases"""
+        """Test ConcatNode nested pattern detection edge cases"""
         # Test case where we have nested concatenation but pattern doesn't match
         x = CharNode('b')
         y = CharNode('c')  # Different character
@@ -2434,7 +2434,7 @@ class TestRegexConversions(TestCase):
         self.assertIsNone(char)
 
     def test_regex_parser_parse_atom_fallback(self):
-        """Test lines around 564 - RegexParser parse_atom fallback case"""
+        """Test RegexParser parse_atom fallback case"""
         builder = NFABuilder()
         parser = RegexParser('', builder)  # Empty regex
 
@@ -2444,7 +2444,7 @@ class TestRegexConversions(TestCase):
         self.assertIsNotNone(accept)
 
     def test_union_node_to_string_edge_cases(self):
-        """Test lines 1606-1607, 1614 - UnionNode to_string with empty components"""
+        """Test UnionNode to_string with empty components"""
         # Test with left side empty
         empty_left = EmptyGroupNode()
         right_char = CharNode('a')

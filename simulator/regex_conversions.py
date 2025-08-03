@@ -9,7 +9,11 @@ from .fsa_equivalence import are_automata_equivalent
 
 
 class NFABuilder:
-    """Helper class to build NFAs."""
+    """
+    Helper class to build NFAs.
+
+    Provides methods to incrementally construct an NFA by adding states and transitions.
+    """
 
     def __init__(self):
         self.state_counter = 0
@@ -18,20 +22,43 @@ class NFABuilder:
         self.transitions = defaultdict(lambda: defaultdict(list))
 
     def new_state(self) -> str:
-        """Generate a new unique state."""
+        """
+        Generate a new unique state.
+
+        :return: A unique state identifier
+        :rtype: str
+        """
         state = f"q{self.state_counter}"
         self.state_counter += 1
         self.states.add(state)
         return state
 
     def add_transition(self, from_state: str, symbol: str, to_state: str):
-        """Add a transition."""
+        """
+        Add a transition.
+
+        :param from_state: Source state
+        :type from_state: str
+        :param symbol: Transition symbol (empty string for epsilon)
+        :type symbol: str
+        :param to_state: Target state
+        :type to_state: str
+        """
         self.transitions[from_state][symbol].append(to_state)
         if symbol != '':  # Don't add epsilon to alphabet
             self.alphabet.add(symbol)
 
     def to_dict(self, start_state: str, accept_states: List[str]) -> Dict:
-        """Convert to FSA dictionary format."""
+        """
+        Convert to FSA dictionary format.
+
+        :param start_state: The starting state
+        :type start_state: str
+        :param accept_states: List of accepting states
+        :type accept_states: List[str]
+        :return: FSA in standard dictionary format
+        :rtype: Dict
+        """
         return {
             'states': sorted(list(self.states)),
             'alphabet': sorted(list(self.alphabet)),
@@ -42,7 +69,11 @@ class NFABuilder:
 
 
 class RegexParser:
-    """Regex parser that builds an NFA."""
+    """
+    Regex parser that builds an NFA.
+
+    Uses Thompson's construction algorithm to convert regular expressions to NFAs.
+    """
 
     def __init__(self, regex: str, nfa: NFABuilder):
         self.regex = regex
@@ -62,7 +93,13 @@ class RegexParser:
         return None
 
     def parse(self) -> Tuple[str, str]:
-        """Parse regex and return (start_state, accept_state)."""
+        """
+        Parse regex and return (start_state, accept_state).
+
+        :return: Tuple of start state and accept state identifiers
+        :rtype: Tuple[str, str]
+        :raises ValueError: If the regex has invalid syntax
+        """
         if not self.regex:
             # Empty regex = epsilon
             start = self.nfa.new_state()
@@ -209,7 +246,11 @@ class RegexParser:
 
 
 class GNFA:
-    """Generalised NFA for state elimination algorithm."""
+    """
+    Generalised NFA for state elimination algorithm.
+
+    A GNFA allows transitions labeled with regular expressions instead of single symbols.
+    """
 
     def __init__(self):
         self.states = set()
@@ -218,11 +259,25 @@ class GNFA:
         self.accept_state = None
 
     def add_state(self, state: str):
-        """Add a state to the GNFA."""
+        """
+        Add a state to the GNFA.
+
+        :param state: State identifier to add
+        :type state: str
+        """
         self.states.add(state)
 
     def add_transition(self, from_state: str, to_state: str, regex: str):
-        """Add a transition labeled with a regex."""
+        """
+        Add a transition labeled with a regex.
+
+        :param from_state: Source state
+        :type from_state: str
+        :param to_state: Target state
+        :type to_state: str
+        :param regex: Regular expression labeling the transition
+        :type regex: str
+        """
         if regex:  # Only add non-empty transitions
             if self.transitions[from_state][to_state]:
                 # Union with existing transition
@@ -232,7 +287,12 @@ class GNFA:
                 self.transitions[from_state][to_state] = regex
 
     def remove_state(self, state: str):
-        """Remove a state and update transitions using state elimination."""
+        """
+        Remove a state and update transitions using state elimination.
+
+        :param state: State to remove
+        :type state: str
+        """
         if state == self.start_state or state == self.accept_state:
             return  # Never remove start or accept state
 
@@ -306,7 +366,14 @@ class GNFA:
 
 
 def fsa_to_gnfa(fsa: Dict) -> GNFA:
-    """Convert an FSA to a GNFA for state elimination."""
+    """
+    Convert an FSA to a GNFA for state elimination.
+
+    :param fsa: The FSA to convert
+    :type fsa: Dict
+    :return: Equivalent GNFA with new start and accept states
+    :rtype: GNFA
+    """
     gnfa = GNFA()
 
     # Add new start and accept states
@@ -345,6 +412,13 @@ def nodes_equivalent(node1: 'RegexNode', node2: 'RegexNode') -> bool:
     """
     Checks semantic equivalence between regex nodes.
     This is the single source of truth for node equivalence.
+
+    :param node1: First regex node
+    :type node1: RegexNode
+    :param node2: Second regex node
+    :type node2: RegexNode
+    :return: True if the nodes are semantically equivalent
+    :rtype: bool
     """
     # Quick identity checks
     if node1 is node2:
@@ -395,6 +469,13 @@ def nodes_equivalent(node1: 'RegexNode', node2: 'RegexNode') -> bool:
 def simplify_regex(regex: str, max_complexity: int = 5000) -> str:
     """
     Simplify a regular expression using AST-based approach.
+
+    :param regex: The regular expression to simplify
+    :type regex: str
+    :param max_complexity: Maximum complexity threshold for processing
+    :type max_complexity: int
+    :return: Simplified regular expression
+    :rtype: str
     """
     if not regex:
         return 'ε'
@@ -453,7 +534,14 @@ def simplify_regex(regex: str, max_complexity: int = 5000) -> str:
 
 
 def eliminate_states(gnfa: GNFA) -> str:
-    """Eliminate states from GNFA until only start and accept remain."""
+    """
+    Eliminate states from GNFA until only start and accept remain.
+
+    :param gnfa: The GNFA to process
+    :type gnfa: GNFA
+    :return: Regular expression equivalent to the GNFA
+    :rtype: str
+    """
     # Continue until only start and accept states remain
     while len(gnfa.states) > 2:
         # Choose a state to eliminate (not start or accept)
@@ -492,6 +580,13 @@ def eliminate_states(gnfa: GNFA) -> str:
 def fsa_to_regex(fsa: Dict, skip_simplification_threshold: int = 2500) -> Dict:
     """
     Convert a finite state automaton to a regular expression.
+
+    :param fsa: The FSA to convert
+    :type fsa: Dict
+    :param skip_simplification_threshold: Complexity threshold for skipping simplification
+    :type skip_simplification_threshold: int
+    :return: Dictionary with 'regex', 'valid', 'original_states', 'minimized_states', 'verification', and optional 'error'
+    :rtype: Dict
     """
     result = {
         'regex': '',
@@ -629,13 +724,14 @@ def verify(fsa: Dict, original_regex: str, simplified_regex: str) -> tuple:
     """
     Verify regex conversion with fallback strategy.
 
-    Args:
-        fsa: Original FSA
-        original_regex: Regex before simplification
-        simplified_regex: Regex after simplification
-
-    Returns:
-        tuple: (final_regex, verification_dict)
+    :param fsa: Original FSA
+    :type fsa: Dict
+    :param original_regex: Regex before simplification
+    :type original_regex: str
+    :param simplified_regex: Regex after simplification
+    :type simplified_regex: str
+    :return: Tuple of (final_regex, verification_dict)
+    :rtype: tuple
     """
     # Try to verify simplified regex first
     try:
@@ -745,28 +841,14 @@ def regex_to_epsilon_nfa(regex: str) -> Dict:
     """
     Convert a regular expression to an ε-NFA using Thompson's construction.
 
-    Args:
-        regex (str): The regular expression to convert. Supports:
-            - Single characters: a, b, c, 0, 1, etc.
-            - Epsilon: ε
-            - Union: | (e.g., "a|b")
-            - Concatenation: implicit (e.g., "ab")
-            - Kleene star: * (e.g., "a*")
-            - Plus: + (e.g., "a+") - one or more
-            - Optional: ? (e.g., "a?") - zero or one
-            - Parentheses: () for grouping
-            - Consecutive postfix operators: *, +, ? (e.g., "a*+", "a+*", "a??")
-              Note: Consecutive operators are mathematically valid but may be redundant
+    Supports single characters, epsilon, union (|), concatenation, Kleene star (*),
+    plus (+), optional (?), parentheses for grouping, and consecutive postfix operators.
 
-    Returns:
-        Dict: An ε-NFA in the standard FSA format
-
-    Examples:
-        regex_to_epsilon_nfa("a?")     # Zero or one 'a'
-        regex_to_epsilon_nfa("(ab)?")  # Optional "ab" sequence
-        regex_to_epsilon_nfa("a?b*")   # Optional 'a' followed by zero or more 'b's
-        regex_to_epsilon_nfa("a+?")    # One or more 'a's, optionally (equivalent to a*)
-        regex_to_epsilon_nfa("a??")    # Zero or one 'a' (redundant but valid)
+    :param regex: The regular expression to convert
+    :type regex: str
+    :return: An ε-NFA in the standard FSA format
+    :rtype: Dict
+    :raises ValueError: If the regex has invalid syntax
     """
     nfa_builder = NFABuilder()
     parser = RegexParser(regex, nfa_builder)
@@ -782,11 +864,10 @@ def validate_regex_syntax(regex: str) -> Dict[str, any]:
     """
     Validate regex syntax without building the full NFA.
 
-    Args:
-        regex (str): The regular expression to validate
-
-    Returns:
-        Dict with 'valid' (bool) and optional 'error' (str) keys
+    :param regex: The regular expression to validate
+    :type regex: str
+    :return: Dictionary with 'valid' boolean and optional 'error' string
+    :rtype: Dict[str, any]
     """
     try:
         regex_to_epsilon_nfa(regex)
@@ -799,7 +880,10 @@ def _flatten_concatenation(node: 'RegexNode') -> List['RegexNode']:
     Flatten a concatenation tree into a list of nodes.
     This enables pattern detection across multiple concatenated elements.
 
-    Example: ConcatNode(ConcatNode(a, b), c) → [a, b, c]
+    :param node: The concatenation node to flatten
+    :type node: RegexNode
+    :return: List of nodes in concatenation order
+    :rtype: List[RegexNode]
     """
     if isinstance(node, ConcatNode):
         left_items = _flatten_concatenation(node.left)
@@ -814,9 +898,10 @@ def _detect_flattened_concat_patterns(nodes: List['RegexNode']) -> List['RegexNo
     Apply pattern detection on flattened concatenation lists.
     Detects patterns like aaa* → aa+ that binary trees miss.
 
-    Patterns detected:
-    - [..., R, R*] → [..., R+]  (e.g., [a, a, StarNode(a)] → [a, PlusNode(a)])
-    - [..., R*, R] → [..., R+]  (e.g., [StarNode(a), a] → [PlusNode(a)])
+    :param nodes: List of concatenated nodes
+    :type nodes: List[RegexNode]
+    :return: List with detected patterns simplified
+    :rtype: List[RegexNode]
     """
     if len(nodes) < 2:
         return nodes
@@ -855,7 +940,10 @@ def _rebuild_concatenation(nodes: List['RegexNode']) -> 'RegexNode':
     Rebuild a concatenation tree from a flattened list.
     Uses right-associative structure for better pattern detection.
 
-    Example: [a, b, c] → ConcatNode(a, ConcatNode(b, c))
+    :param nodes: List of nodes to concatenate
+    :type nodes: List[RegexNode]
+    :return: Root of the rebuilt concatenation tree
+    :rtype: RegexNode
     """
     if len(nodes) == 0:
         return EpsilonNode()
@@ -867,7 +955,14 @@ def _rebuild_concatenation(nodes: List['RegexNode']) -> 'RegexNode':
 
 
 def _detect_union_patterns(node: 'RegexNode') -> 'RegexNode':
-    """Detect union patterns with re-simplification."""
+    """
+    Detect union patterns with re-simplification.
+
+    :param node: The node to analyze for union patterns
+    :type node: RegexNode
+    :return: Node with union patterns simplified
+    :rtype: RegexNode
+    """
     if isinstance(node, UnionNode):
         left = _detect_union_patterns(node.left)
         right = _detect_union_patterns(node.right)
@@ -914,7 +1009,14 @@ def _detect_union_patterns(node: 'RegexNode') -> 'RegexNode':
 
 
 def _detect_concat_patterns(node: 'RegexNode') -> 'RegexNode':
-    """Detect concatenation patterns with flattening support."""
+    """
+    Detect concatenation patterns with flattening support.
+
+    :param node: The node to analyze for concatenation patterns
+    :type node: RegexNode
+    :return: Node with concatenation patterns simplified
+    :rtype: RegexNode
+    """
     if isinstance(node, ConcatNode):
         left = _detect_concat_patterns(node.left)
         right = _detect_concat_patterns(node.right)
@@ -967,7 +1069,14 @@ def _detect_concat_patterns(node: 'RegexNode') -> 'RegexNode':
 
 
 def _detect_epsilon_patterns(node: 'RegexNode') -> 'RegexNode':
-    """Detect epsilon-related patterns with re-simplification."""
+    """
+    Detect epsilon-related patterns with re-simplification.
+
+    :param node: The node to analyze for epsilon patterns
+    :type node: RegexNode
+    :return: Node with epsilon patterns simplified
+    :rtype: RegexNode
+    """
     if isinstance(node, UnionNode):
         left = _detect_epsilon_patterns(node.left)
         right = _detect_epsilon_patterns(node.right)
@@ -1027,7 +1136,14 @@ def _detect_epsilon_patterns(node: 'RegexNode') -> 'RegexNode':
 
 
 def _detect_nested_patterns(node: 'RegexNode') -> 'RegexNode':
-    """Detect patterns in nested structures with re-simplification."""
+    """
+    Detect patterns in nested structures with re-simplification.
+
+    :param node: The node to analyze for nested patterns
+    :type node: RegexNode
+    :return: Node with nested patterns simplified
+    :rtype: RegexNode
+    """
     if isinstance(node, ConcatNode):
         left = _detect_nested_patterns(node.left)
         right = _detect_nested_patterns(node.right)
@@ -1075,16 +1191,30 @@ def _detect_nested_patterns(node: 'RegexNode') -> 'RegexNode':
 
 
 class RegexNode(ABC):
-    """Base class for regex AST nodes."""
+    """
+    Base class for regex AST nodes.
+
+    Abstract base class defining the interface for all regex AST node types.
+    """
 
     @abstractmethod
     def to_string(self) -> str:
-        """Convert node back to regex string."""
+        """
+        Convert node back to regex string.
+
+        :return: String representation of the regex node
+        :rtype: str
+        """
         pass
 
     @abstractmethod
     def simplify(self) -> 'RegexNode':
-        """Return a simplified version of this node."""
+        """
+        Return a simplified version of this node.
+
+        :return: Simplified equivalent of this node
+        :rtype: RegexNode
+        """
         pass
 
     def __eq__(self, other) -> bool:
@@ -1096,7 +1226,12 @@ class RegexNode(ABC):
 
 @dataclass
 class CharNode(RegexNode):
-    """Single character node (a, b, 0, 1, etc.)."""
+    """
+    Single character node (a, b, 0, 1, etc.).
+
+    :param char: The character this node represents
+    :type char: str
+    """
     char: str
 
     def to_string(self) -> str:
@@ -1108,7 +1243,11 @@ class CharNode(RegexNode):
 
 @dataclass
 class EpsilonNode(RegexNode):
-    """Epsilon (empty string) node."""
+    """
+    Epsilon (empty string) node.
+
+    Represents the empty string ε in regular expressions.
+    """
 
     def to_string(self) -> str:
         return 'ε'
@@ -1119,7 +1258,11 @@ class EpsilonNode(RegexNode):
 
 @dataclass
 class EmptySetNode(RegexNode):
-    """Empty language node (∅)."""
+    """
+    Empty language node (∅).
+
+    Represents the empty language that accepts no strings.
+    """
 
     def to_string(self) -> str:
         return '∅'
@@ -1141,7 +1284,14 @@ class EmptyGroupNode(RegexNode):
 
 @dataclass
 class UnionNode(RegexNode):
-    """Union node (R|S) with rule ordering."""
+    """
+    Union node (R|S) with rule ordering.
+
+    :param left: Left operand of the union
+    :type left: RegexNode
+    :param right: Right operand of the union
+    :type right: RegexNode
+    """
     left: RegexNode
     right: RegexNode
 
@@ -1236,7 +1386,14 @@ class UnionNode(RegexNode):
 
 @dataclass
 class ConcatNode(RegexNode):
-    """Concatenation node (RS)"""
+    """
+    Concatenation node (RS).
+
+    :param left: Left operand of the concatenation
+    :type left: RegexNode
+    :param right: Right operand of the concatenation
+    :type right: RegexNode
+    """
     left: RegexNode
     right: RegexNode
 
@@ -1331,7 +1488,12 @@ class ConcatNode(RegexNode):
 
 @dataclass
 class StarNode(RegexNode):
-    """Kleene star node (R*)."""
+    """
+    Kleene star node (R*).
+
+    :param inner: The expression inside the Kleene star
+    :type inner: RegexNode
+    """
     inner: RegexNode
 
     def to_string(self) -> str:
@@ -1379,7 +1541,12 @@ class StarNode(RegexNode):
 
 @dataclass
 class PlusNode(RegexNode):
-    """Plus node (R+)."""
+    """
+    Plus node (R+).
+
+    :param inner: The expression inside the plus operator
+    :type inner: RegexNode
+    """
     inner: RegexNode
 
     def to_string(self) -> str:
@@ -1427,7 +1594,12 @@ class PlusNode(RegexNode):
 
 @dataclass
 class OptionalNode(RegexNode):
-    """Optional node (R?)."""
+    """
+    Optional node (R?).
+
+    :param inner: The expression inside the optional operator
+    :type inner: RegexNode
+    """
     inner: RegexNode
 
     def to_string(self) -> str:
@@ -1520,7 +1692,11 @@ class MultiOperatorNode(RegexNode):
 
 
 class RegexASTParser:
-    """Parser that converts regex string to AST with operator handling."""
+    """
+    Parser that converts regex string to AST with operator handling.
+
+    Implements a recursive descent parser for regular expressions.
+    """
 
     def __init__(self, regex: str):
         self.regex = regex
@@ -1539,7 +1715,13 @@ class RegexASTParser:
         return None
 
     def parse(self) -> RegexNode:
-        """Parse regex and return AST root."""
+        """
+        Parse regex and return AST root.
+
+        :return: Root node of the parsed AST
+        :rtype: RegexNode
+        :raises ValueError: If the regex has invalid syntax
+        """
         if not self.regex:
             return EpsilonNode()
 
@@ -1646,6 +1828,11 @@ class RegexASTParser:
 def _detect_char_star_patterns(node: RegexNode) -> RegexNode:
     """
     Helper function to detect and simplify aa* patterns throughout the AST.
+
+    :param node: The node to analyze for character-star patterns
+    :type node: RegexNode
+    :return: Node with character-star patterns simplified
+    :rtype: RegexNode
     """
     if isinstance(node, ConcatNode):
         left = _detect_char_star_patterns(node.left)

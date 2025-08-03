@@ -8,11 +8,10 @@ def preprocess_automaton(automaton: Dict) -> Dict:
     Preprocess an automaton by removing unreachable and dead states,
     and cleaning up the alphabet to remove unused symbols.
 
-    Args:
-        automaton: An FSA (either NFA or DFA)
-
-    Returns:
-        A preprocessed automaton equivalent to the input
+    :param automaton: An FSA (either NFA or DFA)
+    :type automaton: Dict
+    :return: A preprocessed automaton equivalent to the input
+    :rtype: Dict
     """
     # Remove unreachable states first
     processed = remove_unreachable_states(automaton)
@@ -27,11 +26,10 @@ def normalise_automaton(automaton: Dict) -> Dict:
     """
     Convert an automaton to its canonical minimal DFA form.
 
-    Args:
-        automaton: An FSA (either NFA or DFA)
-
-    Returns:
-        A minimal DFA equivalent to the input automaton
+    :param automaton: An FSA (either NFA or DFA)
+    :type automaton: Dict
+    :return: A minimal DFA equivalent to the input automaton
+    :rtype: Dict
     """
     # First preprocess to remove unreachable/dead states and clean alphabet
     preprocessed = preprocess_automaton(automaton)
@@ -52,12 +50,12 @@ def find_state_mapping(dfa1: Dict, dfa2: Dict) -> Optional[Dict[str, str]]:
     """
     Find a bijective mapping between states of two DFAs if they are isomorphic.
 
-    Args:
-        dfa1: First DFA
-        dfa2: Second DFA
-
-    Returns:
-        A dictionary mapping states from dfa1 to dfa2, or None if no mapping exists
+    :param dfa1: First DFA
+    :type dfa1: Dict
+    :param dfa2: Second DFA
+    :type dfa2: Dict
+    :return: A dictionary mapping states from dfa1 to dfa2, or None if no mapping exists
+    :rtype: Optional[Dict[str, str]]
     """
     # Quick checks
     if len(dfa1['states']) != len(dfa2['states']):
@@ -125,12 +123,12 @@ def are_dfas_isomorphic(dfa1: Dict, dfa2: Dict) -> bool:
     """
     Check if two DFAs are isomorphic (structurally identical up to state renaming).
 
-    Args:
-        dfa1: First DFA
-        dfa2: Second DFA
-
-    Returns:
-        True if the DFAs are isomorphic, False otherwise
+    :param dfa1: First DFA
+    :type dfa1: Dict
+    :param dfa2: Second DFA
+    :type dfa2: Dict
+    :return: True if the DFAs are isomorphic, False otherwise
+    :rtype: bool
     """
     mapping = find_state_mapping(dfa1, dfa2)
     return mapping is not None
@@ -143,14 +141,12 @@ def are_automata_equivalent(automaton1: Dict, automaton2: Dict) -> Tuple[bool, D
     This uses the DFA minimisation method: two automata are equivalent if and only if
     their minimal DFAs are isomorphic.
 
-    Args:
-        automaton1: First automaton (NFA or DFA)
-        automaton2: Second automaton (NFA or DFA)
-
-    Returns:
-        A tuple of (is_equivalent, details) where:
-        - is_equivalent: True if the automata accept the same language
-        - details: Dictionary containing additional information about the comparison
+    :param automaton1: First automaton (NFA or DFA)
+    :type automaton1: Dict
+    :param automaton2: Second automaton (NFA or DFA)
+    :type automaton2: Dict
+    :return: A tuple of (is_equivalent, details) where is_equivalent is True if the automata accept the same language, and details is a dictionary containing additional information about the comparison
+    :rtype: Tuple[bool, Dict]
     """
     details = {
         'automaton1_type': 'DFA' if is_deterministic(automaton1) else 'NFA',

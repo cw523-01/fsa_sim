@@ -1,31 +1,18 @@
 from typing import Dict, List, Union, Tuple, Optional, Set
 from collections import deque
-from .fsa_properties import is_deterministic
+from .fsa_properties import is_deterministic, validate_fsa_structure
 
 
 def simulate_deterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Tuple[str, str, str]], Dict]:
     """
     Simulates a deterministic FSA with the given input string.
 
-    Args:
-        fsa: A dictionary representing the FSA with the following keys:
-            - states: List of all states
-            - alphabet: List of symbols in the alphabet
-            - transitions: Dictionary of transitions
-            - startingState: The starting state
-            - acceptingStates: List of accepting states
-        input_string: The input string to simulate
-
-    Returns:
-        If the input is accepted, returns a list of transitions in the format:
-        [(current_state, symbol, next_state), ...].
-        If the input is rejected, returns a dictionary with:
-        {
-            'accepted': False,
-            'path': [(current_state, symbol, next_state), ...],  # Path up to rejection
-            'rejection_reason': str,  # Why rejected
-            'rejection_position': int  # Position where rejection occurred
-        }
+    :param fsa: A dictionary representing the FSA with keys: states, alphabet, transitions, startingState, acceptingStates
+    :type fsa: Dict
+    :param input_string: The input string to simulate
+    :type input_string: str
+    :return: If accepted, returns a list of transitions. If rejected, returns a dictionary with 'accepted', 'path', 'rejection_reason', and 'rejection_position'
+    :rtype: Union[List[Tuple[str, str, str]], Dict]
     """
     # Validate the FSA is deterministic
     if not is_deterministic(fsa):
@@ -94,11 +81,10 @@ def _has_epsilon_transitions(fsa: Dict) -> bool:
     """
     Check if the FSA has any epsilon transitions.
 
-    Args:
-        fsa: The FSA dictionary
-
-    Returns:
-        True if there are epsilon transitions, False otherwise
+    :param fsa: The FSA dictionary
+    :type fsa: Dict
+    :return: True if there are epsilon transitions, False otherwise
+    :rtype: bool
     """
     for state in fsa['states']:
         if state in fsa['transitions'] and '' in fsa['transitions'][state]:
@@ -111,32 +97,16 @@ def simulate_nondeterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Li
     """
     Simulates a non-deterministic FSA with the given input string, finding all possible execution paths.
 
-    Args:
-        fsa: A dictionary representing the FSA with the following keys:
-            - states: List of all states
-            - alphabet: List of symbols in the alphabet
-            - transitions: Dictionary of transitions (supports epsilon transitions with empty string '')
-            - startingState: The starting state
-            - acceptingStates: List of accepting states
-        input_string: The input string to simulate
-
-    Returns:
-        If the input is accepted, returns a list of all accepting paths:
-        [
-            [(current_state, symbol, next_state), ...],  # Path 1
-            [(current_state, symbol, next_state), ...],  # Path 2
-            ...
-        ]
-        If the input is rejected, returns a dictionary with:
-        {
-            'accepted': False,
-            'paths_explored': int,  # Number of paths explored
-            'rejection_reason': str,  # Why rejected
-            'partial_paths': [...]  # Any partial paths that were explored
-        }
+    :param fsa: A dictionary representing the FSA with keys: states, alphabet, transitions (supports epsilon transitions with ''), startingState, acceptingStates
+    :type fsa: Dict
+    :param input_string: The input string to simulate
+    :type input_string: str
+    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with 'accepted', 'paths_explored', 'rejection_reason', and 'partial_paths'
+    :rtype: Union[List[List[Tuple[str, str, str]]], Dict]
     """
     # Validate FSA structure
-    if not _is_valid_nfa_structure(fsa):
+    validation_result = validate_fsa_structure(fsa)
+    if not validation_result['valid']:
         return {
             'accepted': False,
             'paths_explored': 0,
@@ -222,12 +192,12 @@ def _get_initial_states_with_paths(fsa: Dict, start_state: str) -> List[Tuple[st
     Get initial states and their corresponding epsilon paths from the starting state.
     Uses simple cycle detection: don't revisit a state we've already seen in current epsilon-only path.
 
-    Args:
-        fsa: The FSA dictionary
-        start_state: The starting state
-
-    Returns:
-        List of tuples (state, path_to_state) where path_to_state contains epsilon transitions
+    :param fsa: The FSA dictionary
+    :type fsa: Dict
+    :param start_state: The starting state
+    :type start_state: str
+    :return: List of tuples (state, path_to_state) where path_to_state contains epsilon transitions
+    :rtype: List[Tuple[str, List[Tuple[str, str, str]]]]
     """
     # Use BFS to find all reachable states via epsilon transitions
     result = []
@@ -257,12 +227,12 @@ def _get_epsilon_closure_with_paths(fsa: Dict, start_state: str) -> List[Tuple[s
     Get epsilon closure of a state along with the paths to reach each state.
     Uses simple cycle detection: don't revisit a state we've already seen in current epsilon-only path.
 
-    Args:
-        fsa: The FSA dictionary
-        start_state: The state to compute closure for
-
-    Returns:
-        List of tuples (state, path_from_start_state) where path contains epsilon transitions
+    :param fsa: The FSA dictionary
+    :type fsa: Dict
+    :param start_state: The state to compute closure for
+    :type start_state: str
+    :return: List of tuples (state, path_from_start_state) where path contains epsilon transitions
+    :rtype: List[Tuple[str, List[Tuple[str, str, str]]]]
     """
     result = []
     queue = deque([(start_state, [], set([start_state]))])  # (state, path, states_visited_in_this_path)
@@ -290,13 +260,14 @@ def _get_transitions(fsa: Dict, state: str, symbol: str) -> List[str]:
     """
     Get all states reachable from given state on given symbol.
 
-    Args:
-        fsa: The FSA dictionary
-        state: Current state
-        symbol: Input symbol (or empty string for epsilon)
-
-    Returns:
-        List of next states
+    :param fsa: The FSA dictionary
+    :type fsa: Dict
+    :param state: Current state
+    :type state: str
+    :param symbol: Input symbol (or empty string for epsilon)
+    :type symbol: str
+    :return: List of next states
+    :rtype: List[str]
     """
     if state not in fsa['transitions']:
         return []
@@ -307,56 +278,20 @@ def _get_transitions(fsa: Dict, state: str, symbol: str) -> List[str]:
     return fsa['transitions'][state][symbol]
 
 
-def _is_valid_nfa_structure(fsa: Dict) -> bool:
-    """
-    Validates that the FSA has the required structure for NFA simulation.
-
-    Args:
-        fsa: The FSA dictionary to validate
-
-    Returns:
-        True if structure is valid, False otherwise
-    """
-    required_keys = ['states', 'alphabet', 'transitions', 'startingState', 'acceptingStates']
-
-    # Check all required keys exist
-    for key in required_keys:
-        if key not in fsa:
-            return False
-
-    # Check starting state is in states
-    if fsa['startingState'] not in fsa['states']:
-        return False
-
-    # Check accepting states are in states
-    for state in fsa['acceptingStates']:
-        if state not in fsa['states']:
-            return False
-
-    # Check transitions structure
-    if not isinstance(fsa['transitions'], dict):
-        return False
-
-    return True
-
-
 def simulate_nondeterministic_fsa_generator(fsa: Dict, input_string: str):
     """
     Generator version of simulate_nondeterministic_fsa that yields results as they are found.
 
-    Args:
-        fsa: A dictionary representing the FSA
-        input_string: The input string to simulate
-
-    Yields:
-        Dictionary with information about each result:
-        - For accepting paths: {'type': 'accepting_path', 'path': [...], 'path_number': int}
-        - For rejected paths: {'type': 'rejected_path', 'path': [...], 'reason': str}
-        - For progress updates: {'type': 'progress', 'paths_explored': int, 'queue_size': int}
-        - For final summary: {'type': 'summary', 'total_accepting_paths': int, 'total_paths_explored': int}
+    :param fsa: A dictionary representing the FSA
+    :type fsa: Dict
+    :param input_string: The input string to simulate
+    :type input_string: str
+    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, progress updates, and final summary
+    :rtype: Generator[Dict, None, None]
     """
     # Validate FSA structure
-    if not _is_valid_nfa_structure(fsa):
+    validation_result = validate_fsa_structure(fsa)
+    if not validation_result['valid']:
         yield {
             'type': 'error',
             'message': 'Invalid FSA structure',
@@ -471,21 +406,10 @@ def detect_epsilon_loops(fsa: Dict) -> Dict:
     An epsilon loop exists if there's a cycle of epsilon transitions that can be
     traversed infinitely without consuming any input symbols.
 
-    Args:
-        fsa: The FSA dictionary
-
-    Returns:
-        Dictionary with:
-        {
-            'has_epsilon_loops': bool,
-            'loop_details': [
-                {
-                    'cycle': [state1, state2, ..., state1],  # States in the cycle
-                    'transitions': [(state1, 'ε', state2), ...],  # Epsilon transitions forming the cycle
-                    'reachable_from_start': bool  # Whether this loop is reachable from start state
-                }
-            ]
-        }
+    :param fsa: The FSA dictionary
+    :type fsa: Dict
+    :return: Dictionary with 'has_epsilon_loops' boolean and 'loop_details' list containing cycle information
+    :rtype: Dict
     """
     if not _has_epsilon_transitions(fsa):
         return {
@@ -592,12 +516,12 @@ def _get_epsilon_reachable_states(fsa: Dict, start_state: str) -> Set[str]:
     """
     Get all states reachable from start_state via epsilon transitions only.
 
-    Args:
-        fsa: The FSA dictionary
-        start_state: Starting state
-
-    Returns:
-        Set of states reachable via epsilon transitions
+    :param fsa: The FSA dictionary
+    :type fsa: Dict
+    :param start_state: Starting state
+    :type start_state: str
+    :return: Set of states reachable via epsilon transitions
+    :rtype: Set[str]
     """
     reachable = set()
     stack = [start_state]
@@ -622,12 +546,12 @@ def _get_all_reachable_states(fsa: Dict, start_state: str) -> Set[str]:
     """
     Get all states reachable from start_state via any transitions (regular and epsilon).
 
-    Args:
-        fsa: The FSA dictionary
-        start_state: Starting state
-
-    Returns:
-        Set of all reachable states
+    :param fsa: The FSA dictionary
+    :type fsa: Dict
+    :param start_state: Starting state
+    :type start_state: str
+    :return: Set of all reachable states
+    :rtype: Set[str]
     """
     reachable = set()
     stack = [start_state]
@@ -653,12 +577,12 @@ def _find_cycle_path_in_scc(scc: List[str], epsilon_graph: Dict) -> List[str]:
     """
     Find a simple cycle path through the strongly connected component.
 
-    Args:
-        scc: List of states in the strongly connected component
-        epsilon_graph: Graph of epsilon transitions
-
-    Returns:
-        List of states forming a cycle
+    :param scc: List of states in the strongly connected component
+    :type scc: List[str]
+    :param epsilon_graph: Graph of epsilon transitions
+    :type epsilon_graph: Dict
+    :return: List of states forming a cycle
+    :rtype: List[str]
     """
     if len(scc) == 1:
         return scc
@@ -696,31 +620,14 @@ def simulate_nondeterministic_fsa_with_depth_limit(fsa: Dict, input_string: str,
     """
     Simulates a non-deterministic FSA with the given input string, with depth limiting to handle infinite epsilon loops.
 
-    Args:
-        fsa: A dictionary representing the FSA with the following keys:
-            - states: List of all states
-            - alphabet: List of symbols in the alphabet
-            - transitions: Dictionary of transitions (supports epsilon transitions with empty string '')
-            - startingState: The starting state
-            - acceptingStates: List of accepting states
-        input_string: The input string to simulate
-        max_depth: Maximum depth to traverse (positive integer) to prevent infinite epsilon loops
-
-    Returns:
-        If the input is accepted, returns a list of all accepting paths:
-        [
-            [(current_state, symbol, next_state), ...],  # Path 1
-            [(current_state, symbol, next_state), ...],  # Path 2
-            ...
-        ]
-        If the input is rejected, returns a dictionary with:
-        {
-            'accepted': False,
-            'paths_explored': int,  # Number of paths explored
-            'rejection_reason': str,  # Why rejected
-            'partial_paths': [...],  # Any partial paths that were explored
-            'depth_limit_reached': bool  # Whether depth limit was reached
-        }
+    :param fsa: A dictionary representing the FSA with keys: states, alphabet, transitions (supports epsilon transitions with ''), startingState, acceptingStates
+    :type fsa: Dict
+    :param input_string: The input string to simulate
+    :type input_string: str
+    :param max_depth: Maximum depth to traverse (positive integer) to prevent infinite epsilon loops
+    :type max_depth: int
+    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with 'accepted', 'paths_explored', 'rejection_reason', 'partial_paths', and 'depth_limit_reached'
+    :rtype: Union[List[List[Tuple[str, str, str]]], Dict]
     """
     # Validate input parameters
     if max_depth <= 0:
@@ -733,7 +640,8 @@ def simulate_nondeterministic_fsa_with_depth_limit(fsa: Dict, input_string: str,
         }
 
     # Validate FSA structure
-    if not _is_valid_nfa_structure(fsa):
+    validation_result = validate_fsa_structure(fsa)
+    if not validation_result['valid']:
         return {
             'accepted': False,
             'paths_explored': 0,
@@ -831,18 +739,14 @@ def simulate_nondeterministic_fsa_generator_with_depth_limit(fsa: Dict, input_st
     """
     Generator version of simulate_nondeterministic_fsa with depth limiting that yields results as they are found.
 
-    Args:
-        fsa: A dictionary representing the FSA
-        input_string: The input string to simulate
-        max_depth: Maximum depth to traverse (positive integer) to prevent infinite epsilon loops
-
-    Yields:
-        Dictionary with information about each result:
-        - For accepting paths: {'type': 'accepting_path', 'path': [...], 'path_number': int, 'final_state': str, 'total_depth': int}
-        - For rejected paths: {'type': 'rejected_path', 'path': [...], 'reason': str, 'total_depth': int}
-        - For depth limit reached: {'type': 'depth_limit_reached', 'path': [...], 'current_depth': int}
-        - For progress updates: {'type': 'progress', 'paths_explored': int, 'queue_size': int, 'depth_limit_reached': bool}
-        - For final summary: {'type': 'summary', 'total_accepting_paths': int, 'total_paths_explored': int, 'accepted': bool, 'depth_limit_reached': bool}
+    :param fsa: A dictionary representing the FSA
+    :type fsa: Dict
+    :param input_string: The input string to simulate
+    :type input_string: str
+    :param max_depth: Maximum depth to traverse (positive integer) to prevent infinite epsilon loops
+    :type max_depth: int
+    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, depth limit reached, progress updates, and final summary
+    :rtype: Generator[Dict, None, None]
     """
     # Validate input parameters
     if max_depth <= 0:
@@ -854,7 +758,8 @@ def simulate_nondeterministic_fsa_generator_with_depth_limit(fsa: Dict, input_st
         return
 
     # Validate FSA structure
-    if not _is_valid_nfa_structure(fsa):
+    validation_result = validate_fsa_structure(fsa)
+    if not validation_result['valid']:
         yield {
             'type': 'error',
             'message': 'Invalid FSA structure',
@@ -993,13 +898,14 @@ def _get_initial_states_with_paths_total_depth_limited(fsa: Dict, start_state: s
     """
     Get initial states and their corresponding epsilon paths from the starting state with total depth limiting.
 
-    Args:
-        fsa: The FSA dictionary
-        start_state: The starting state
-        max_depth: Maximum total depth to explore
-
-    Returns:
-        List of tuples (state, path_to_state) where path_to_state contains epsilon transitions
+    :param fsa: The FSA dictionary
+    :type fsa: Dict
+    :param start_state: The starting state
+    :type start_state: str
+    :param max_depth: Maximum total depth to explore
+    :type max_depth: int
+    :return: List of tuples (state, path_to_state) where path_to_state contains epsilon transitions
+    :rtype: List[Tuple[str, List[Tuple[str, str, str]]]]
     """
     result = []
     queue = deque([(start_state, [], 0)])  # (state, path, total_depth)
@@ -1030,13 +936,14 @@ def _get_epsilon_closure_with_paths_total_depth_limited(fsa: Dict, start_state: 
     """
     Get epsilon closure of a state along with the paths to reach each state, with total depth limiting.
 
-    Args:
-        fsa: The FSA dictionary
-        start_state: The state to compute closure for
-        max_depth: Maximum total depth to explore
-
-    Returns:
-        List of tuples (state, path_from_start_state) where path contains epsilon transitions
+    :param fsa: The FSA dictionary
+    :type fsa: Dict
+    :param start_state: The state to compute closure for
+    :type start_state: str
+    :param max_depth: Maximum total depth to explore
+    :type max_depth: int
+    :return: List of tuples (state, path_from_start_state) where path contains epsilon transitions
+    :rtype: List[Tuple[str, List[Tuple[str, str, str]]]]
     """
     result = []
     queue = deque([(start_state, [], 0)])  # (state, path, total_depth)

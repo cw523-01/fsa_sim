@@ -786,7 +786,7 @@ class FSATransformManager {
                 minimisationHasChanges = !minimiseResult.statistics.reduction.is_already_minimal;
             }
 
-            // Determine overall changes: either primary operation OR minimization made changes
+            // Determine overall changes: either primary operation OR minimisation made changes
             const hasOverallChanges = primaryHasChanges || minimisationHasChanges ||
                                     (this.currentTransformType === 'complement'); // Complement always makes changes
 
