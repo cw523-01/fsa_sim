@@ -1,7 +1,6 @@
 /**
  * Notification system for showing non-blocking error and success messages
  * Also handles simulation popups, error popups, and epsilon loops detection popups
- * Reuses existing popup CSS from simulation-popup.css
  */
 class NotificationManager {
     constructor() {
@@ -9,6 +8,7 @@ class NotificationManager {
         this.notificationCounter = 0;
         this.autoCloseTimeouts = new Map();
         this.epsilonLoopsResolver = null; // For handling epsilon loops popup promises
+        this.jsPlumbInstance = null;
     }
 
     /**
@@ -19,6 +19,14 @@ class NotificationManager {
      */
     showError(title, message, duration = 5000) {
         return this.showNotification('error', title, message, duration);
+    }
+
+    /**
+    * Initialise the notification manager with JSPlumb instance
+    * @param {Object} jsPlumbInstance - The JSPlumb instance
+    */
+    initialise(jsPlumbInstance) {
+        this.jsPlumbInstance = jsPlumbInstance;
     }
 
     /**
@@ -540,17 +548,29 @@ class NotificationManager {
             return getStartingStateId();
         }
 
+        // Try to use the stored JSPlumb instance first
+        let jsPlumbInstance = this.jsPlumbInstance;
+
+        // Fallback to global instance if local one not available
+        if (!jsPlumbInstance && window.jsPlumbInstance) {
+            jsPlumbInstance = window.jsPlumbInstance;
+        }
+
         // Fallback: look for starting state indicator in DOM
         const startingConnections = document.querySelectorAll('.starting-connection');
         if (startingConnections.length > 0) {
             // Look for a connection from 'start-source'
-            if (window.jsPlumbInstance) {
-                const allConnections = window.jsPlumbInstance.getAllConnections();
-                const connection = allConnections.find(conn =>
-                    conn.canvas && conn.canvas.classList.contains('starting-connection')
-                );
-                if (connection) {
-                    return connection.targetId;
+            if (jsPlumbInstance && typeof jsPlumbInstance.getAllConnections === 'function') {
+                try {
+                    const allConnections = jsPlumbInstance.getAllConnections();
+                    const connection = allConnections.find(conn =>
+                        conn.canvas && conn.canvas.classList.contains('starting-connection')
+                    );
+                    if (connection) {
+                        return connection.targetId;
+                    }
+                } catch (error) {
+                    console.warn('Error accessing JSPlumb connections:', error);
                 }
             }
         }

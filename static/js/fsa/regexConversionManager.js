@@ -4,7 +4,7 @@ import { controlLockManager } from './controlLockManager.js';
 import { undoRedoManager } from './undoRedoManager.js';
 import { menuManager } from './menuManager.js';
 import { updateFSAPropertiesDisplay } from './fsaPropertyChecker.js';
-import { calculateTransformLayout } from './positioningUtils.js';
+import {calculateLayeredHierarchicalPositions, getCanvasHeight} from './positioningUtils.js';
 import { SafeStateNameGenerator } from './transformManager.js';
 import { convertFSAToBackendFormat } from './backendIntegration.js';
 
@@ -1173,7 +1173,7 @@ class RegexConversionManager {
         }
 
         // Calculate positions using layered positioning algorithm
-        const positions = calculateTransformLayout(finalFSA);
+        const positions = calculateLayeredHierarchicalPositions(finalFSA);
 
         // Create serialized data
         const serializedFSA = this.createSerializedFSA(
@@ -1223,14 +1223,6 @@ class RegexConversionManager {
                 `Successfully converted "${regexString}" to ε-NFA with ${stats.states_count} states and ${stats.transitions_count} transitions.`
             );
         }
-    }
-
-    /**
-     * Calculate positions for NFA states using layered positioning algorithm
-     */
-    calculateNFAPositions(fsa) {
-        console.log('Using layered hierarchical positioning for REGEX conversion');
-        return calculateTransformLayout(fsa);
     }
 
     /**

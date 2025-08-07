@@ -65,7 +65,7 @@ export function calculateStatePositions(fsa, existingPositions = {}, options = {
 }
 
 /**
- * NEW: Hierarchical layer-based positioning for transformations and conversions
+ * Hierarchical layer-based positioning for transformations and conversions
  * Places starting state top-left, then layers states horizontally based on reachability
  * @param {Object} fsa - FSA object with states, transitions, etc.
  * @param {Object} options - Configuration options
@@ -78,8 +78,8 @@ export function calculateLayeredHierarchicalPositions(fsa, options = {}) {
         startX: 80,           // Top-left starting position
         startY: 80,
         layerSpacingX: 200,   // Horizontal spacing between layers
-        nodeSpacingY: 100,    // Vertical spacing between nodes in same layer
-        maxNodesPerLayer: Math.floor((getCanvasHeight() - 160) / 100), // Max nodes per layer
+        nodeSpacingY: 90,    // Vertical spacing between nodes in same layer
+        maxNodesPerLayer: Math.floor((getCanvasHeight() - 160) / 90), // Max nodes per layer
         ...options
     };
 
@@ -811,46 +811,34 @@ function constrainToCanvas(positions, config) {
     const effectiveWidth = config.canvasWidth - 2 * margin;
     const effectiveHeight = config.canvasHeight - 2 * margin;
 
-    // Find current bounds
+    // current bounds
+    const xs = Object.values(positions).map(p => p.x);
+    const ys = Object.values(positions).map(p => p.y);
     const bounds = {
-        minX: Math.min(...Object.values(positions).map(p => p.x)),
-        maxX: Math.max(...Object.values(positions).map(p => p.x)),
-        minY: Math.min(...Object.values(positions).map(p => p.y)),
-        maxY: Math.max(...Object.values(positions).map(p => p.y))
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
     };
 
     const currentWidth = bounds.maxX - bounds.minX;
     const currentHeight = bounds.maxY - bounds.minY;
 
-    // Scale if necessary
-    let scaleX = 1, scaleY = 1;
-    if (currentWidth > effectiveWidth) {
-        scaleX = effectiveWidth / currentWidth;
-    }
-    if (currentHeight > effectiveHeight) {
-        scaleY = effectiveHeight / currentHeight;
-    }
+    // compute per-axis scales (never scale up)
+    const sx = currentWidth  > effectiveWidth  ? (effectiveWidth  / currentWidth)  : 1;
+    const sy = currentHeight > effectiveHeight ? (effectiveHeight / currentHeight) : 1;
 
-    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up
-
-    // Apply scaling and centring
     const centreX = config.canvasWidth / 2;
     const centreY = config.canvasHeight / 2;
     const boundsCentreX = (bounds.minX + bounds.maxX) / 2;
     const boundsCentreY = (bounds.minY + bounds.maxY) / 2;
 
     Object.values(positions).forEach(pos => {
-        // Scale around centre
-        pos.x = boundsCentreX + (pos.x - boundsCentreX) * scale;
-        pos.y = boundsCentreY + (pos.y - boundsCentreY) * scale;
+    pos.x = centreX + (pos.x - boundsCentreX) * sx;
+    pos.y = centreY + (pos.y - boundsCentreY) * sy;
 
-        // Translate to canvas centre
-        pos.x = centreX + (pos.x - boundsCentreX);
-        pos.y = centreY + (pos.y - boundsCentreY);
-
-        // Final constraint
-        pos.x = Math.max(margin, Math.min(config.canvasWidth - margin, pos.x));
-        pos.y = Math.max(margin, Math.min(config.canvasHeight - margin, pos.y));
+    pos.x = Math.max(margin, Math.min(config.canvasWidth - margin, pos.x));
+    pos.y = Math.max(margin, Math.min(config.canvasHeight - margin, pos.y));
     });
 }
 
@@ -862,7 +850,7 @@ function getCanvasWidth() {
     return canvas ? canvas.offsetWidth : 1200;
 }
 
-function getCanvasHeight() {
+export function getCanvasHeight() {
     const canvas = document.getElementById('fsa-canvas');
     return canvas ? canvas.offsetHeight : 800;
 }
@@ -887,15 +875,6 @@ export function calculateFreshLayout(fsa) {
         useHierarchical: true,
         useClusters: true
     });
-}
-
-/**
- * NEW: Calculate positions for transformations and conversions using hierarchical layers
- * This is the main function to use for transform operations and regex conversions
- */
-export function calculateTransformLayout(fsa) {
-    console.log('Using layered hierarchical positioning for transform/conversion');
-    return calculateLayeredHierarchicalPositions(fsa);
 }
 
 /**

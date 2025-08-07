@@ -108,6 +108,11 @@ export function initialiseSimulator() {
     // Initialise the control lock manager with the JSPlumb instance
     controlLockManager.initialise(jsPlumbInstance);
 
+    // Initialise notification manager with JSPlumb instance
+    if (window.notificationManager) {
+        window.notificationManager.initialise(jsPlumbInstance);
+    }
+
     // Initialise edge creation manager
     initialiseEdgeCreationManager();
 

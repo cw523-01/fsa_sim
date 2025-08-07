@@ -3,7 +3,7 @@ import { notificationManager } from './notificationManager.js';
 import { controlLockManager } from './controlLockManager.js';
 import { undoRedoManager } from './undoRedoManager.js';
 import { menuManager } from './menuManager.js';
-import { calculateStatePositions, calculatePositionsPreserving, findNonOverlappingPositions, calculateTransformLayout } from './positioningUtils.js';
+import { calculateStatePositions, calculatePositionsPreserving, findNonOverlappingPositions, calculateLayeredHierarchicalPositions } from './positioningUtils.js';
 import {
     convertFSAToBackendFormat,
     checkFSAProperties
@@ -896,7 +896,7 @@ class FSATransformManager {
         }
 
         // Calculate positions using layered positioning algorithm
-        const newPositions = calculateTransformLayout(transformedFSA);
+        const newPositions = calculateLayeredHierarchicalPositions(transformedFSA);
 
         // Create serialized data
         const serializedFSA = this.createSerializedFSA(
@@ -910,14 +910,6 @@ class FSATransformManager {
         // Load the transformed FSA
         await fsaSerializationManager.deserializeFSA(serializedFSA, this.jsPlumbInstance);
         updateFSAPropertiesDisplay(this.jsPlumbInstance);
-    }
-
-    /**
-     * Calculate state positions for transformed FSA using layered algorithm
-     */
-    calculateTransformPositions(type, originalFSA, transformedFSA, originalPositions) {
-        console.log(`Calculating positions for ${type} transformation`);
-        return calculateTransformLayout(transformedFSA);
     }
 
     /**
