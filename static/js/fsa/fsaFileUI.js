@@ -169,16 +169,46 @@ class FSAFileUIManager {
      * @param {string} suggestedFilename - Optional suggested filename
      */
     showSavePopup(suggestedFilename = null) {
-        // Remove any existing popup
+        // Remove any existing popup and overlay
         const existingPopup = document.getElementById('file-operation-popup');
-        if (existingPopup) {
-            existingPopup.remove();
-        }
+        if (existingPopup) existingPopup.remove();
+
+        const existingOverlay = document.getElementById('file-modal-overlay');
+        if (existingOverlay) existingOverlay.remove();
+
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'file-modal-overlay';
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: var(--z-modals);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
 
         // Create popup element
         const popup = document.createElement('div');
         popup.id = 'file-operation-popup';
         popup.className = 'file-operation-popup save';
+        popup.style.cssText = `
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            margin: 20px;
+            max-height: calc(100vh - 40px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        `;
 
         const defaultFilename = suggestedFilename || this.generateDefaultFilename();
         const statesCount = document.querySelectorAll('.state, .accepting-state').length;
@@ -228,25 +258,40 @@ class FSAFileUIManager {
             </div>
         `;
 
-        // Add popup to canvas
-        const canvas = document.getElementById('fsa-canvas');
-        if (canvas) {
-            canvas.appendChild(popup);
+        // Add popup to overlay
+        overlay.appendChild(popup);
 
-            // Setup event handlers
-            this.setupSavePopupHandlers();
+        // Add overlay to body
+        document.body.appendChild(overlay);
 
-            // Trigger show animation
-            setTimeout(() => {
-                popup.classList.add('show');
-                // Focus on filename input and select text
-                const filenameInput = document.getElementById('save-filename-input');
-                if (filenameInput) {
-                    filenameInput.focus();
-                    filenameInput.select();
-                }
-            }, 100);
-        }
+        // Setup event handlers
+        this.setupSavePopupHandlers();
+
+        // Close modal when clicking overlay (but not popup)
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                this.hideSavePopup();
+            }
+        });
+
+        // Prevent popup clicks from closing modal
+        popup.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Show with animation
+        setTimeout(() => {
+            overlay.style.opacity = '1';
+            popup.style.transform = 'scale(1)';
+            popup.style.opacity = '1';
+
+            // Focus on filename input and select text
+            const filenameInput = document.getElementById('save-filename-input');
+            if (filenameInput) {
+                filenameInput.focus();
+                filenameInput.select();
+            }
+        }, 10);
     }
 
     /**
@@ -298,12 +343,12 @@ class FSAFileUIManager {
      * Hide save popup
      */
     hideSavePopup() {
-        const popup = document.getElementById('file-operation-popup');
-        if (popup) {
-            popup.classList.add('hide');
+        const overlay = document.getElementById('file-modal-overlay');
+        if (overlay) {
+            overlay.style.opacity = '0';
             setTimeout(() => {
-                if (popup.parentNode) {
-                    popup.parentNode.removeChild(popup);
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
                 }
             }, 300);
         }
@@ -345,19 +390,49 @@ class FSAFileUIManager {
     }
 
     /**
-     * Show custom new file popup
+     * Show new file popup
      */
     showNewFilePopup() {
-        // Remove any existing popup
+        // Remove any existing popup and overlay
         const existingPopup = document.getElementById('file-operation-popup');
-        if (existingPopup) {
-            existingPopup.remove();
-        }
+        if (existingPopup) existingPopup.remove();
+
+        const existingOverlay = document.getElementById('file-modal-overlay');
+        if (existingOverlay) existingOverlay.remove();
+
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'file-modal-overlay';
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: var(--z-modals);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
 
         // Create popup element
         const popup = document.createElement('div');
         popup.id = 'file-operation-popup';
         popup.className = 'file-operation-popup new';
+        popup.style.cssText = `
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            margin: 20px;
+            max-height: calc(100vh - 40px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        `;
 
         const statesCount = document.querySelectorAll('.state, .accepting-state').length;
         const edgesCount = this.jsPlumbInstance ? this.jsPlumbInstance.getAllConnections().filter(conn =>
@@ -400,28 +475,42 @@ class FSAFileUIManager {
             </div>
         `;
 
-        // Add popup to canvas
-        const canvas = document.getElementById('fsa-canvas');
-        if (canvas) {
-            canvas.appendChild(popup);
+        // Add popup to overlay
+        overlay.appendChild(popup);
 
-            // Trigger show animation
-            setTimeout(() => {
-                popup.classList.add('show');
-            }, 100);
-        }
+        // Add overlay to body
+        document.body.appendChild(overlay);
+
+        // Close modal when clicking overlay (but not popup)
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                this.hideNewFilePopup();
+            }
+        });
+
+        // Prevent popup clicks from closing modal
+        popup.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Show with animation
+        setTimeout(() => {
+            overlay.style.opacity = '1';
+            popup.style.transform = 'scale(1)';
+            popup.style.opacity = '1';
+        }, 10);
     }
 
     /**
      * Hide new file popup
      */
     hideNewFilePopup() {
-        const popup = document.getElementById('file-operation-popup');
-        if (popup) {
-            popup.classList.add('hide');
+        const overlay = document.getElementById('file-modal-overlay');
+        if (overlay) {
+            overlay.style.opacity = '0';
             setTimeout(() => {
-                if (popup.parentNode) {
-                    popup.parentNode.removeChild(popup);
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
                 }
             }, 300);
         }
@@ -436,19 +525,49 @@ class FSAFileUIManager {
     }
 
     /**
-     * Show custom import confirmation popup
+     * Show import confirmation popup
      */
     showImportConfirmPopup() {
-        // Remove any existing popup
+        // Remove any existing popup and overlay
         const existingPopup = document.getElementById('file-operation-popup');
-        if (existingPopup) {
-            existingPopup.remove();
-        }
+        if (existingPopup) existingPopup.remove();
+
+        const existingOverlay = document.getElementById('file-modal-overlay');
+        if (existingOverlay) existingOverlay.remove();
+
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'file-modal-overlay';
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: var(--z-modals);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
 
         // Create popup element
         const popup = document.createElement('div');
         popup.id = 'file-operation-popup';
         popup.className = 'file-operation-popup import';
+        popup.style.cssText = `
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            margin: 20px;
+            max-height: calc(100vh - 40px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        `;
 
         const statesCount = document.querySelectorAll('.state, .accepting-state').length;
         const edgesCount = this.jsPlumbInstance ? this.jsPlumbInstance.getAllConnections().filter(conn =>
@@ -487,28 +606,42 @@ class FSAFileUIManager {
             </div>
         `;
 
-        // Add popup to canvas
-        const canvas = document.getElementById('fsa-canvas');
-        if (canvas) {
-            canvas.appendChild(popup);
+        // Add popup to overlay
+        overlay.appendChild(popup);
 
-            // Trigger show animation
-            setTimeout(() => {
-                popup.classList.add('show');
-            }, 100);
-        }
+        // Add overlay to body
+        document.body.appendChild(overlay);
+
+        // Close modal when clicking overlay (but not popup)
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                this.hideImportConfirmPopup();
+            }
+        });
+
+        // Prevent popup clicks from closing modal
+        popup.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Show with animation
+        setTimeout(() => {
+            overlay.style.opacity = '1';
+            popup.style.transform = 'scale(1)';
+            popup.style.opacity = '1';
+        }, 10);
     }
 
     /**
      * Hide import confirmation popup
      */
     hideImportConfirmPopup() {
-        const popup = document.getElementById('file-operation-popup');
-        if (popup) {
-            popup.classList.add('hide');
+        const overlay = document.getElementById('file-modal-overlay');
+        if (overlay) {
+            overlay.style.opacity = '0';
             setTimeout(() => {
-                if (popup.parentNode) {
-                    popup.parentNode.removeChild(popup);
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
                 }
             }, 300);
         }

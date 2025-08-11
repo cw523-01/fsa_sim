@@ -567,23 +567,34 @@ class VisualSimulationManager {
         overlay.style.boxSizing = 'border-box';
         overlay.style.paddingLeft = '8px'; // Match input field padding
 
+        // Create inner content container that can be shifted
+        let content = overlay.querySelector('.highlight-content');
+        if (!content) {
+            content = document.createElement('div');
+            content.className = 'highlight-content';
+            content.style.display = 'inline-block';
+            content.style.transition = 'transform 0.3s ease';
+            overlay.appendChild(content);
+        }
+
         // Handle empty string case
         if (this.inputString.length === 0) {
             if (stepIndex === -1) {
                 // Initial state for empty string
-                overlay.innerHTML = '<span style="color: #666; font-style: italic;">ε (empty string)</span>';
+                content.innerHTML = '<span style="color: #666; font-style: italic;">ε (empty string)</span>';
             } else if (isComplete !== null) {
                 // Completion state for empty string
                 if (isComplete) {
-                    overlay.innerHTML = '<span style="color: #4CAF50; font-weight: bold; font-style: italic;">ε (empty string)</span>';
+                    content.innerHTML = '<span style="color: #4CAF50; font-weight: bold; font-style: italic;">ε (empty string)</span>';
                     overlay.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
                     overlay.style.borderColor = '#4CAF50';
                 } else {
-                    overlay.innerHTML = '<span style="color: #f44336; font-weight: bold; font-style: italic;">ε (empty string)</span>';
+                    content.innerHTML = '<span style="color: #f44336; font-weight: bold; font-style: italic;">ε (empty string)</span>';
                     overlay.style.backgroundColor = 'rgba(244, 67, 54, 0.1)';
                     overlay.style.borderColor = '#f44336';
                 }
             }
+            content.style.transform = 'translateX(0px)';
             return;
         }
 
@@ -601,16 +612,15 @@ class VisualSimulationManager {
                 highlightedHTML += `<span style="color: #4CAF50; font-weight: bold;">${char}</span>`;
             } else if (i === stepIndex && isComplete === null) {
                 // Current character being processed - orange with highlight
-                highlightedHTML += `<span style="color: #FF9800; font-weight: bold; background-color: rgba(255, 152, 0, 0.3); padding: 1px 2px; border-radius: 2px; animation: character-blink 1s infinite;">${char}</span>`;
+                highlightedHTML += `<span id="current-char-highlight" style="color: #FF9800; font-weight: bold; background-color: rgba(255, 152, 0, 0.3); padding: 1px 2px; border-radius: 2px; animation: character-blink 1s infinite;">${char}</span>`;
             } else {
                 // Remaining characters - gray
                 highlightedHTML += `<span style="color: #666;">${char}</span>`;
             }
         }
 
-        // Update the overlay content
-        overlay.innerHTML = highlightedHTML;
-        overlay.style.display = 'flex';
+        // Update the content
+        content.innerHTML = highlightedHTML;
 
         // Add completion styling if needed
         if (isComplete !== null) {
@@ -620,7 +630,7 @@ class VisualSimulationManager {
                 for (let i = 0; i < this.inputString.length; i++) {
                     highlightedHTML += `<span style="color: #4CAF50; font-weight: bold;">${this.inputString[i]}</span>`;
                 }
-                overlay.innerHTML = highlightedHTML;
+                content.innerHTML = highlightedHTML;
                 overlay.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
                 overlay.style.borderColor = '#4CAF50';
             } else {
@@ -629,10 +639,46 @@ class VisualSimulationManager {
                 for (let i = 0; i < this.inputString.length; i++) {
                     highlightedHTML += `<span style="color: #f44336; font-weight: bold;">${this.inputString[i]}</span>`;
                 }
-                overlay.innerHTML = highlightedHTML;
+                content.innerHTML = highlightedHTML;
                 overlay.style.backgroundColor = 'rgba(244, 67, 54, 0.1)';
                 overlay.style.borderColor = '#f44336';
             }
+        }
+
+        // Calculate and apply transform to keep current character visible
+        if (stepIndex >= 0 && stepIndex < this.inputString.length && isComplete === null) {
+            setTimeout(() => {
+                // Calculate character width by measuring text
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                ctx.font = `${inputStyles.fontSize} ${inputStyles.fontFamily}`;
+
+                // Measure width of text up to current character
+                const textBeforeCurrent = this.inputString.substring(0, stepIndex);
+                const currentChar = this.inputString[stepIndex];
+                const textWidth = ctx.measureText(textBeforeCurrent).width;
+                const charWidth = ctx.measureText(currentChar).width;
+
+                // Calculate overlay content area (minus padding)
+                const overlayContentWidth = overlay.offsetWidth - 16; // Account for padding
+
+                // Calculate position to center the current character
+                const currentCharCenter = textWidth + (charWidth / 2);
+                const targetCenter = overlayContentWidth / 2;
+                const translateX = targetCenter - currentCharCenter;
+
+                // Apply the transform with bounds checking
+                const maxTranslateX = 0; // Don't translate right past the start
+                const totalTextWidth = ctx.measureText(this.inputString).width;
+                const minTranslateX = Math.min(0, overlayContentWidth - totalTextWidth - 16);
+
+                const finalTranslateX = Math.max(minTranslateX, Math.min(maxTranslateX, translateX));
+
+                content.style.transform = `translateX(${finalTranslateX}px)`;
+            }, 10);
+        } else {
+            // Reset transform for initial or completion states
+            content.style.transform = 'translateX(0px)';
         }
     }
 
@@ -641,9 +687,13 @@ class VisualSimulationManager {
      */
     clearInputHighlight() {
         if (this.inputField) {
+            // Check if we had a visual simulation running before clearing the class
+            const hadVisualSimulation = this.inputField.classList.contains('simulation-active');
+
             this.inputField.classList.remove('simulation-active');
-            // Restore the original input value
-            if (this.originalInputValue !== undefined) {
+
+            // Only restore original value if we actually had a visual simulation running
+            if (this.originalInputValue !== undefined && hadVisualSimulation) {
                 this.inputField.value = this.originalInputValue;
             }
         }

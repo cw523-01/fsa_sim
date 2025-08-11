@@ -9,6 +9,19 @@ class NotificationManager {
         this.autoCloseTimeouts = new Map();
         this.epsilonLoopsResolver = null; // For handling epsilon loops popup promises
         this.jsPlumbInstance = null;
+        this.maxInputDisplayLength = 30; // Maximum characters to display before truncating
+    }
+
+    /**
+     * Truncate input string for display if it's too long
+     * @param {string} inputString - The input string to potentially truncate
+     * @returns {string} - The truncated string with "..." if needed
+     */
+    truncateInputForDisplay(inputString) {
+        if (!inputString || inputString.length <= this.maxInputDisplayLength) {
+            return inputString;
+        }
+        return inputString.substring(0, this.maxInputDisplayLength) + '...';
     }
 
     /**
@@ -153,6 +166,9 @@ class NotificationManager {
             popup.id = 'epsilon-loops-popup';
             popup.className = 'epsilon-loops-popup';
 
+            // Truncate input string for display
+            const displayInputString = this.truncateInputForDisplay(inputString);
+
             // Build loop details
             let loopDetails = '';
             if (epsilonLoopsResult.loops && epsilonLoopsResult.loops.length > 0) {
@@ -198,7 +214,7 @@ class NotificationManager {
                     <button class="popup-close" onclick="notificationManager.handleEpsilonLoopsCancel()">×</button>
                 </div>
                 <div class="popup-input">
-                    Input: <span class="popup-input-string">"${inputString}"</span>
+                    Input: <span class="popup-input-string">"${displayInputString}"</span>
                 </div>
                 <div class="epsilon-loops-scrollable-content">
                     ${loopDetails}
@@ -224,7 +240,7 @@ class NotificationManager {
                             
                             <div class="depth-limit-section" id="depth-limit-section" style="display: none;">
                                 <label for="depth-limit-input">Maximum epsilon transition depth:</label>
-                                <input type="number" id="depth-limit-input" min="1" max="1000" value="15" step="1">
+                                <input type="number" id="depth-limit-input" min="1" value="15" step="1">
                                 <span class="depth-limit-help">Recommended: lenght of input + number of ε-transitions</span>
                             </div>
                         </div>
@@ -288,8 +304,6 @@ class NotificationManager {
                 const value = parseInt(depthInput.value);
                 if (isNaN(value) || value < 1) {
                     depthInput.value = 1;
-                } else if (value > 1000) {
-                    depthInput.value = 1000;
                 }
             });
         }
@@ -376,6 +390,9 @@ class NotificationManager {
         popup.id = 'simulation-result-popup';
         popup.className = result.accepted ? 'accepted' : 'rejected';
 
+        // Truncate input string for display
+        const displayInputString = this.truncateInputForDisplay(inputString);
+
         // Build popup content
         const statusText = result.accepted ? 'ACCEPTED' : 'REJECTED';
         const statusIcon = result.accepted ?
@@ -430,7 +447,7 @@ class NotificationManager {
                 <button class="popup-close" onclick="notificationManager.hideSimulationResultPopup()">×</button>
             </div>
             <div class="popup-input">
-                Input: <span class="popup-input-string">"${inputString}"</span>
+                Input: <span class="popup-input-string">"${displayInputString}"</span>
             </div>
             <div class="popup-result ${statusClass}">
                 Result: ${statusText}
@@ -475,8 +492,10 @@ class NotificationManager {
         popup.id = 'simulation-result-popup';
         popup.className = 'error';
 
+        // Truncate input string for display
+        const displayInputString = this.truncateInputForDisplay(inputString);
         const inputDisplay = inputString ?
-            `<div class="popup-input">Input: <span class="popup-input-string">"${inputString}"</span></div>` : '';
+            `<div class="popup-input">Input: <span class="popup-input-string">"${displayInputString}"</span></div>` : '';
 
         popup.innerHTML = `
             <div class="popup-header">

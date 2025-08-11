@@ -25,6 +25,19 @@ class NFAResultsManager {
         this.depthLimitReached = false;
         this.acceptingPathCounter = 0;
         this.rejectedPathCounter = 0;
+        this.maxInputDisplayLength = 50; // Maximum characters to display before truncating
+    }
+
+    /**
+     * Truncate input string for display if it's too long
+     * @param {string} inputString - The input string to potentially truncate
+     * @returns {string} - The truncated string with "..." if needed
+     */
+    truncateInputForDisplay(inputString) {
+        if (!inputString || inputString.length <= this.maxInputDisplayLength) {
+            return inputString;
+        }
+        return inputString.substring(0, this.maxInputDisplayLength) + '...';
     }
 
     /**
@@ -231,6 +244,9 @@ class NFAResultsManager {
         popup.id = 'nfa-results-popup';
         popup.className = 'nfa-results-popup';
 
+        // Truncate input string for display
+        const displayInputString = this.truncateInputForDisplay(this.currentInputString);
+
         // Build title with depth limit indicator
         let titleText = 'NFA SIMULATION';
         if (this.isDepthLimited) {
@@ -247,7 +263,7 @@ class NFAResultsManager {
             </div>
             
             <div class="nfa-popup-input">
-                Input: <span class="nfa-popup-input-string">"${this.currentInputString}"</span>
+                Input: <span class="nfa-popup-input-string">"${displayInputString}"</span>
             </div>
             
             <div class="nfa-popup-status">
