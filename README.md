@@ -25,6 +25,7 @@ source venv/bin/activate      # Windows: venv\Scripts\activate
 ```bash
 pip install -r requirements.txt
 python manage.py migrate
+python manage.py collectstatic --noinput
 ```
 
 ### Start the development server
