@@ -466,7 +466,7 @@ def nodes_equivalent(node1: 'RegexNode', node2: 'RegexNode') -> bool:
             return False
 
 
-def simplify_regex(regex: str, max_complexity: int = 5000) -> str:
+def simplify_regex(regex: str, max_complexity: int = 500) -> str:
     """
     Simplify a regular expression using AST-based approach.
 
@@ -687,7 +687,7 @@ def fsa_to_regex(fsa: Dict, skip_simplification_threshold: int = 2500) -> Dict:
         estimated_complexity = num_states * num_symbols * num_transitions
 
         if estimated_complexity > skip_simplification_threshold:
-            # Skip state elimination optimization for very large FSAs
+            # Skip state elimination optimisation for very large FSAs
             result['simplification_skipped'] = True
 
         # Step 4: Convert to GNFA

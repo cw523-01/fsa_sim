@@ -1,4 +1,4 @@
-/* Performance optimization: Disable animations globally during drag */
+/* Performance optimisation: Disable animations globally during drag */
 .no-animation *,
 .no-animation *::before,
 .no-animation *::after {
@@ -198,7 +198,7 @@ body:not(.no-animation) .selected-source {
     pointer-events: none;
 }
 
-/* Performance optimization for dragging states */
+/* Performance optimisation for dragging states */
 .ui-draggable-dragging {
     will-change: transform !important;
     pointer-events: none;
@@ -214,7 +214,7 @@ body:not(.no-animation) .selected-source {
     transform: translate3d(0, 0, 0);
 }
 
-/* Start source element performance optimization */
+/* Start source element performance optimisation */
 .start-source {
     will-change: transform;
     transform: translate3d(0, 0, 0);
@@ -242,7 +242,7 @@ body:not(.no-animation) .selected-source {
     z-index: 1000;
 }
 
-/* Optimize state elements for better performance */
+/* Optimise state elements for better performance */
 .state,
 .accepting-state {
     will-change: auto;
@@ -251,7 +251,7 @@ body:not(.no-animation) .selected-source {
     perspective: 1000px;
 }
 
-/* Performance optimizations for states during drag */
+/* Performance optimisations for states during drag */
 .ui-draggable-dragging.state,
 .ui-draggable-dragging.accepting-state {
     will-change: transform;
@@ -259,7 +259,7 @@ body:not(.no-animation) .selected-source {
     animation: none !important;
 }
 
-/* Optimize start-source element - use left/top positioning, not transforms */
+/* Optimise start-source element - use left/top positioning, not transforms */
 .start-source {
     position: absolute !important;
     will-change: auto;
@@ -275,7 +275,7 @@ body:not(.no-animation) .selected-source {
     transition: none !important;
 }
 
-/* Optimize JSPlumb connections for better rendering */
+/* Optimise JSPlumb connections for better rendering */
 .jtk-connector {
     will-change: auto;
     transform: translate3d(0, 0, 0);
@@ -286,7 +286,7 @@ body:not(.no-animation) .selected-source {
     transform: translate3d(0, 0, 0);
 }
 
-/* Optimize overlays and labels */
+/* Optimise overlays and labels */
 .jtk-overlay {
     will-change: auto;
     transform: translate3d(0, 0, 0);
@@ -298,7 +298,7 @@ body:not(.no-animation) .selected-source {
     animation: none !important;
 }
 
-/* Optimize edge creation elements */
+/* Optimise edge creation elements */
 .edge-creation-cursor,
 .connection-preview-dot,
 .preview-edge {
@@ -318,7 +318,7 @@ body:not(.no-animation) .selected-source {
     transition: none !important;
 }
 
-/* Optimize canvas container */
+/* Optimise canvas container */
 #fsa-canvas {
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
@@ -339,7 +339,7 @@ button {
     backface-visibility: hidden;
 }
 
-/* Optimize state transitions but disable during drag */
+/* Optimise state transitions but disable during drag */
 body:not(.no-animation) .state,
 body:not(.no-animation) .accepting-state {
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
@@ -374,7 +374,7 @@ body:not(.no-animation) .accepting-state:hover {
     transform: translate3d(0, 0, 0);
 }
 
-/* Optimize rendering during intensive operations */
+/* Optimise rendering during intensive operations */
 .performance-mode * {
     will-change: auto !important;
     animation: none !important;
@@ -397,7 +397,7 @@ body:not(.no-animation) .accepting-state:hover {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Optimize for touch devices */
+/* Optimise for touch devices */
 @media (hover: none) and (pointer: coarse) {
     .state,
     .accepting-state {

@@ -855,7 +855,7 @@
 </span><span id="L-466"><a href="#L-466"><span class="linenos"> 466</span></a>            <span class="k">return</span> <span class="kc">False</span>
 </span><span id="L-467"><a href="#L-467"><span class="linenos"> 467</span></a>
 </span><span id="L-468"><a href="#L-468"><span class="linenos"> 468</span></a>
-</span><span id="L-469"><a href="#L-469"><span class="linenos"> 469</span></a><span class="k">def</span> <span class="nf">simplify_regex</span><span class="p">(</span><span class="n">regex</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_complexity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="L-469"><a href="#L-469"><span class="linenos"> 469</span></a><span class="k">def</span> <span class="nf">simplify_regex</span><span class="p">(</span><span class="n">regex</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_complexity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 </span><span id="L-470"><a href="#L-470"><span class="linenos"> 470</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="L-471"><a href="#L-471"><span class="linenos"> 471</span></a><span class="sd">    Simplify a regular expression using AST-based approach.</span>
 </span><span id="L-472"><a href="#L-472"><span class="linenos"> 472</span></a>
@@ -1076,7 +1076,7 @@
 </span><span id="L-687"><a href="#L-687"><span class="linenos"> 687</span></a>        <span class="n">estimated_complexity</span> <span class="o">=</span> <span class="n">num_states</span> <span class="o">*</span> <span class="n">num_symbols</span> <span class="o">*</span> <span class="n">num_transitions</span>
 </span><span id="L-688"><a href="#L-688"><span class="linenos"> 688</span></a>
 </span><span id="L-689"><a href="#L-689"><span class="linenos"> 689</span></a>        <span class="k">if</span> <span class="n">estimated_complexity</span> <span class="o">&gt;</span> <span class="n">skip_simplification_threshold</span><span class="p">:</span>
-</span><span id="L-690"><a href="#L-690"><span class="linenos"> 690</span></a>            <span class="c1"># Skip state elimination optimization for very large FSAs</span>
+</span><span id="L-690"><a href="#L-690"><span class="linenos"> 690</span></a>            <span class="c1"># Skip state elimination optimisation for very large FSAs</span>
 </span><span id="L-691"><a href="#L-691"><span class="linenos"> 691</span></a>            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;simplification_skipped&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
 </span><span id="L-692"><a href="#L-692"><span class="linenos"> 692</span></a>
 </span><span id="L-693"><a href="#L-693"><span class="linenos"> 693</span></a>        <span class="c1"># Step 4: Convert to GNFA</span>
@@ -3603,13 +3603,13 @@ This is the single source of truth for node equivalence.</p>
 <div class="attr function">
             
         <span class="def">def</span>
-        <span class="name">simplify_regex</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">regex</span><span class="p">:</span> <span class="nb">str</span>, </span><span class="param"><span class="n">max_complexity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span></span><span class="return-annotation">) -> <span class="nb">str</span>:</span></span>
+        <span class="name">simplify_regex</span><span class="signature pdoc-code condensed">(<span class="param"><span class="n">regex</span><span class="p">:</span> <span class="nb">str</span>, </span><span class="param"><span class="n">max_complexity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span></span><span class="return-annotation">) -> <span class="nb">str</span>:</span></span>
 
                 <label class="view-source-button" for="simplify_regex-view-source"><span>View Source</span></label>
 
     </div>
     <a class="headerlink" href="#simplify_regex"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="simplify_regex-470"><a href="#simplify_regex-470"><span class="linenos">470</span></a><span class="k">def</span> <span class="nf">simplify_regex</span><span class="p">(</span><span class="n">regex</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_complexity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="simplify_regex-470"><a href="#simplify_regex-470"><span class="linenos">470</span></a><span class="k">def</span> <span class="nf">simplify_regex</span><span class="p">(</span><span class="n">regex</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_complexity</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 </span><span id="simplify_regex-471"><a href="#simplify_regex-471"><span class="linenos">471</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="simplify_regex-472"><a href="#simplify_regex-472"><span class="linenos">472</span></a><span class="sd">    Simplify a regular expression using AST-based approach.</span>
 </span><span id="simplify_regex-473"><a href="#simplify_regex-473"><span class="linenos">473</span></a>
@@ -3889,7 +3889,7 @@ This is the single source of truth for node equivalence.</p>
 </span><span id="fsa_to_regex-688"><a href="#fsa_to_regex-688"><span class="linenos">688</span></a>        <span class="n">estimated_complexity</span> <span class="o">=</span> <span class="n">num_states</span> <span class="o">*</span> <span class="n">num_symbols</span> <span class="o">*</span> <span class="n">num_transitions</span>
 </span><span id="fsa_to_regex-689"><a href="#fsa_to_regex-689"><span class="linenos">689</span></a>
 </span><span id="fsa_to_regex-690"><a href="#fsa_to_regex-690"><span class="linenos">690</span></a>        <span class="k">if</span> <span class="n">estimated_complexity</span> <span class="o">&gt;</span> <span class="n">skip_simplification_threshold</span><span class="p">:</span>
-</span><span id="fsa_to_regex-691"><a href="#fsa_to_regex-691"><span class="linenos">691</span></a>            <span class="c1"># Skip state elimination optimization for very large FSAs</span>
+</span><span id="fsa_to_regex-691"><a href="#fsa_to_regex-691"><span class="linenos">691</span></a>            <span class="c1"># Skip state elimination optimisation for very large FSAs</span>
 </span><span id="fsa_to_regex-692"><a href="#fsa_to_regex-692"><span class="linenos">692</span></a>            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;simplification_skipped&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
 </span><span id="fsa_to_regex-693"><a href="#fsa_to_regex-693"><span class="linenos">693</span></a>
 </span><span id="fsa_to_regex-694"><a href="#fsa_to_regex-694"><span class="linenos">694</span></a>        <span class="c1"># Step 4: Convert to GNFA</span>

@@ -121,14 +121,14 @@ class FSASnapshotCommand extends Command {
     }
 
     /**
-     * Deserialize FSA data with exact position preservation (no optimization)
+     * Deserialize FSA data with exact position preservation (no optimisation)
      * This prevents states from being repositioned during undo/redo
      */
     async deserializeWithExactPositions(data) {
         // Clear current FSA
         await fsaSerializationManager.clearCurrentFSA(this.jsPlumbInstance);
 
-        // Load states with EXACT positions (skip optimization)
+        // Load states with EXACT positions (skip optimisation)
         await this.deserializeStatesExactPositions(data.states);
 
         // Load transitions
@@ -144,7 +144,7 @@ class FSASnapshotCommand extends Command {
     }
 
     /**
-     * Deserialize states with exact positions (copied from fsaSerialisationManager but without optimization)
+     * Deserialize states with exact positions
      */
     async deserializeStatesExactPositions(statesData) {
         const callbacks = {
