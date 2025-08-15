@@ -585,7 +585,7 @@ def fsa_to_regex(fsa: Dict, skip_simplification_threshold: int = 2500) -> Dict:
     :type fsa: Dict
     :param skip_simplification_threshold: Complexity threshold for skipping simplification
     :type skip_simplification_threshold: int
-    :return: Dictionary with 'regex', 'valid', 'original_states', 'minimized_states', 'verification', and optional 'error'
+    :return: Dictionary with 'regex', 'valid', 'original_states', 'minimized_states', 'verification' and optional 'error'
     :rtype: Dict
     """
     result = {
@@ -842,7 +842,7 @@ def regex_to_epsilon_nfa(regex: str) -> Dict:
     Convert a regular expression to an ε-NFA using Thompson's construction.
 
     Supports single characters, epsilon, union (|), concatenation, Kleene star (*),
-    plus (+), optional (?), parentheses for grouping, and consecutive postfix operators.
+    plus (+), optional (?), parentheses for grouping and consecutive postfix operators.
 
     :param regex: The regular expression to convert
     :type regex: str
@@ -1190,6 +1190,83 @@ def _detect_nested_patterns(node: 'RegexNode') -> 'RegexNode':
         return node
 
 
+def _flatten_union(node: 'RegexNode') -> List['RegexNode']:
+    """Flatten a union tree into a list of nodes."""
+    if isinstance(node, UnionNode):
+        left_items = _flatten_union(node.left)
+        right_items = _flatten_union(node.right)
+        return left_items + right_items
+    else:
+        return [node]
+
+
+def _remove_duplicate_union_terms(nodes: List['RegexNode']) -> List['RegexNode']:
+    """Remove duplicate terms from a flattened union list."""
+    unique_nodes = []
+    for node in nodes:
+        is_duplicate = False
+        for existing in unique_nodes:
+            if nodes_equivalent(node, existing):
+                is_duplicate = True
+                break
+        if not is_duplicate:
+            unique_nodes.append(node)
+    return unique_nodes
+
+
+def _detect_factoring_patterns(nodes: List['RegexNode']) -> List['RegexNode']:
+    """Detect factoring patterns: R|RX → RX?, R|XR → X?R"""
+    if len(nodes) < 2:
+        return nodes
+
+    result = []
+    used_indices = set()
+
+    for i, node in enumerate(nodes):
+        if i in used_indices:
+            continue
+
+        factored = False
+        for j, other_node in enumerate(nodes):
+            if i == j or j in used_indices:
+                continue
+
+            # Pattern: R|RX → RX?
+            if isinstance(other_node, ConcatNode):
+                if nodes_equivalent(node, other_node.left):
+                    X = other_node.right
+                    factored_result = ConcatNode(node, OptionalNode(X).simplify()).simplify()
+                    result.append(factored_result)
+                    used_indices.add(i)
+                    used_indices.add(j)
+                    factored = True
+                    break
+                elif nodes_equivalent(node, other_node.right):
+                    X = other_node.left
+                    factored_result = ConcatNode(OptionalNode(X).simplify(), node).simplify()
+                    result.append(factored_result)
+                    used_indices.add(i)
+                    used_indices.add(j)
+                    factored = True
+                    break
+
+        if not factored:
+            result.append(node)
+            used_indices.add(i)
+
+    return result
+
+
+def _rebuild_union(nodes: List['RegexNode']) -> 'RegexNode':
+    """Rebuild a union tree from a flattened list."""
+    if len(nodes) == 0:
+        return EmptySetNode()
+    elif len(nodes) == 1:
+        return nodes[0]
+    else:
+        return UnionNode(nodes[0], _rebuild_union(nodes[1:]))
+
+
 class RegexNode(ABC):
     """
     Base class for regex AST nodes.
@@ -1319,6 +1396,24 @@ class UnionNode(RegexNode):
             return right
         if isinstance(right, EmptySetNode):
             return left
+
+        # Flatten union for duplicate union processing
+        union_with_simplified = UnionNode(left, right)
+        flattened = _flatten_union(union_with_simplified)
+
+        # Remove duplicates
+        unique_terms = _remove_duplicate_union_terms(flattened)
+
+        # Apply factoring patterns
+        factored_terms = _detect_factoring_patterns(unique_terms)
+
+        # If we reduced the number of terms, rebuild and re-simplify
+        if len(factored_terms) < len(flattened):
+            result = _rebuild_union(factored_terms)
+            if isinstance(result, UnionNode):
+                return result.simplify()
+            else:
+                return result.simplify()
 
         # PRIORITY RULES: Handle star/plus relationships first
 

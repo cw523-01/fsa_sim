@@ -2649,3 +2649,25 @@ class TestRegexConversions(TestCase):
 
         # Should return the single node
         self.assertEqual(result, single_node)
+
+    def test_union_flattening_and_factoring(self):
+        """Test union flattening and factoring patterns"""
+        # Test a|a|a(c|b|e) → a(c|b|e)?
+        test_regex = 'a|a|a(c|b|e)'
+        result = simplify_regex(test_regex)
+
+        # Should simplify to a(c|b|e)? or equivalent
+        self.assertIn('a', result)
+        self.assertIn('?', result)
+
+        # Test duplicate removal
+        test_regex2 = 'a|b|a|c|b'
+        result2 = simplify_regex(test_regex2)
+        # Should remove duplicates
+        self.assertLess(len(result2), len(test_regex2))
+
+        # Test factoring R|RX → RX?
+        test_regex3 = 'a|ab'
+        result3 = simplify_regex(test_regex3)
+        # Should become ab? or equivalent
+        self.assertIn('a', result3)

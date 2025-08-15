@@ -145,7 +145,7 @@ def are_automata_equivalent(automaton1: Dict, automaton2: Dict) -> Tuple[bool, D
     :type automaton1: Dict
     :param automaton2: Second automaton (NFA or DFA)
     :type automaton2: Dict
-    :return: A tuple of (is_equivalent, details) where is_equivalent is True if the automata accept the same language, and details is a dictionary containing additional information about the comparison
+    :return: A tuple of (is_equivalent, details) where is_equivalent is True if the automata accept the same language and details is a dictionary containing additional information about the comparison
     :rtype: Tuple[bool, Dict]
     """
     details = {

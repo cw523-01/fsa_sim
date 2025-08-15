@@ -238,7 +238,7 @@
 </span><span id="L-167"><a href="#L-167"><span class="linenos">167</span></a><span class="sd">    :type nfa: Dict</span>
 </span><span id="L-168"><a href="#L-168"><span class="linenos">168</span></a><span class="sd">    :param return_state_mapping: If True, also return the mapping from frozensets to DFA state names</span>
 </span><span id="L-169"><a href="#L-169"><span class="linenos">169</span></a><span class="sd">    :type return_state_mapping: bool</span>
-</span><span id="L-170"><a href="#L-170"><span class="linenos">170</span></a><span class="sd">    :return: A DFA in the same format, and optionally the state mapping</span>
+</span><span id="L-170"><a href="#L-170"><span class="linenos">170</span></a><span class="sd">    :return: A DFA in the same format and optionally the state mapping</span>
 </span><span id="L-171"><a href="#L-171"><span class="linenos">171</span></a><span class="sd">    :rtype: Union[Dict, Tuple[Dict, Dict]]</span>
 </span><span id="L-172"><a href="#L-172"><span class="linenos">172</span></a><span class="sd">    :raises ValueError: If the input is not a valid NFA structure</span>
 </span><span id="L-173"><a href="#L-173"><span class="linenos">173</span></a><span class="sd">    &quot;&quot;&quot;</span>
@@ -721,7 +721,7 @@
 </span><span id="nfa_to_dfa-168"><a href="#nfa_to_dfa-168"><span class="linenos">168</span></a><span class="sd">    :type nfa: Dict</span>
 </span><span id="nfa_to_dfa-169"><a href="#nfa_to_dfa-169"><span class="linenos">169</span></a><span class="sd">    :param return_state_mapping: If True, also return the mapping from frozensets to DFA state names</span>
 </span><span id="nfa_to_dfa-170"><a href="#nfa_to_dfa-170"><span class="linenos">170</span></a><span class="sd">    :type return_state_mapping: bool</span>
-</span><span id="nfa_to_dfa-171"><a href="#nfa_to_dfa-171"><span class="linenos">171</span></a><span class="sd">    :return: A DFA in the same format, and optionally the state mapping</span>
+</span><span id="nfa_to_dfa-171"><a href="#nfa_to_dfa-171"><span class="linenos">171</span></a><span class="sd">    :return: A DFA in the same format and optionally the state mapping</span>
 </span><span id="nfa_to_dfa-172"><a href="#nfa_to_dfa-172"><span class="linenos">172</span></a><span class="sd">    :rtype: Union[Dict, Tuple[Dict, Dict]]</span>
 </span><span id="nfa_to_dfa-173"><a href="#nfa_to_dfa-173"><span class="linenos">173</span></a><span class="sd">    :raises ValueError: If the input is not a valid NFA structure</span>
 </span><span id="nfa_to_dfa-174"><a href="#nfa_to_dfa-174"><span class="linenos">174</span></a><span class="sd">    &quot;&quot;&quot;</span>
@@ -875,7 +875,7 @@ using subset construction algorithm.</p>
 <h6 id="returns">Returns</h6>
 
 <blockquote>
-  <p>A DFA in the same format, and optionally the state mapping</p>
+  <p>A DFA in the same format and optionally the state mapping</p>
 </blockquote>
 
 <h6 id="raises">Raises</h6>

@@ -82,7 +82,7 @@
 </span><span id="L-11"><a href="#L-11"><span class="linenos"> 11</span></a><span class="sd">    :type fsa: Dict</span>
 </span><span id="L-12"><a href="#L-12"><span class="linenos"> 12</span></a><span class="sd">    :param input_string: The input string to simulate</span>
 </span><span id="L-13"><a href="#L-13"><span class="linenos"> 13</span></a><span class="sd">    :type input_string: str</span>
-</span><span id="L-14"><a href="#L-14"><span class="linenos"> 14</span></a><span class="sd">    :return: If accepted, returns a list of transitions. If rejected, returns a dictionary with &#39;accepted&#39;, &#39;path&#39;, &#39;rejection_reason&#39;, and &#39;rejection_position&#39;</span>
+</span><span id="L-14"><a href="#L-14"><span class="linenos"> 14</span></a><span class="sd">    :return: If accepted, returns a list of transitions. If rejected, returns a dictionary with &#39;accepted&#39;, &#39;path&#39;, &#39;rejection_reason&#39; and &#39;rejection_position&#39;</span>
 </span><span id="L-15"><a href="#L-15"><span class="linenos"> 15</span></a><span class="sd">    :rtype: Union[List[Tuple[str, str, str]], Dict]</span>
 </span><span id="L-16"><a href="#L-16"><span class="linenos"> 16</span></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="L-17"><a href="#L-17"><span class="linenos"> 17</span></a>    <span class="c1"># Validate the FSA is deterministic</span>
@@ -172,7 +172,7 @@
 </span><span id="L-101"><a href="#L-101"><span class="linenos">101</span></a><span class="sd">    :type fsa: Dict</span>
 </span><span id="L-102"><a href="#L-102"><span class="linenos">102</span></a><span class="sd">    :param input_string: The input string to simulate</span>
 </span><span id="L-103"><a href="#L-103"><span class="linenos">103</span></a><span class="sd">    :type input_string: str</span>
-</span><span id="L-104"><a href="#L-104"><span class="linenos">104</span></a><span class="sd">    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with &#39;accepted&#39;, &#39;paths_explored&#39;, &#39;rejection_reason&#39;, and &#39;partial_paths&#39;</span>
+</span><span id="L-104"><a href="#L-104"><span class="linenos">104</span></a><span class="sd">    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with &#39;accepted&#39;, &#39;paths_explored&#39;, &#39;rejection_reason&#39; and &#39;partial_paths&#39;</span>
 </span><span id="L-105"><a href="#L-105"><span class="linenos">105</span></a><span class="sd">    :rtype: Union[List[List[Tuple[str, str, str]]], Dict]</span>
 </span><span id="L-106"><a href="#L-106"><span class="linenos">106</span></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="L-107"><a href="#L-107"><span class="linenos">107</span></a>    <span class="c1"># Validate FSA structure</span>
@@ -357,7 +357,7 @@
 </span><span id="L-286"><a href="#L-286"><span class="linenos">286</span></a><span class="sd">    :type fsa: Dict</span>
 </span><span id="L-287"><a href="#L-287"><span class="linenos">287</span></a><span class="sd">    :param input_string: The input string to simulate</span>
 </span><span id="L-288"><a href="#L-288"><span class="linenos">288</span></a><span class="sd">    :type input_string: str</span>
-</span><span id="L-289"><a href="#L-289"><span class="linenos">289</span></a><span class="sd">    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, progress updates, and final summary</span>
+</span><span id="L-289"><a href="#L-289"><span class="linenos">289</span></a><span class="sd">    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, progress updates and final summary</span>
 </span><span id="L-290"><a href="#L-290"><span class="linenos">290</span></a><span class="sd">    :rtype: Generator[Dict, None, None]</span>
 </span><span id="L-291"><a href="#L-291"><span class="linenos">291</span></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="L-292"><a href="#L-292"><span class="linenos">292</span></a>    <span class="c1"># Validate FSA structure</span>
@@ -697,7 +697,7 @@
 </span><span id="L-626"><a href="#L-626"><span class="linenos">626</span></a><span class="sd">    :type input_string: str</span>
 </span><span id="L-627"><a href="#L-627"><span class="linenos">627</span></a><span class="sd">    :param max_depth: Maximum depth to traverse (positive integer) to prevent infinite epsilon loops</span>
 </span><span id="L-628"><a href="#L-628"><span class="linenos">628</span></a><span class="sd">    :type max_depth: int</span>
-</span><span id="L-629"><a href="#L-629"><span class="linenos">629</span></a><span class="sd">    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with &#39;accepted&#39;, &#39;paths_explored&#39;, &#39;rejection_reason&#39;, &#39;partial_paths&#39;, and &#39;depth_limit_reached&#39;</span>
+</span><span id="L-629"><a href="#L-629"><span class="linenos">629</span></a><span class="sd">    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with &#39;accepted&#39;, &#39;paths_explored&#39;, &#39;rejection_reason&#39;, &#39;partial_paths&#39; and &#39;depth_limit_reached&#39;</span>
 </span><span id="L-630"><a href="#L-630"><span class="linenos">630</span></a><span class="sd">    :rtype: Union[List[List[Tuple[str, str, str]]], Dict]</span>
 </span><span id="L-631"><a href="#L-631"><span class="linenos">631</span></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="L-632"><a href="#L-632"><span class="linenos">632</span></a>    <span class="c1"># Validate input parameters</span>
@@ -816,7 +816,7 @@
 </span><span id="L-745"><a href="#L-745"><span class="linenos">745</span></a><span class="sd">    :type input_string: str</span>
 </span><span id="L-746"><a href="#L-746"><span class="linenos">746</span></a><span class="sd">    :param max_depth: Maximum depth to traverse (positive integer) to prevent infinite epsilon loops</span>
 </span><span id="L-747"><a href="#L-747"><span class="linenos">747</span></a><span class="sd">    :type max_depth: int</span>
-</span><span id="L-748"><a href="#L-748"><span class="linenos">748</span></a><span class="sd">    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, depth limit reached, progress updates, and final summary</span>
+</span><span id="L-748"><a href="#L-748"><span class="linenos">748</span></a><span class="sd">    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, depth limit reached, progress updates and final summary</span>
 </span><span id="L-749"><a href="#L-749"><span class="linenos">749</span></a><span class="sd">    :rtype: Generator[Dict, None, None]</span>
 </span><span id="L-750"><a href="#L-750"><span class="linenos">750</span></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="L-751"><a href="#L-751"><span class="linenos">751</span></a>    <span class="c1"># Validate input parameters</span>
@@ -1061,7 +1061,7 @@
 </span><span id="simulate_deterministic_fsa-12"><a href="#simulate_deterministic_fsa-12"><span class="linenos">12</span></a><span class="sd">    :type fsa: Dict</span>
 </span><span id="simulate_deterministic_fsa-13"><a href="#simulate_deterministic_fsa-13"><span class="linenos">13</span></a><span class="sd">    :param input_string: The input string to simulate</span>
 </span><span id="simulate_deterministic_fsa-14"><a href="#simulate_deterministic_fsa-14"><span class="linenos">14</span></a><span class="sd">    :type input_string: str</span>
-</span><span id="simulate_deterministic_fsa-15"><a href="#simulate_deterministic_fsa-15"><span class="linenos">15</span></a><span class="sd">    :return: If accepted, returns a list of transitions. If rejected, returns a dictionary with &#39;accepted&#39;, &#39;path&#39;, &#39;rejection_reason&#39;, and &#39;rejection_position&#39;</span>
+</span><span id="simulate_deterministic_fsa-15"><a href="#simulate_deterministic_fsa-15"><span class="linenos">15</span></a><span class="sd">    :return: If accepted, returns a list of transitions. If rejected, returns a dictionary with &#39;accepted&#39;, &#39;path&#39;, &#39;rejection_reason&#39; and &#39;rejection_position&#39;</span>
 </span><span id="simulate_deterministic_fsa-16"><a href="#simulate_deterministic_fsa-16"><span class="linenos">16</span></a><span class="sd">    :rtype: Union[List[Tuple[str, str, str]], Dict]</span>
 </span><span id="simulate_deterministic_fsa-17"><a href="#simulate_deterministic_fsa-17"><span class="linenos">17</span></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="simulate_deterministic_fsa-18"><a href="#simulate_deterministic_fsa-18"><span class="linenos">18</span></a>    <span class="c1"># Validate the FSA is deterministic</span>
@@ -1140,7 +1140,7 @@
 <h6 id="returns">Returns</h6>
 
 <blockquote>
-  <p>If accepted, returns a list of transitions. If rejected, returns a dictionary with 'accepted', 'path', 'rejection_reason', and 'rejection_position'</p>
+  <p>If accepted, returns a list of transitions. If rejected, returns a dictionary with 'accepted', 'path', 'rejection_reason' and 'rejection_position'</p>
 </blockquote>
 </div>
 
@@ -1165,7 +1165,7 @@
 </span><span id="simulate_nondeterministic_fsa-102"><a href="#simulate_nondeterministic_fsa-102"><span class="linenos">102</span></a><span class="sd">    :type fsa: Dict</span>
 </span><span id="simulate_nondeterministic_fsa-103"><a href="#simulate_nondeterministic_fsa-103"><span class="linenos">103</span></a><span class="sd">    :param input_string: The input string to simulate</span>
 </span><span id="simulate_nondeterministic_fsa-104"><a href="#simulate_nondeterministic_fsa-104"><span class="linenos">104</span></a><span class="sd">    :type input_string: str</span>
-</span><span id="simulate_nondeterministic_fsa-105"><a href="#simulate_nondeterministic_fsa-105"><span class="linenos">105</span></a><span class="sd">    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with &#39;accepted&#39;, &#39;paths_explored&#39;, &#39;rejection_reason&#39;, and &#39;partial_paths&#39;</span>
+</span><span id="simulate_nondeterministic_fsa-105"><a href="#simulate_nondeterministic_fsa-105"><span class="linenos">105</span></a><span class="sd">    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with &#39;accepted&#39;, &#39;paths_explored&#39;, &#39;rejection_reason&#39; and &#39;partial_paths&#39;</span>
 </span><span id="simulate_nondeterministic_fsa-106"><a href="#simulate_nondeterministic_fsa-106"><span class="linenos">106</span></a><span class="sd">    :rtype: Union[List[List[Tuple[str, str, str]]], Dict]</span>
 </span><span id="simulate_nondeterministic_fsa-107"><a href="#simulate_nondeterministic_fsa-107"><span class="linenos">107</span></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="simulate_nondeterministic_fsa-108"><a href="#simulate_nondeterministic_fsa-108"><span class="linenos">108</span></a>    <span class="c1"># Validate FSA structure</span>
@@ -1264,7 +1264,7 @@
 <h6 id="returns">Returns</h6>
 
 <blockquote>
-  <p>If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with 'accepted', 'paths_explored', 'rejection_reason', and 'partial_paths'</p>
+  <p>If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with 'accepted', 'paths_explored', 'rejection_reason' and 'partial_paths'</p>
 </blockquote>
 </div>
 
@@ -1289,7 +1289,7 @@
 </span><span id="simulate_nondeterministic_fsa_generator-287"><a href="#simulate_nondeterministic_fsa_generator-287"><span class="linenos">287</span></a><span class="sd">    :type fsa: Dict</span>
 </span><span id="simulate_nondeterministic_fsa_generator-288"><a href="#simulate_nondeterministic_fsa_generator-288"><span class="linenos">288</span></a><span class="sd">    :param input_string: The input string to simulate</span>
 </span><span id="simulate_nondeterministic_fsa_generator-289"><a href="#simulate_nondeterministic_fsa_generator-289"><span class="linenos">289</span></a><span class="sd">    :type input_string: str</span>
-</span><span id="simulate_nondeterministic_fsa_generator-290"><a href="#simulate_nondeterministic_fsa_generator-290"><span class="linenos">290</span></a><span class="sd">    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, progress updates, and final summary</span>
+</span><span id="simulate_nondeterministic_fsa_generator-290"><a href="#simulate_nondeterministic_fsa_generator-290"><span class="linenos">290</span></a><span class="sd">    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, progress updates and final summary</span>
 </span><span id="simulate_nondeterministic_fsa_generator-291"><a href="#simulate_nondeterministic_fsa_generator-291"><span class="linenos">291</span></a><span class="sd">    :rtype: Generator[Dict, None, None]</span>
 </span><span id="simulate_nondeterministic_fsa_generator-292"><a href="#simulate_nondeterministic_fsa_generator-292"><span class="linenos">292</span></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="simulate_nondeterministic_fsa_generator-293"><a href="#simulate_nondeterministic_fsa_generator-293"><span class="linenos">293</span></a>    <span class="c1"># Validate FSA structure</span>
@@ -1415,7 +1415,7 @@
 <h6 id="returns">Returns</h6>
 
 <blockquote>
-  <p>Generator yielding dictionaries with information about each result: accepting paths, rejected paths, progress updates, and final summary</p>
+  <p>Generator yielding dictionaries with information about each result: accepting paths, rejected paths, progress updates and final summary</p>
 </blockquote>
 </div>
 
@@ -1588,7 +1588,7 @@ traversed infinitely without consuming any input symbols.</p>
 </span><span id="simulate_nondeterministic_fsa_with_depth_limit-627"><a href="#simulate_nondeterministic_fsa_with_depth_limit-627"><span class="linenos">627</span></a><span class="sd">    :type input_string: str</span>
 </span><span id="simulate_nondeterministic_fsa_with_depth_limit-628"><a href="#simulate_nondeterministic_fsa_with_depth_limit-628"><span class="linenos">628</span></a><span class="sd">    :param max_depth: Maximum depth to traverse (positive integer) to prevent infinite epsilon loops</span>
 </span><span id="simulate_nondeterministic_fsa_with_depth_limit-629"><a href="#simulate_nondeterministic_fsa_with_depth_limit-629"><span class="linenos">629</span></a><span class="sd">    :type max_depth: int</span>
-</span><span id="simulate_nondeterministic_fsa_with_depth_limit-630"><a href="#simulate_nondeterministic_fsa_with_depth_limit-630"><span class="linenos">630</span></a><span class="sd">    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with &#39;accepted&#39;, &#39;paths_explored&#39;, &#39;rejection_reason&#39;, &#39;partial_paths&#39;, and &#39;depth_limit_reached&#39;</span>
+</span><span id="simulate_nondeterministic_fsa_with_depth_limit-630"><a href="#simulate_nondeterministic_fsa_with_depth_limit-630"><span class="linenos">630</span></a><span class="sd">    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with &#39;accepted&#39;, &#39;paths_explored&#39;, &#39;rejection_reason&#39;, &#39;partial_paths&#39; and &#39;depth_limit_reached&#39;</span>
 </span><span id="simulate_nondeterministic_fsa_with_depth_limit-631"><a href="#simulate_nondeterministic_fsa_with_depth_limit-631"><span class="linenos">631</span></a><span class="sd">    :rtype: Union[List[List[Tuple[str, str, str]]], Dict]</span>
 </span><span id="simulate_nondeterministic_fsa_with_depth_limit-632"><a href="#simulate_nondeterministic_fsa_with_depth_limit-632"><span class="linenos">632</span></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="simulate_nondeterministic_fsa_with_depth_limit-633"><a href="#simulate_nondeterministic_fsa_with_depth_limit-633"><span class="linenos">633</span></a>    <span class="c1"># Validate input parameters</span>
@@ -1711,7 +1711,7 @@ traversed infinitely without consuming any input symbols.</p>
 <h6 id="returns">Returns</h6>
 
 <blockquote>
-  <p>If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with 'accepted', 'paths_explored', 'rejection_reason', 'partial_paths', and 'depth_limit_reached'</p>
+  <p>If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with 'accepted', 'paths_explored', 'rejection_reason', 'partial_paths' and 'depth_limit_reached'</p>
 </blockquote>
 </div>
 
@@ -1738,7 +1738,7 @@ traversed infinitely without consuming any input symbols.</p>
 </span><span id="simulate_nondeterministic_fsa_generator_with_depth_limit-746"><a href="#simulate_nondeterministic_fsa_generator_with_depth_limit-746"><span class="linenos">746</span></a><span class="sd">    :type input_string: str</span>
 </span><span id="simulate_nondeterministic_fsa_generator_with_depth_limit-747"><a href="#simulate_nondeterministic_fsa_generator_with_depth_limit-747"><span class="linenos">747</span></a><span class="sd">    :param max_depth: Maximum depth to traverse (positive integer) to prevent infinite epsilon loops</span>
 </span><span id="simulate_nondeterministic_fsa_generator_with_depth_limit-748"><a href="#simulate_nondeterministic_fsa_generator_with_depth_limit-748"><span class="linenos">748</span></a><span class="sd">    :type max_depth: int</span>
-</span><span id="simulate_nondeterministic_fsa_generator_with_depth_limit-749"><a href="#simulate_nondeterministic_fsa_generator_with_depth_limit-749"><span class="linenos">749</span></a><span class="sd">    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, depth limit reached, progress updates, and final summary</span>
+</span><span id="simulate_nondeterministic_fsa_generator_with_depth_limit-749"><a href="#simulate_nondeterministic_fsa_generator_with_depth_limit-749"><span class="linenos">749</span></a><span class="sd">    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, depth limit reached, progress updates and final summary</span>
 </span><span id="simulate_nondeterministic_fsa_generator_with_depth_limit-750"><a href="#simulate_nondeterministic_fsa_generator_with_depth_limit-750"><span class="linenos">750</span></a><span class="sd">    :rtype: Generator[Dict, None, None]</span>
 </span><span id="simulate_nondeterministic_fsa_generator_with_depth_limit-751"><a href="#simulate_nondeterministic_fsa_generator_with_depth_limit-751"><span class="linenos">751</span></a><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="simulate_nondeterministic_fsa_generator_with_depth_limit-752"><a href="#simulate_nondeterministic_fsa_generator_with_depth_limit-752"><span class="linenos">752</span></a>    <span class="c1"># Validate input parameters</span>
@@ -1900,7 +1900,7 @@ traversed infinitely without consuming any input symbols.</p>
 <h6 id="returns">Returns</h6>
 
 <blockquote>
-  <p>Generator yielding dictionaries with information about each result: accepting paths, rejected paths, depth limit reached, progress updates, and final summary</p>
+  <p>Generator yielding dictionaries with information about each result: accepting paths, rejected paths, depth limit reached, progress updates and final summary</p>
 </blockquote>
 </div>
 

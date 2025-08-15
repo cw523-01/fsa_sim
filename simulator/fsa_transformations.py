@@ -167,7 +167,7 @@ def nfa_to_dfa(nfa: Dict, return_state_mapping: bool = False) -> Union[Dict, Tup
     :type nfa: Dict
     :param return_state_mapping: If True, also return the mapping from frozensets to DFA state names
     :type return_state_mapping: bool
-    :return: A DFA in the same format, and optionally the state mapping
+    :return: A DFA in the same format and optionally the state mapping
     :rtype: Union[Dict, Tuple[Dict, Dict]]
     :raises ValueError: If the input is not a valid NFA structure
     """

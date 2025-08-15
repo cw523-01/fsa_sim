@@ -477,6 +477,9 @@
                         <li>
                                 <a class="function" href="#TestRegexConversions.test_rebuild_concatenation_single_node">test_rebuild_concatenation_single_node</a>
                         </li>
+                        <li>
+                                <a class="function" href="#TestRegexConversions.test_union_flattening_and_factoring">test_union_flattening_and_factoring</a>
+                        </li>
                 </ul>
 
             </li>
@@ -3152,6 +3155,28 @@
 </span><span id="L-2649"><a href="#L-2649"><span class="linenos">2649</span></a>
 </span><span id="L-2650"><a href="#L-2650"><span class="linenos">2650</span></a>        <span class="c1"># Should return the single node</span>
 </span><span id="L-2651"><a href="#L-2651"><span class="linenos">2651</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">single_node</span><span class="p">)</span>
+</span><span id="L-2652"><a href="#L-2652"><span class="linenos">2652</span></a>
+</span><span id="L-2653"><a href="#L-2653"><span class="linenos">2653</span></a>    <span class="k">def</span> <span class="nf">test_union_flattening_and_factoring</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="L-2654"><a href="#L-2654"><span class="linenos">2654</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Test union flattening and factoring patterns&quot;&quot;&quot;</span>
+</span><span id="L-2655"><a href="#L-2655"><span class="linenos">2655</span></a>        <span class="c1"># Test a|a|a(c|b|e) → a(c|b|e)?</span>
+</span><span id="L-2656"><a href="#L-2656"><span class="linenos">2656</span></a>        <span class="n">test_regex</span> <span class="o">=</span> <span class="s1">&#39;a|a|a(c|b|e)&#39;</span>
+</span><span id="L-2657"><a href="#L-2657"><span class="linenos">2657</span></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">simplify_regex</span><span class="p">(</span><span class="n">test_regex</span><span class="p">)</span>
+</span><span id="L-2658"><a href="#L-2658"><span class="linenos">2658</span></a>
+</span><span id="L-2659"><a href="#L-2659"><span class="linenos">2659</span></a>        <span class="c1"># Should simplify to a(c|b|e)? or equivalent</span>
+</span><span id="L-2660"><a href="#L-2660"><span class="linenos">2660</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+</span><span id="L-2661"><a href="#L-2661"><span class="linenos">2661</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;?&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+</span><span id="L-2662"><a href="#L-2662"><span class="linenos">2662</span></a>
+</span><span id="L-2663"><a href="#L-2663"><span class="linenos">2663</span></a>        <span class="c1"># Test duplicate removal</span>
+</span><span id="L-2664"><a href="#L-2664"><span class="linenos">2664</span></a>        <span class="n">test_regex2</span> <span class="o">=</span> <span class="s1">&#39;a|b|a|c|b&#39;</span>
+</span><span id="L-2665"><a href="#L-2665"><span class="linenos">2665</span></a>        <span class="n">result2</span> <span class="o">=</span> <span class="n">simplify_regex</span><span class="p">(</span><span class="n">test_regex2</span><span class="p">)</span>
+</span><span id="L-2666"><a href="#L-2666"><span class="linenos">2666</span></a>        <span class="c1"># Should remove duplicates</span>
+</span><span id="L-2667"><a href="#L-2667"><span class="linenos">2667</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertLess</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">result2</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_regex2</span><span class="p">))</span>
+</span><span id="L-2668"><a href="#L-2668"><span class="linenos">2668</span></a>
+</span><span id="L-2669"><a href="#L-2669"><span class="linenos">2669</span></a>        <span class="c1"># Test factoring R|RX → RX?</span>
+</span><span id="L-2670"><a href="#L-2670"><span class="linenos">2670</span></a>        <span class="n">test_regex3</span> <span class="o">=</span> <span class="s1">&#39;a|ab&#39;</span>
+</span><span id="L-2671"><a href="#L-2671"><span class="linenos">2671</span></a>        <span class="n">result3</span> <span class="o">=</span> <span class="n">simplify_regex</span><span class="p">(</span><span class="n">test_regex3</span><span class="p">)</span>
+</span><span id="L-2672"><a href="#L-2672"><span class="linenos">2672</span></a>        <span class="c1"># Should become ab? or equivalent</span>
+</span><span id="L-2673"><a href="#L-2673"><span class="linenos">2673</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="n">result3</span><span class="p">)</span>
 </span></pre></div>
 
 
@@ -5801,6 +5826,28 @@
 </span><span id="TestRegexConversions-2650"><a href="#TestRegexConversions-2650"><span class="linenos">2650</span></a>
 </span><span id="TestRegexConversions-2651"><a href="#TestRegexConversions-2651"><span class="linenos">2651</span></a>        <span class="c1"># Should return the single node</span>
 </span><span id="TestRegexConversions-2652"><a href="#TestRegexConversions-2652"><span class="linenos">2652</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">single_node</span><span class="p">)</span>
+</span><span id="TestRegexConversions-2653"><a href="#TestRegexConversions-2653"><span class="linenos">2653</span></a>
+</span><span id="TestRegexConversions-2654"><a href="#TestRegexConversions-2654"><span class="linenos">2654</span></a>    <span class="k">def</span> <span class="nf">test_union_flattening_and_factoring</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="TestRegexConversions-2655"><a href="#TestRegexConversions-2655"><span class="linenos">2655</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Test union flattening and factoring patterns&quot;&quot;&quot;</span>
+</span><span id="TestRegexConversions-2656"><a href="#TestRegexConversions-2656"><span class="linenos">2656</span></a>        <span class="c1"># Test a|a|a(c|b|e) → a(c|b|e)?</span>
+</span><span id="TestRegexConversions-2657"><a href="#TestRegexConversions-2657"><span class="linenos">2657</span></a>        <span class="n">test_regex</span> <span class="o">=</span> <span class="s1">&#39;a|a|a(c|b|e)&#39;</span>
+</span><span id="TestRegexConversions-2658"><a href="#TestRegexConversions-2658"><span class="linenos">2658</span></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">simplify_regex</span><span class="p">(</span><span class="n">test_regex</span><span class="p">)</span>
+</span><span id="TestRegexConversions-2659"><a href="#TestRegexConversions-2659"><span class="linenos">2659</span></a>
+</span><span id="TestRegexConversions-2660"><a href="#TestRegexConversions-2660"><span class="linenos">2660</span></a>        <span class="c1"># Should simplify to a(c|b|e)? or equivalent</span>
+</span><span id="TestRegexConversions-2661"><a href="#TestRegexConversions-2661"><span class="linenos">2661</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+</span><span id="TestRegexConversions-2662"><a href="#TestRegexConversions-2662"><span class="linenos">2662</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;?&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+</span><span id="TestRegexConversions-2663"><a href="#TestRegexConversions-2663"><span class="linenos">2663</span></a>
+</span><span id="TestRegexConversions-2664"><a href="#TestRegexConversions-2664"><span class="linenos">2664</span></a>        <span class="c1"># Test duplicate removal</span>
+</span><span id="TestRegexConversions-2665"><a href="#TestRegexConversions-2665"><span class="linenos">2665</span></a>        <span class="n">test_regex2</span> <span class="o">=</span> <span class="s1">&#39;a|b|a|c|b&#39;</span>
+</span><span id="TestRegexConversions-2666"><a href="#TestRegexConversions-2666"><span class="linenos">2666</span></a>        <span class="n">result2</span> <span class="o">=</span> <span class="n">simplify_regex</span><span class="p">(</span><span class="n">test_regex2</span><span class="p">)</span>
+</span><span id="TestRegexConversions-2667"><a href="#TestRegexConversions-2667"><span class="linenos">2667</span></a>        <span class="c1"># Should remove duplicates</span>
+</span><span id="TestRegexConversions-2668"><a href="#TestRegexConversions-2668"><span class="linenos">2668</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertLess</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">result2</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_regex2</span><span class="p">))</span>
+</span><span id="TestRegexConversions-2669"><a href="#TestRegexConversions-2669"><span class="linenos">2669</span></a>
+</span><span id="TestRegexConversions-2670"><a href="#TestRegexConversions-2670"><span class="linenos">2670</span></a>        <span class="c1"># Test factoring R|RX → RX?</span>
+</span><span id="TestRegexConversions-2671"><a href="#TestRegexConversions-2671"><span class="linenos">2671</span></a>        <span class="n">test_regex3</span> <span class="o">=</span> <span class="s1">&#39;a|ab&#39;</span>
+</span><span id="TestRegexConversions-2672"><a href="#TestRegexConversions-2672"><span class="linenos">2672</span></a>        <span class="n">result3</span> <span class="o">=</span> <span class="n">simplify_regex</span><span class="p">(</span><span class="n">test_regex3</span><span class="p">)</span>
+</span><span id="TestRegexConversions-2673"><a href="#TestRegexConversions-2673"><span class="linenos">2673</span></a>        <span class="c1"># Should become ab? or equivalent</span>
+</span><span id="TestRegexConversions-2674"><a href="#TestRegexConversions-2674"><span class="linenos">2674</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="n">result3</span><span class="p">)</span>
 </span></pre></div>
 
 
@@ -11100,6 +11147,46 @@ TransactionTestCase.</p>
 
 
             <div class="docstring"><p>Test _rebuild_concatenation with single node</p>
+</div>
+
+
+                            </div>
+                            <div id="TestRegexConversions.test_union_flattening_and_factoring" class="classattr">
+                                        <input id="TestRegexConversions.test_union_flattening_and_factoring-view-source" class="view-source-toggle-state" type="checkbox" aria-hidden="true" tabindex="-1">
+<div class="attr function">
+            
+        <span class="def">def</span>
+        <span class="name">test_union_flattening_and_factoring</span><span class="signature pdoc-code condensed">(<span class="param"><span class="bp">self</span></span><span class="return-annotation">):</span></span>
+
+                <label class="view-source-button" for="TestRegexConversions.test_union_flattening_and_factoring-view-source"><span>View Source</span></label>
+
+    </div>
+    <a class="headerlink" href="#TestRegexConversions.test_union_flattening_and_factoring"></a>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="TestRegexConversions.test_union_flattening_and_factoring-2654"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2654"><span class="linenos">2654</span></a>    <span class="k">def</span> <span class="nf">test_union_flattening_and_factoring</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2655"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2655"><span class="linenos">2655</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;Test union flattening and factoring patterns&quot;&quot;&quot;</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2656"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2656"><span class="linenos">2656</span></a>        <span class="c1"># Test a|a|a(c|b|e) → a(c|b|e)?</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2657"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2657"><span class="linenos">2657</span></a>        <span class="n">test_regex</span> <span class="o">=</span> <span class="s1">&#39;a|a|a(c|b|e)&#39;</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2658"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2658"><span class="linenos">2658</span></a>        <span class="n">result</span> <span class="o">=</span> <span class="n">simplify_regex</span><span class="p">(</span><span class="n">test_regex</span><span class="p">)</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2659"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2659"><span class="linenos">2659</span></a>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2660"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2660"><span class="linenos">2660</span></a>        <span class="c1"># Should simplify to a(c|b|e)? or equivalent</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2661"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2661"><span class="linenos">2661</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2662"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2662"><span class="linenos">2662</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;?&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2663"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2663"><span class="linenos">2663</span></a>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2664"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2664"><span class="linenos">2664</span></a>        <span class="c1"># Test duplicate removal</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2665"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2665"><span class="linenos">2665</span></a>        <span class="n">test_regex2</span> <span class="o">=</span> <span class="s1">&#39;a|b|a|c|b&#39;</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2666"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2666"><span class="linenos">2666</span></a>        <span class="n">result2</span> <span class="o">=</span> <span class="n">simplify_regex</span><span class="p">(</span><span class="n">test_regex2</span><span class="p">)</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2667"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2667"><span class="linenos">2667</span></a>        <span class="c1"># Should remove duplicates</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2668"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2668"><span class="linenos">2668</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertLess</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">result2</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_regex2</span><span class="p">))</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2669"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2669"><span class="linenos">2669</span></a>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2670"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2670"><span class="linenos">2670</span></a>        <span class="c1"># Test factoring R|RX → RX?</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2671"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2671"><span class="linenos">2671</span></a>        <span class="n">test_regex3</span> <span class="o">=</span> <span class="s1">&#39;a|ab&#39;</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2672"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2672"><span class="linenos">2672</span></a>        <span class="n">result3</span> <span class="o">=</span> <span class="n">simplify_regex</span><span class="p">(</span><span class="n">test_regex3</span><span class="p">)</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2673"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2673"><span class="linenos">2673</span></a>        <span class="c1"># Should become ab? or equivalent</span>
+</span><span id="TestRegexConversions.test_union_flattening_and_factoring-2674"><a href="#TestRegexConversions.test_union_flattening_and_factoring-2674"><span class="linenos">2674</span></a>        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="n">result3</span><span class="p">)</span>
+</span></pre></div>
+
+
+            <div class="docstring"><p>Test union flattening and factoring patterns</p>
 </div>
 
 

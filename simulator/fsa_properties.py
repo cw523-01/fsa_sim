@@ -146,7 +146,7 @@ def check_all_properties(fsa: Dict) -> Dict:
 
     :param fsa: A dictionary representing the FSA
     :type fsa: Dict
-    :return: Dictionary containing all property check results with keys 'deterministic', 'complete', and 'connected'
+    :return: Dictionary containing all property check results with keys 'deterministic', 'complete' and 'connected'
     :rtype: Dict
     """
     return {

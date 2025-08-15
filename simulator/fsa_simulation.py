@@ -11,7 +11,7 @@ def simulate_deterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Tuple
     :type fsa: Dict
     :param input_string: The input string to simulate
     :type input_string: str
-    :return: If accepted, returns a list of transitions. If rejected, returns a dictionary with 'accepted', 'path', 'rejection_reason', and 'rejection_position'
+    :return: If accepted, returns a list of transitions. If rejected, returns a dictionary with 'accepted', 'path', 'rejection_reason' and 'rejection_position'
     :rtype: Union[List[Tuple[str, str, str]], Dict]
     """
     # Validate the FSA is deterministic
@@ -101,7 +101,7 @@ def simulate_nondeterministic_fsa(fsa: Dict, input_string: str) -> Union[List[Li
     :type fsa: Dict
     :param input_string: The input string to simulate
     :type input_string: str
-    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with 'accepted', 'paths_explored', 'rejection_reason', and 'partial_paths'
+    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with 'accepted', 'paths_explored', 'rejection_reason' and 'partial_paths'
     :rtype: Union[List[List[Tuple[str, str, str]]], Dict]
     """
     # Validate FSA structure
@@ -286,7 +286,7 @@ def simulate_nondeterministic_fsa_generator(fsa: Dict, input_string: str):
     :type fsa: Dict
     :param input_string: The input string to simulate
     :type input_string: str
-    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, progress updates, and final summary
+    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, progress updates and final summary
     :rtype: Generator[Dict, None, None]
     """
     # Validate FSA structure
@@ -626,7 +626,7 @@ def simulate_nondeterministic_fsa_with_depth_limit(fsa: Dict, input_string: str,
     :type input_string: str
     :param max_depth: Maximum depth to traverse (positive integer) to prevent infinite epsilon loops
     :type max_depth: int
-    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with 'accepted', 'paths_explored', 'rejection_reason', 'partial_paths', and 'depth_limit_reached'
+    :return: If accepted, returns a list of all accepting paths. If rejected, returns a dictionary with 'accepted', 'paths_explored', 'rejection_reason', 'partial_paths' and 'depth_limit_reached'
     :rtype: Union[List[List[Tuple[str, str, str]]], Dict]
     """
     # Validate input parameters
@@ -745,7 +745,7 @@ def simulate_nondeterministic_fsa_generator_with_depth_limit(fsa: Dict, input_st
     :type input_string: str
     :param max_depth: Maximum depth to traverse (positive integer) to prevent infinite epsilon loops
     :type max_depth: int
-    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, depth limit reached, progress updates, and final summary
+    :return: Generator yielding dictionaries with information about each result: accepting paths, rejected paths, depth limit reached, progress updates and final summary
     :rtype: Generator[Dict, None, None]
     """
     # Validate input parameters
